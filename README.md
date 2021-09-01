@@ -1,2 +1,0 @@
-# goapi
-Golang STTP API
