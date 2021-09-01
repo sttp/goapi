@@ -1,6 +1,6 @@
 # goapi
 
-<img align="right" src="https://raw.githubusercontent.com/sttp/goapi/master/assets/sttp.png">
+<img align="right" src="https://raw.githubusercontent.com/sttp/goapi/main/assets/sttp.png?">
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/sttp/goapi?style=flat-square)](https://goreportcard.com/report/github.com/sttp/goapi)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/sttp/goapi)](https://pkg.go.dev/github.com/sttp/goapi) 
