@@ -23,6 +23,7 @@
 
 package transport
 
+// SubscriptionInfo defines connection related settings for a DataSubscriber instance.
 type SubscriptionInfo struct {
 	FilterExpression string
 

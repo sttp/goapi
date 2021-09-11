@@ -29,9 +29,8 @@ import (
 	"github.com/sttp/goapi/sttp/guid"
 )
 
-// Maps 32-bit runtime IDs to 128-bit globally unique IDs.
-// Additionally provides reverse lookup and an extra mapping
-// to human-readable measurement keys.
+// SignalIndexCache maps 32-bit runtime IDs to 128-bit globally unique Measurement IDs. The structure
+// additionally provides reverse lookup and an extra mapping  to human-readable measurement keys.
 type SignalIndexCache struct {
 	reference     map[int32]uint32
 	signalIDList  []guid.Guid
