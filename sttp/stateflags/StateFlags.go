@@ -23,6 +23,7 @@
 
 package stateflags
 
+// StateFlags define the possible quality states of Measurement value.
 type StateFlags uint32
 
 const (
