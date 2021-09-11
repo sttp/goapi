@@ -9,7 +9,7 @@
     // Compile T4 template automatically on save in VS Code with:
     // https://marketplace.visualstudio.com/items?itemName=aisoftware.tt-processor
 
-	// Note: if Go complains on build about "BOM in middle of file", re-save file as UTF8 without BOM
+    // Note: if Go complains on build about "BOM in middle of file", re-save file as UTF8 without BOM
 #>
 //******************************************************************************************************
 //  <#=TypeName#>HashSet.go - Gbtc
@@ -167,23 +167,23 @@ func (hs <#=TypeName#>HashSet) SymmetricExceptWithSet(other <#=TypeName#>HashSet
 
 // IntersectWith modifies the current set to contain only elements that are present in the set and in the specified slice.
 func (hs <#=TypeName#>HashSet) IntersectWith(other []<#=TypeName#>) {
-	hs.IntersectWithSet(New<#=TypeName#>HashSet(other))
+    hs.IntersectWithSet(New<#=TypeName#>HashSet(other))
 }
 
 // IntersectWithSet modifies the current set to contain only elements that are present in the set and in the specified set.
 func (hs <#=TypeName#>HashSet) IntersectWithSet(other <#=TypeName#>HashSet) {
-	// Intersection of anything with empty set is empty set, so return if count is 0
-	if len(hs) == 0 {
-		return
-	}
+    // Intersection of anything with empty set is empty set, so return if count is 0
+    if len(hs) == 0 {
+        return
+    }
 
     if len(other) == 0 {
         hs.Clear()
         return
     }
 
-	for k := range hs {
-		if !other.Contains(k) {
+    for k := range hs {
+        if !other.Contains(k) {
             hs.Remove(k)
         }
     }
@@ -204,17 +204,17 @@ func (hs <#=TypeName#>HashSet) UnionWithSet(other <#=TypeName#>HashSet) {
 // SetEquals determines whether a set and the specified slice contain the same elements.
 // Returns true if the set is equal to other slice items; otherwise, false.
 func (hs <#=TypeName#>HashSet) SetEquals(other []<#=TypeName#>) bool {
-	if len(hs) != len(other) {
-		return false
-	}
+    if len(hs) != len(other) {
+        return false
+    }
 
-	for _, v := range other {
-		if !hs.Contains(v) {
-			return false
-		}
-	}
+    for _, v := range other {
+        if !hs.Contains(v) {
+            return false
+        }
+    }
 
-	return true
+    return true
 }
 
 // SetEqualsSet determines whether a set and the specified set contain the same elements.
@@ -248,7 +248,7 @@ func (hs <#=TypeName#>HashSet) OverlapsSet(other <#=TypeName#>HashSet) bool {
 // IsSubsetOf determines whether a set is a subset of the specified slice.
 // Returns true if the set is a subset of other slice items; otherwise, false.
 func (hs <#=TypeName#>HashSet) IsSubsetOf(other []<#=TypeName#>) bool {
-	return hs.IsSubsetOfSet(New<#=TypeName#>HashSet(other))
+    return hs.IsSubsetOfSet(New<#=TypeName#>HashSet(other))
 }
 
 // IsSubsetOfSet determines whether a set is a subset of the specified set.
@@ -260,12 +260,12 @@ func (hs <#=TypeName#>HashSet) IsSubsetOfSet(other <#=TypeName#>HashSet) bool {
     }
 
     // If set has more elements than slice, then it can't be a subset
-	if len(hs) > len(other) {
+    if len(hs) > len(other) {
         return false
     }
 
     for k := range hs {
-		if !other.Contains(k) {
+        if !other.Contains(k) {
             return false
         }
     }
@@ -276,7 +276,7 @@ func (hs <#=TypeName#>HashSet) IsSubsetOfSet(other <#=TypeName#>HashSet) bool {
 // IsProperSubsetOf determines whether a set is a proper subset of the specified slice.
 // Returns true if the set is a proper subset of other slice items; otherwise, false.
 func (hs <#=TypeName#>HashSet) IsProperSubsetOf(other []<#=TypeName#>) bool {
-	return hs.IsProperSubsetOfSet(New<#=TypeName#>HashSet(other))
+    return hs.IsProperSubsetOfSet(New<#=TypeName#>HashSet(other))
 }
 
 // IsProperSubsetOfSet determines whether a set is a proper subset of the specified set.
@@ -288,12 +288,12 @@ func (hs <#=TypeName#>HashSet) IsProperSubsetOfSet(other <#=TypeName#>HashSet) b
     }
 
     // If set has more or equal elements than slice, then it can't be a proper subset
-	if len(hs) >= len(other) {
+    if len(hs) >= len(other) {
         return false
     }
 
     for k := range hs {
-		if !other.Contains(k) {
+        if !other.Contains(k) {
             return false
         }
     }
