@@ -169,26 +169,25 @@ func (hs <#=TypeName#>HashSet) SymmetricExceptWithSet(other <#=TypeName#>HashSet
 func (hs <#=TypeName#>HashSet) IntersectWith(other []<#=TypeName#>) {
 	hs.IntersectWithSet(New<#=TypeName#>HashSet(other))
 }
+
 // IntersectWithSet modifies the current set to contain only elements that are present in the set and in the specified set.
 func (hs <#=TypeName#>HashSet) IntersectWithSet(other <#=TypeName#>HashSet) {
 	// Intersection of anything with empty set is empty set, so return if count is 0
 	if len(hs) == 0 {
 		return
 	}
+
     if len(other) == 0 {
         hs.Clear()
         return
     }
-
 
 	for k := range hs {
 		if !other.Contains(k) {
             hs.Remove(k)
         }
     }
-
 }
-
 
 // UnionWith modifies the current set to contain all elements that are present in the set, the specified slice, or both.
 func (hs <#=TypeName#>HashSet) UnionWith(other []<#=TypeName#>) {
@@ -251,6 +250,7 @@ func (hs <#=TypeName#>HashSet) OverlapsSet(other <#=TypeName#>HashSet) bool {
 func (hs <#=TypeName#>HashSet) IsSubsetOf(other []<#=TypeName#>) bool {
 	return hs.IsSubsetOfSet(New<#=TypeName#>HashSet(other))
 }
+
 // IsSubsetOfSet determines whether a set is a subset of the specified set.
 // Returns true if the set is a subset of other set; otherwise, false.
 func (hs <#=TypeName#>HashSet) IsSubsetOfSet(other <#=TypeName#>HashSet) bool {
@@ -258,7 +258,6 @@ func (hs <#=TypeName#>HashSet) IsSubsetOfSet(other <#=TypeName#>HashSet) bool {
     if hs.IsEmpty() {
         return true
     }
-
 
     // If set has more elements than slice, then it can't be a subset
 	if len(hs) > len(other) {
@@ -274,12 +273,12 @@ func (hs <#=TypeName#>HashSet) IsSubsetOfSet(other <#=TypeName#>HashSet) bool {
     return true
 }
 
-
 // IsProperSubsetOf determines whether a set is a proper subset of the specified slice.
 // Returns true if the set is a proper subset of other slice items; otherwise, false.
 func (hs <#=TypeName#>HashSet) IsProperSubsetOf(other []<#=TypeName#>) bool {
 	return hs.IsProperSubsetOfSet(New<#=TypeName#>HashSet(other))
 }
+
 // IsProperSubsetOfSet determines whether a set is a proper subset of the specified set.
 // Returns true if the set is a proper subset of other set; otherwise, false.
 func (hs <#=TypeName#>HashSet) IsProperSubsetOfSet(other <#=TypeName#>HashSet) bool {
@@ -287,7 +286,6 @@ func (hs <#=TypeName#>HashSet) IsProperSubsetOfSet(other <#=TypeName#>HashSet) b
     if hs.IsEmpty() {
         return len(other) > 0
     }
-
 
     // If set has more or equal elements than slice, then it can't be a proper subset
 	if len(hs) >= len(other) {
@@ -302,7 +300,6 @@ func (hs <#=TypeName#>HashSet) IsProperSubsetOfSet(other <#=TypeName#>HashSet) b
 
     return true
 }
-
 
 // IsSupersetOf determines whether a set is a superset of the specified slice.
 // Returns true if the set is a superset of other slice items; otherwise, false.

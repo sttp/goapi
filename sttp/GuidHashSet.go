@@ -31,7 +31,7 @@ package sttp
 //     file may cause incorrect behavior and will be lost
 //     if the code is regenerated.
 //
-//     Generated on 2021 September 10 21:44:20 UTC
+//     Generated on 2021 September 11 16:09:49 UTC
 // </auto-generated>
 //---------------------------------------------------------
 
@@ -156,26 +156,25 @@ func (hs GuidHashSet) SymmetricExceptWithSet(other GuidHashSet) {
 func (hs GuidHashSet) IntersectWith(other []Guid) {
 	hs.IntersectWithSet(NewGuidHashSet(other))
 }
+
 // IntersectWithSet modifies the current set to contain only elements that are present in the set and in the specified set.
 func (hs GuidHashSet) IntersectWithSet(other GuidHashSet) {
 	// Intersection of anything with empty set is empty set, so return if count is 0
 	if len(hs) == 0 {
 		return
 	}
+
     if len(other) == 0 {
         hs.Clear()
         return
     }
-
 
 	for k := range hs {
 		if !other.Contains(k) {
             hs.Remove(k)
         }
     }
-
 }
-
 
 // UnionWith modifies the current set to contain all elements that are present in the set, the specified slice, or both.
 func (hs GuidHashSet) UnionWith(other []Guid) {
@@ -238,6 +237,7 @@ func (hs GuidHashSet) OverlapsSet(other GuidHashSet) bool {
 func (hs GuidHashSet) IsSubsetOf(other []Guid) bool {
 	return hs.IsSubsetOfSet(NewGuidHashSet(other))
 }
+
 // IsSubsetOfSet determines whether a set is a subset of the specified set.
 // Returns true if the set is a subset of other set; otherwise, false.
 func (hs GuidHashSet) IsSubsetOfSet(other GuidHashSet) bool {
@@ -245,7 +245,6 @@ func (hs GuidHashSet) IsSubsetOfSet(other GuidHashSet) bool {
     if hs.IsEmpty() {
         return true
     }
-
 
     // If set has more elements than slice, then it can't be a subset
 	if len(hs) > len(other) {
@@ -261,12 +260,12 @@ func (hs GuidHashSet) IsSubsetOfSet(other GuidHashSet) bool {
     return true
 }
 
-
 // IsProperSubsetOf determines whether a set is a proper subset of the specified slice.
 // Returns true if the set is a proper subset of other slice items; otherwise, false.
 func (hs GuidHashSet) IsProperSubsetOf(other []Guid) bool {
 	return hs.IsProperSubsetOfSet(NewGuidHashSet(other))
 }
+
 // IsProperSubsetOfSet determines whether a set is a proper subset of the specified set.
 // Returns true if the set is a proper subset of other set; otherwise, false.
 func (hs GuidHashSet) IsProperSubsetOfSet(other GuidHashSet) bool {
@@ -274,7 +273,6 @@ func (hs GuidHashSet) IsProperSubsetOfSet(other GuidHashSet) bool {
     if hs.IsEmpty() {
         return len(other) > 0
     }
-
 
     // If set has more or equal elements than slice, then it can't be a proper subset
 	if len(hs) >= len(other) {
@@ -289,7 +287,6 @@ func (hs GuidHashSet) IsProperSubsetOfSet(other GuidHashSet) bool {
 
     return true
 }
-
 
 // IsSupersetOf determines whether a set is a superset of the specified slice.
 // Returns true if the set is a superset of other slice items; otherwise, false.
