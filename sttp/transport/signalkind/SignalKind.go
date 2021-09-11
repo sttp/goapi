@@ -28,24 +28,38 @@ import (
 	"unicode"
 )
 
+// SignalKind defines the kinds of signals a Measurement can represent
 type SignalKind uint16
 
 const (
-	Angle       SignalKind = iota // Phase angle
-	Magnitude                     // Phase magnitude
-	Frequency                     // Line frequency
-	DfDt                          // Frequency delta over time (dF/dt)
-	Status                        // Status flags
-	Digital                       // Digital value
-	Analog                        // Analog value
-	Calculation                   // Calculated value
-	Statistic                     // Statistical value
-	Alarm                         // Alarm value
-	Quality                       // Quality flags
-	Unknown                       // Undetermined signal type
+	// Angle defines a phase angle signal.
+	Angle SignalKind = iota
+	// Magnitude defines a phase magnitude signal type.
+	Magnitude
+	// Frequency defines a line frequency signal type.
+	Frequency
+	// DfDt defines a frequency delta over time (dF/dt) signal type.
+	DfDt
+	// Status defines a status flags signal type.
+	Status
+	// Digital defines a digital value signal type.
+	Digital
+	// Analog defines an analog value signal type.
+	Analog
+	// Calculation defines a calculated value signal type.
+	Calculation
+	// Statistic defines a statistical value signal type.
+	Statistic
+	// Alarm defines an alarm value signal type.
+	Alarm
+	// Quality defines a quality flags signal type.
+	Quality
+	// Unknown defines an undetermined signal type.
+	Unknown
 )
 
 var (
+	// Description defines the string representations of the SignalKind enumeration values.
 	Description = [...]string{
 		"Angle",
 		"Magnitude",
@@ -60,6 +74,7 @@ var (
 		"Quality",
 		"Unknown"}
 
+	// Acronym defines the abbreviated string representations of the SignalKind enumeration values.
 	Acronym = [...]string{
 		"PA",
 		"PM",
@@ -75,7 +90,9 @@ var (
 		"??"}
 )
 
-func GetAcronym(kind SignalKind, phasorType rune) string {
+// GetSignalTypeAcronym gets the specific four-character signal type acronym for a SignalKind
+// enumeration value and phasor type, i.e., "V" voltage or "I" current.
+func GetSignalTypeAcronym(kind SignalKind, phasorType rune) string {
 	switch kind {
 	case Angle:
 		if unicode.ToUpper(phasorType) == 'V' {
@@ -110,10 +127,7 @@ func GetAcronym(kind SignalKind, phasorType rune) string {
 	return "NULL"
 }
 
-// Gets the "SignalKind" enum for the specified "acronym".
-//  params:
-//       acronym: Acronym of the desired "SignalKind"
-//  returns: The "SignalKind" for the specified "acronym".
+// Parse gets the SignalKind enumeration value for the specified acronym.
 func Parse(acronym string) SignalKind {
 	acronym = strings.TrimSpace(strings.ToUpper(acronym))
 
