@@ -21,17 +21,19 @@
 //
 //******************************************************************************************************
 
-package sttp
+package measurement
 
 import (
 	"time"
 
-	"github.com/sttp/goapi/sttp/StateFlags"
+	"github.com/sttp/goapi/sttp/guid"
+	"github.com/sttp/goapi/sttp/stateflags"
+	"github.com/sttp/goapi/sttp/ticks"
 )
 
 type MeasurementMetadata struct {
 	// Measurement's globally unique identifier.
-	SignalID Guid
+	SignalID guid.Guid
 
 	// Additive value modifier.
 	Adder float64
@@ -51,27 +53,27 @@ type MeasurementMetadata struct {
 
 type Measurement struct {
 	// Measurement's globally unique identifier.
-	SignalID Guid
+	SignalID guid.Guid
 
 	// Instantaneous value of the measurement.
 	Value float64
 
 	// The time, in ticks, that this measurement was taken.
-	Timestamp Ticks
+	Timestamp ticks.Ticks
 
 	// Flags indicating the state of the measurement as reported by the device that took it.
-	Flags StateFlags.StateFlags
+	Flags stateflags.StateFlags
 }
 
 var (
-	measurementRegistry = make(map[Guid]MeasurementMetadata)
+	measurementRegistry = make(map[guid.Guid]MeasurementMetadata)
 )
 
-func RegisterMeasurementMetadata(metadata MeasurementMetadata) {
+func RegisterMetadata(metadata MeasurementMetadata) {
 	measurementRegistry[metadata.SignalID] = metadata
 }
 
-func LookupMeasurementMetadata(signalID Guid) (MeasurementMetadata, bool) {
+func LookupMetadata(signalID guid.Guid) (MeasurementMetadata, bool) {
 	metadata, ok := measurementRegistry[signalID]
 	return metadata, ok
 }
@@ -87,5 +89,5 @@ func (m *Measurement) AdjustedValue() float64 {
 }
 
 func (m *Measurement) GetDateTime() time.Time {
-	return ToTime(m.Timestamp)
+	return ticks.ToTime(m.Timestamp)
 }

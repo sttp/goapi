@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  Common_test.go - Gbtc
+//  Guid.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -16,43 +16,70 @@
 //
 //  Code Modification History:
 //  ----------------------------------------------------------------------------------------------------
-//  09/11/2021 - J. Ritchie Carroll
+//  09/09/2021 - J. Ritchie Carroll
 //       Generated original version of source code.
 //
 //******************************************************************************************************
-package sttp
 
-import (
-	"testing"
-	"time"
-)
+package guid
 
-func TestValidateTicksContstants(t *testing.T) {
-	if TicksLeapSecondFlag != 0x8000000000000000 {
-		t.Fatalf("ValidateTicksContstants: unexpected ticks leap second flag value")
-	}
+import "github.com/google/uuid"
 
-	if TicksValueMask != 0x3FFFFFFFFFFFFFFF {
-		t.Fatalf("ValidateTicksContstants: unexpected ticks value mask value")
-	}
+type Guid uuid.UUID
 
-	if TicksReservedUTCFlag != 0x4000000000000000 {
-		t.Fatalf("ValidateTicksContstants: unexpected ticks reserved UTC flag value")
-	}
+var Empty Guid = Guid(uuid.Nil)
+
+func New() Guid {
+	return Guid(uuid.New())
 }
 
-func TestTicksTimeConversions(t *testing.T) {
-	timestamp := time.Date(2021, 9, 11, 14, 46, 39, 339127800, time.UTC)
-	ticks := ToTicks(timestamp)
+func Parse(value string) Guid {
+	guid, err := uuid.Parse(value)
 
-	if ticks != 637669683993391278 {
-		t.Fatalf("TicksToTimeConversions: unexpected ToTicks value conversion")
+	if err == nil {
+		return Guid(guid)
 	}
 
-	ticks = 637669698432643641
-	timestamp = ToTime(ticks)
+	panic("Failed to parse Guid from string \"" + value + "\": " + err.Error())
+}
 
-	if timestamp != time.Date(2021, 9, 11, 15, 10, 43, 264364100, time.UTC) {
-		t.Fatalf("TicksToTimeConversions: unexpected ToTime value conversion")
+func FromBytes(data []byte, swapEndianness bool) Guid {
+	swappedBytes := make([]byte, 16)
+	var encodedBytes []byte
+
+	if swapEndianness {
+		var copy [8]byte
+
+		for i := 0; i < 16; i++ {
+			swappedBytes[i] = data[i]
+
+			if i < 8 {
+				copy[i] = swappedBytes[i]
+			}
+		}
+
+		// Convert Microsoft encoding to RFC
+		swappedBytes[3] = copy[0]
+		swappedBytes[2] = copy[1]
+		swappedBytes[1] = copy[2]
+		swappedBytes[0] = copy[3]
+
+		swappedBytes[4] = copy[5]
+		swappedBytes[5] = copy[4]
+
+		swappedBytes[6] = copy[7]
+		swappedBytes[7] = copy[6]
+
+		encodedBytes = swappedBytes
+	} else {
+		encodedBytes = data
 	}
+
+	guid, err := uuid.FromBytes(encodedBytes)
+
+	if err == nil {
+		return Guid(guid)
+	}
+
+	panic("Failed to parse Guid from bytes: " + err.Error())
 }

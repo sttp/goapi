@@ -1,5 +1,5 @@
 ﻿//******************************************************************************************************
-//  GuidHashSet_test.go - Gbtc
+//  HashSet_test.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -20,7 +20,8 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
-package sttp
+
+package guid
 
 //---------------------------------------------------------
 // Generated from T4 template "[TypeName]HashSet_test.tt"
@@ -34,16 +35,18 @@ package sttp
 // </auto-generated>
 //---------------------------------------------------------
 
-import "testing"
+import (
+	"testing"
+)
 
 func random() Guid {
-	return NewGuid()
+	return New()
 }
 
 var empty = Guid{}
 
-func TestNewGuidHashSet(t *testing.T) {
-	set := NewGuidHashSet([]Guid{random(), random(), random(), random()})
+func TestNewHashSet(t *testing.T) {
+	set := NewHashSet([]Guid{random(), random(), random(), random()})
 
 	if len(set) != 4 {
 		t.Fatalf("NewGuidHashSet: len != 4")
@@ -51,7 +54,7 @@ func TestNewGuidHashSet(t *testing.T) {
 }
 
 func TestAdd(t *testing.T) {
-	set := NewGuidHashSet([]Guid{})
+	set := NewHashSet([]Guid{})
 
 	set.Add(random())
 	set.Add(random())
@@ -62,7 +65,7 @@ func TestAdd(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	set := NewGuidHashSet([]Guid{})
+	set := NewHashSet([]Guid{})
 
 	set.Add(random())
 	set.Add(random())
@@ -80,7 +83,7 @@ func TestRemove(t *testing.T) {
 }
 
 func TestRemoveWhere(t *testing.T) {
-	set := NewGuidHashSet([]Guid{})
+	set := NewHashSet([]Guid{})
 
 	set.Add(random())
 	set.Add(random())
@@ -97,7 +100,7 @@ func TestRemoveWhere(t *testing.T) {
 }
 
 func TestIsEmpty(t *testing.T) {
-	set := NewGuidHashSet([]Guid{})
+	set := NewHashSet([]Guid{})
 
 	if !set.IsEmpty() {
 		t.Fatalf("IsEmpty: Set not empty")
@@ -105,7 +108,7 @@ func TestIsEmpty(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	set := NewGuidHashSet([]Guid{random(), random(), random()})
+	set := NewHashSet([]Guid{random(), random(), random()})
 
 	set.Clear()
 
@@ -115,7 +118,7 @@ func TestClear(t *testing.T) {
 }
 
 func TestContains(t *testing.T) {
-	set := NewGuidHashSet([]Guid{})
+	set := NewHashSet([]Guid{})
 
 	set.Add(random())
 	set.Add(random())
@@ -129,7 +132,7 @@ func TestContains(t *testing.T) {
 }
 
 func TestKeys(t *testing.T) {
-	set := NewGuidHashSet([]Guid{})
+	set := NewHashSet([]Guid{})
 
 	set.Add(random())
 	set.Add(random())
@@ -153,8 +156,8 @@ func TestKeys(t *testing.T) {
 }
 
 func TestExceptWithSet(t *testing.T) {
-	set1 := NewGuidHashSet([]Guid{random(), random(), random(), random()})
-	set2 := NewGuidHashSet(set1.Keys())
+	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
+	set2 := NewHashSet(set1.Keys())
 
 	set1.Add(random())
 	set2.Add(random())
@@ -167,8 +170,8 @@ func TestExceptWithSet(t *testing.T) {
 }
 
 func TestSymmetricExceptWithSet(t *testing.T) {
-	set1 := NewGuidHashSet([]Guid{random(), random(), random(), random()})
-	set2 := NewGuidHashSet(set1.Keys())
+	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
+	set2 := NewHashSet(set1.Keys())
 
 	set1.Add(random())
 	set2.Add(random())
@@ -181,9 +184,9 @@ func TestSymmetricExceptWithSet(t *testing.T) {
 }
 
 func TestIntersectWithSet(t *testing.T) {
-	set1 := NewGuidHashSet([]Guid{random(), random(), random(), random()})
-	set2 := NewGuidHashSet(set1.Keys())
-	set3 := NewGuidHashSet(set1.Keys())
+	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
+	set2 := NewHashSet(set1.Keys())
+	set3 := NewHashSet(set1.Keys())
 
 	set1.Add(random())
 	set2.Add(random())
@@ -196,9 +199,9 @@ func TestIntersectWithSet(t *testing.T) {
 }
 
 func TestUnionWithSet(t *testing.T) {
-	set1 := NewGuidHashSet([]Guid{random(), random(), random(), random()})
-	set2 := NewGuidHashSet(set1.Keys())
-	set3 := NewGuidHashSet(set1.Keys())
+	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
+	set2 := NewHashSet(set1.Keys())
+	set3 := NewHashSet(set1.Keys())
 
 	item1 := random()
 	set1.Add(item1)
@@ -224,8 +227,8 @@ func TestUnionWithSet(t *testing.T) {
 }
 
 func TestSetEqualsSet(t *testing.T) {
-	set1 := NewGuidHashSet([]Guid{random(), random(), random(), random()})
-	set2 := NewGuidHashSet(set1.Keys())
+	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
+	set2 := NewHashSet(set1.Keys())
 
 	if !set1.SetEqualsSet(set2) {
 		t.Fatalf("SetEquals: Sets not equal")
@@ -250,8 +253,8 @@ func TestSetEqualsSet(t *testing.T) {
 }
 
 func TestOverlapsSet(t *testing.T) {
-	set1 := NewGuidHashSet([]Guid{random(), random(), random(), random()})
-	set2 := NewGuidHashSet(set1.Keys())
+	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
+	set2 := NewHashSet(set1.Keys())
 
 	if !set1.OverlapsSet(set2) {
 		t.Fatalf("Overlaps: Sets do not overlap")
@@ -277,8 +280,8 @@ func TestOverlapsSet(t *testing.T) {
 }
 
 func TestIsSubsetOfSet(t *testing.T) {
-	set1 := NewGuidHashSet([]Guid{random(), random(), random(), random()})
-	set2 := NewGuidHashSet(set1.Keys())
+	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
+	set2 := NewHashSet(set1.Keys())
 
 	if !set1.IsSubsetOfSet(set2) {
 		t.Fatalf("IsSubsetOf: Set is not subset")
@@ -304,8 +307,8 @@ func TestIsSubsetOfSet(t *testing.T) {
 }
 
 func TestIsProperSubsetOfSet(t *testing.T) {
-	set1 := NewGuidHashSet([]Guid{random(), random(), random(), random()})
-	set2 := NewGuidHashSet(set1.Keys())
+	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
+	set2 := NewHashSet(set1.Keys())
 
 	if set1.IsProperSubsetOfSet(set2) {
 		t.Fatalf("IsProperSubsetOf: Set is not expected to be proper subset")
@@ -331,8 +334,8 @@ func TestIsProperSubsetOfSet(t *testing.T) {
 }
 
 func TestIsSupersetOfSet(t *testing.T) {
-	set1 := NewGuidHashSet([]Guid{random(), random(), random(), random()})
-	set2 := NewGuidHashSet(set1.Keys())
+	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
+	set2 := NewHashSet(set1.Keys())
 
 	if !set2.IsSupersetOfSet(set1) {
 		t.Fatalf("IsSupersetOf: Set is not superset")
@@ -358,8 +361,8 @@ func TestIsSupersetOfSet(t *testing.T) {
 }
 
 func TestIsProperSupersetOfSet(t *testing.T) {
-	set1 := NewGuidHashSet([]Guid{random(), random(), random(), random()})
-	set2 := NewGuidHashSet(set1.Keys())
+	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
+	set2 := NewHashSet(set1.Keys())
 
 	if set2.IsProperSupersetOfSet(set1) {
 		t.Fatalf("IsProperSupersetOf: Set is not expected to be proper superset")

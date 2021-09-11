@@ -23,18 +23,16 @@
 
 package transport
 
-import (
-	"github.com/sttp/goapi/sttp/OperationalEncoding"
-)
+import "github.com/sttp/goapi/sttp/transport/operationalencoding"
 
 // SubscriberConnection represents a subscriber connection to a data publisher
 type SubscriberConnection struct {
-	encoding OperationalEncoding.OperationalEncoding
+	encoding operationalencoding.OperationalEncoding
 }
 
 func (sc *SubscriberConnection) DecodeString(data []byte, offset uint32, length uint32) string {
 	// Latest version of STTP only encodes to UTF8, the default for Go
-	if sc.encoding != OperationalEncoding.UTF8 {
+	if sc.encoding != operationalencoding.UTF8 {
 		panic("Go implementation of STTP only supports UTF8 string encoding")
 	}
 
@@ -43,7 +41,7 @@ func (sc *SubscriberConnection) DecodeString(data []byte, offset uint32, length 
 
 func (sc *SubscriberConnection) EncodeString(value string) []byte {
 	// Latest version of STTP only encodes to UTF8, the default for Go
-	if sc.encoding != OperationalEncoding.UTF8 {
+	if sc.encoding != operationalencoding.UTF8 {
 		panic("Go implementation of STTP only supports UTF8 string encoding")
 	}
 

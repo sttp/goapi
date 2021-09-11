@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  GuidHashSet.go - Gbtc
+//  HashSet.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -21,7 +21,7 @@
 //
 //******************************************************************************************************
 
-package sttp
+package guid
 
 //---------------------------------------------------------
 // Generated from T4 template "[TypeName]HashSet.tt"
@@ -42,155 +42,155 @@ var member void
 // TODO: Code can be changed from template to type "T" when generics are available:
 //type HashSet[T any] map[T]void
 
-// GuidHashSet represents a distinct collection of values, i.e., a set.
-// A GuidHashSet is not sorted and will not contain duplicate elements.
-// The methods of the GuidHashSet are not intrinsically thread-safe procedures,
+// HashSet represents a distinct collection of values, i.e., a set.
+// A HashSet is not sorted and will not contain duplicate elements.
+// The methods of the HashSet are not intrinsically thread-safe procedures,
 // to guarantee thread safety, you should initiate a lock before calling a method.
-type GuidHashSet map[Guid]void
+type HashSet map[Guid]void
 
-// NewGuidHashSet creates a new set containing all elements in the specified slice.
+// NewHashSet creates a new set containing all elements in the specified slice.
 // Returns a new GuidHashSet that contain the specified slice items.
-func NewGuidHashSet(items []Guid) GuidHashSet {
-    hs := make(GuidHashSet, len(items))
-    hs.UnionWith(items)
-    return hs
+func NewHashSet(items []Guid) HashSet {
+	hs := make(HashSet, len(items))
+	hs.UnionWith(items)
+	return hs
 }
 
 // Add adds the specified element to a set.
-func (hs GuidHashSet) Add(item Guid) {
-    hs[item] = member
+func (hs HashSet) Add(item Guid) {
+	hs[item] = member
 }
 
 // Remove removes the specified element from a set.
 // Returns true if item was removed from the set; othwerwise, false.
-func (hs GuidHashSet) Remove(item Guid) bool {
-    if hs.Contains(item) {
-        delete(hs, item)
-        return true
-    }
+func (hs HashSet) Remove(item Guid) bool {
+	if hs.Contains(item) {
+		delete(hs, item)
+		return true
+	}
 
-    return false
+	return false
 }
 
 // RemoveWhere removes all elements that match the conditions defined by the specified predicate from a set.
 // Returns number of elements that were removed from the set.
-func (hs GuidHashSet) RemoveWhere(predicate func(Guid) bool) int {
-    var removedCount int
+func (hs HashSet) RemoveWhere(predicate func(Guid) bool) int {
+	var removedCount int
 
-    for k := range hs {
-        if predicate(k) && hs.Remove(k) {
-            removedCount++
-        }
-    }
+	for k := range hs {
+		if predicate(k) && hs.Remove(k) {
+			removedCount++
+		}
+	}
 
-    return removedCount
+	return removedCount
 }
 
 // IsEmpty determines if set contains no elements.
 // Returns true if the set is empty, i.e., has a length of zero; otherwise, false.
-func (hs GuidHashSet) IsEmpty() bool {
-    return len(hs) == 0
+func (hs HashSet) IsEmpty() bool {
+	return len(hs) == 0
 }
 
 // Clear removes all elements from a set.
-func (hs GuidHashSet) Clear() {
-    for k := range hs {
-        delete(hs, k)
-    }
+func (hs HashSet) Clear() {
+	for k := range hs {
+		delete(hs, k)
+	}
 }
 
 // Contains determines whether a set contains the specified element.
 // Returns true if the set contains the specified element; otherwise, false.
-func (hs GuidHashSet) Contains(item Guid) bool {
-    _, ok := hs[item]
-    return ok
+func (hs HashSet) Contains(item Guid) bool {
+	_, ok := hs[item]
+	return ok
 }
 
 // Keys copies the elements of a set to a slice.
 // Returns a slice containing the elements of the set.
-func (hs GuidHashSet) Keys() []Guid {
-    keys := make([]Guid, len(hs))
-    i := 0
+func (hs HashSet) Keys() []Guid {
+	keys := make([]Guid, len(hs))
+	i := 0
 
-    for k := range hs {
-        keys[i] = k
-        i++
-    }
+	for k := range hs {
+		keys[i] = k
+		i++
+	}
 
-    return keys
+	return keys
 }
 
 // ExceptWith removes all elements in the specified slice from the current set.
-func (hs GuidHashSet) ExceptWith(other []Guid) {
-    for _, v := range other {
-        delete(hs, v)
-    }
+func (hs HashSet) ExceptWith(other []Guid) {
+	for _, v := range other {
+		delete(hs, v)
+	}
 }
 
 // ExceptWithSet removes all elements in the specified set from the current set.
-func (hs GuidHashSet) ExceptWithSet(other GuidHashSet) {
-    hs.ExceptWith(other.Keys())
+func (hs HashSet) ExceptWithSet(other HashSet) {
+	hs.ExceptWith(other.Keys())
 }
 
 // SymmetricExceptWith modifies the current set to contain only elements that are present either in the set or in the specified slice, but not both.
-func (hs GuidHashSet) SymmetricExceptWith(other []Guid) {
-    if hs.IsEmpty() {
-        // If set is empty, then symmetric difference is other
-        hs.UnionWith(other)
-        return
-    }
+func (hs HashSet) SymmetricExceptWith(other []Guid) {
+	if hs.IsEmpty() {
+		// If set is empty, then symmetric difference is other
+		hs.UnionWith(other)
+		return
+	}
 
-    for _, v := range other {
-        if !hs.Remove(v) {
-            hs.Add(v)
-        }
-    }
+	for _, v := range other {
+		if !hs.Remove(v) {
+			hs.Add(v)
+		}
+	}
 }
 
 // SymmetricExceptWithSet modifies the current set to contain only elements that are present either in the set or in the specified set, but not both.
-func (hs GuidHashSet) SymmetricExceptWithSet(other GuidHashSet) {
-    hs.SymmetricExceptWith(other.Keys())
+func (hs HashSet) SymmetricExceptWithSet(other HashSet) {
+	hs.SymmetricExceptWith(other.Keys())
 }
 
 // IntersectWith modifies the current set to contain only elements that are present in the set and in the specified slice.
-func (hs GuidHashSet) IntersectWith(other []Guid) {
-	hs.IntersectWithSet(NewGuidHashSet(other))
+func (hs HashSet) IntersectWith(other []Guid) {
+	hs.IntersectWithSet(NewHashSet(other))
 }
 
 // IntersectWithSet modifies the current set to contain only elements that are present in the set and in the specified set.
-func (hs GuidHashSet) IntersectWithSet(other GuidHashSet) {
+func (hs HashSet) IntersectWithSet(other HashSet) {
 	// Intersection of anything with empty set is empty set, so return if count is 0
 	if len(hs) == 0 {
 		return
 	}
 
-    if len(other) == 0 {
-        hs.Clear()
-        return
-    }
+	if len(other) == 0 {
+		hs.Clear()
+		return
+	}
 
 	for k := range hs {
 		if !other.Contains(k) {
-            hs.Remove(k)
-        }
-    }
+			hs.Remove(k)
+		}
+	}
 }
 
 // UnionWith modifies the current set to contain all elements that are present in the set, the specified slice, or both.
-func (hs GuidHashSet) UnionWith(other []Guid) {
-    for _, v := range other {
-        hs.Add(v)
-    }
+func (hs HashSet) UnionWith(other []Guid) {
+	for _, v := range other {
+		hs.Add(v)
+	}
 }
 
 // UnionWithSet modifies the current set to contain all elements that are present in the set, the specified set, or both.
-func (hs GuidHashSet) UnionWithSet(other GuidHashSet) {
-    hs.UnionWith(other.Keys())
+func (hs HashSet) UnionWithSet(other HashSet) {
+	hs.UnionWith(other.Keys())
 }
 
 // SetEquals determines whether a set and the specified slice contain the same elements.
 // Returns true if the set is equal to other slice items; otherwise, false.
-func (hs GuidHashSet) SetEquals(other []Guid) bool {
+func (hs HashSet) SetEquals(other []Guid) bool {
 	if len(hs) != len(other) {
 		return false
 	}
@@ -206,145 +206,145 @@ func (hs GuidHashSet) SetEquals(other []Guid) bool {
 
 // SetEqualsSet determines whether a set and the specified set contain the same elements.
 // Returns true if the set is equal to other set; otherwise, false.
-func (hs GuidHashSet) SetEqualsSet(other GuidHashSet) bool {
-    return hs.SetEquals(other.Keys())
+func (hs HashSet) SetEqualsSet(other HashSet) bool {
+	return hs.SetEquals(other.Keys())
 }
 
 // Overlaps determines whether the current set and a specified slice share common elements.
 // Returns true if the current set and other slice items share at least one common element; otherwise, false.
-func (hs GuidHashSet) Overlaps(other []Guid) bool {
-    if hs.IsEmpty() {
-        return false
-    }
+func (hs HashSet) Overlaps(other []Guid) bool {
+	if hs.IsEmpty() {
+		return false
+	}
 
-    for _, v := range other {
-        if hs.Contains(v) {
-            return true
-        }
-    }
+	for _, v := range other {
+		if hs.Contains(v) {
+			return true
+		}
+	}
 
-    return false
+	return false
 }
 
 // Overlaps determines whether the current set and a specified set share common elements.
 // Returns true if the current set and other set share at least one common element; otherwise, false.
-func (hs GuidHashSet) OverlapsSet(other GuidHashSet) bool {
-    return hs.Overlaps(other.Keys())
+func (hs HashSet) OverlapsSet(other HashSet) bool {
+	return hs.Overlaps(other.Keys())
 }
 
 // IsSubsetOf determines whether a set is a subset of the specified slice.
 // Returns true if the set is a subset of other slice items; otherwise, false.
-func (hs GuidHashSet) IsSubsetOf(other []Guid) bool {
-	return hs.IsSubsetOfSet(NewGuidHashSet(other))
+func (hs HashSet) IsSubsetOf(other []Guid) bool {
+	return hs.IsSubsetOfSet(NewHashSet(other))
 }
 
 // IsSubsetOfSet determines whether a set is a subset of the specified set.
 // Returns true if the set is a subset of other set; otherwise, false.
-func (hs GuidHashSet) IsSubsetOfSet(other GuidHashSet) bool {
-    // The empty set is a subset of any set
-    if hs.IsEmpty() {
-        return true
-    }
+func (hs HashSet) IsSubsetOfSet(other HashSet) bool {
+	// The empty set is a subset of any set
+	if hs.IsEmpty() {
+		return true
+	}
 
-    // If set has more elements than slice, then it can't be a subset
+	// If set has more elements than slice, then it can't be a subset
 	if len(hs) > len(other) {
-        return false
-    }
+		return false
+	}
 
-    for k := range hs {
+	for k := range hs {
 		if !other.Contains(k) {
-            return false
-        }
-    }
+			return false
+		}
+	}
 
-    return true
+	return true
 }
 
 // IsProperSubsetOf determines whether a set is a proper subset of the specified slice.
 // Returns true if the set is a proper subset of other slice items; otherwise, false.
-func (hs GuidHashSet) IsProperSubsetOf(other []Guid) bool {
-	return hs.IsProperSubsetOfSet(NewGuidHashSet(other))
+func (hs HashSet) IsProperSubsetOf(other []Guid) bool {
+	return hs.IsProperSubsetOfSet(NewHashSet(other))
 }
 
 // IsProperSubsetOfSet determines whether a set is a proper subset of the specified set.
 // Returns true if the set is a proper subset of other set; otherwise, false.
-func (hs GuidHashSet) IsProperSubsetOfSet(other GuidHashSet) bool {
-    // The empty set is a proper subset of anything but the empty set
-    if hs.IsEmpty() {
-        return len(other) > 0
-    }
+func (hs HashSet) IsProperSubsetOfSet(other HashSet) bool {
+	// The empty set is a proper subset of anything but the empty set
+	if hs.IsEmpty() {
+		return len(other) > 0
+	}
 
-    // If set has more or equal elements than slice, then it can't be a proper subset
+	// If set has more or equal elements than slice, then it can't be a proper subset
 	if len(hs) >= len(other) {
-        return false
-    }
+		return false
+	}
 
-    for k := range hs {
+	for k := range hs {
 		if !other.Contains(k) {
-            return false
-        }
-    }
+			return false
+		}
+	}
 
-    return true
+	return true
 }
 
 // IsSupersetOf determines whether a set is a superset of the specified slice.
 // Returns true if the set is a superset of other slice items; otherwise, false.
-func (hs GuidHashSet) IsSupersetOf(other []Guid) bool {
-    // If other is the empty set then this is a superset
-    if len(other) == 0 {
-        return true
-    }
+func (hs HashSet) IsSupersetOf(other []Guid) bool {
+	// If other is the empty set then this is a superset
+	if len(other) == 0 {
+		return true
+	}
 
-    // If slice has more elements than set, then it can't be a superset
-    if len(other) > len(hs) {
-        return false
-    }
+	// If slice has more elements than set, then it can't be a superset
+	if len(other) > len(hs) {
+		return false
+	}
 
-    for _, v := range other {
-        if !hs.Contains(v) {
-            return false
-        }
-    }
+	for _, v := range other {
+		if !hs.Contains(v) {
+			return false
+		}
+	}
 
-    return true
+	return true
 }
 
 // IsSupersetOfSet determines whether a set is a superset of the specified set.
 // Returns true if the set is a superset of other set; otherwise, false.
-func (hs GuidHashSet) IsSupersetOfSet(other GuidHashSet) bool {
-    return hs.IsSupersetOf(other.Keys())
+func (hs HashSet) IsSupersetOfSet(other HashSet) bool {
+	return hs.IsSupersetOf(other.Keys())
 }
 
 // IsProperSupersetOf determines whether a set is a proper superset of the specified slice.
 // Returns true if the set is a proper superset of other slice items; otherwise, false.
-func (hs GuidHashSet) IsProperSupersetOf(other []Guid) bool {
-    // The empty set is not a proper subset of any set
-    if hs.IsEmpty() {
-        return true
-    }
+func (hs HashSet) IsProperSupersetOf(other []Guid) bool {
+	// The empty set is not a proper subset of any set
+	if hs.IsEmpty() {
+		return true
+	}
 
-    // If other is the empty set then this is a proper superset
-    if len(other) == 0 {
-        return true // Set has at least one element, based on prior check
-    }
+	// If other is the empty set then this is a proper superset
+	if len(other) == 0 {
+		return true // Set has at least one element, based on prior check
+	}
 
-    // If slice has more or equal elements than set, then it can't be a proper superset
-    if len(other) >= len(hs) {
-        return false
-    }
+	// If slice has more or equal elements than set, then it can't be a proper superset
+	if len(other) >= len(hs) {
+		return false
+	}
 
-    for _, v := range other {
-        if !hs.Contains(v) {
-            return false
-        }
-    }
+	for _, v := range other {
+		if !hs.Contains(v) {
+			return false
+		}
+	}
 
-    return true
+	return true
 }
 
 // IsProperSupersetOfSet determines whether a set is a proper superset of the specified set.
 // Returns true if the set is a proper superset of other set; otherwise, false.
-func (hs GuidHashSet) IsProperSupersetOfSet(other GuidHashSet) bool {
-    return hs.IsProperSupersetOf(other.Keys())
+func (hs HashSet) IsProperSupersetOfSet(other HashSet) bool {
+	return hs.IsProperSupersetOf(other.Keys())
 }
