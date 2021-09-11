@@ -93,7 +93,7 @@ func (m *Measurement) AdjustedValue() float64 {
 	return m.Value
 }
 
-// Gets the measurement's STTP timestamp as a standard Go Time value.
+// GetDateTime gets a Measurement Ticks based timestamp as a standard Go Time value.
 func (m *Measurement) GetDateTime() time.Time {
 	return ticks.ToTime(m.Timestamp)
 }
