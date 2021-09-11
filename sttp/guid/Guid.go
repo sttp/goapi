@@ -25,14 +25,18 @@ package guid
 
 import "github.com/google/uuid"
 
+// Guid is a standard UUID value that can handle alternate wire serialization options.
 type Guid uuid.UUID
 
+// Empty is a Guid with a zero value.
 var Empty Guid = Guid(uuid.Nil)
 
+// New creates a new random Guid value.
 func New() Guid {
 	return Guid(uuid.New())
 }
 
+// Parse decodes a Guid value from a string.
 func Parse(value string) Guid {
 	guid, err := uuid.Parse(value)
 
@@ -43,6 +47,7 @@ func Parse(value string) Guid {
 	panic("Failed to parse Guid from string \"" + value + "\": " + err.Error())
 }
 
+// FromBytes creates a new Guid from a byte slice.
 func FromBytes(data []byte, swapEndianness bool) Guid {
 	swappedBytes := make([]byte, 16)
 	var encodedBytes []byte
