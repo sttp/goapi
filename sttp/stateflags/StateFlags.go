@@ -27,70 +27,70 @@ package stateflags
 type StateFlags uint32
 
 const (
-	// Defines normal state.
+	// Normal defines a Measurement flag for a normal state.
 	Normal StateFlags = 0x0
-	// Defines bad data state.
+	// BadData defines a Measurement flag for a bad data state.
 	BadData StateFlags = 0x1
-	// Defines suspect data state.
+	// SuspectData defines a Measurement flag for a suspect data state.
 	SuspectData StateFlags = 0x2
-	// Defines over range error, i.e., unreasonable high value.
+	// OverRangeError defines a Measurement flag for a over range error, i.e., unreasonable high value.
 	OverRangeError StateFlags = 0x4
-	// Defines under range error, i.e., unreasonable low value.
+	// UnderRangeError defines a Measurement flag for a under range error, i.e., unreasonable low value.
 	UnderRangeError StateFlags = 0x8
-	// Defines alarm for high value.
+	// AlarmHigh defines a Measurement flag for a alarm for high value.
 	AlarmHigh StateFlags = 0x10
-	// Defines alarm for low value.
+	// AlarmLow defines a Measurement flag for a alarm for low value.
 	AlarmLow StateFlags = 0x20
-	// Defines warning for high value.
+	// WarningHigh defines a Measurement flag for a warning for high value.
 	WarningHigh StateFlags = 0x40
-	// Defines warning for low value.
+	// WarningLow defines a Measurement flag for a warning for low value.
 	WarningLow StateFlags = 0x80
-	// Defines alarm for flat-lined value, i.e., latched value test alarm.
+	// FlatlineAlarm defines a Measurement flag for a alarm for flat-lined value, i.e., latched value test alarm.
 	FlatlineAlarm StateFlags = 0x100
-	// Defines comparison alarm, i.e., outside threshold of comparison with a real-time value.
+	// ComparisonAlarm defines a Measurement flag for a comparison alarm, i.e., outside threshold of comparison with a real-time value.
 	ComparisonAlarm StateFlags = 0x200
-	// Defines rate-of-change alarm.
+	// ROCAlarm defines a Measurement flag for a rate-of-change alarm.
 	ROCAlarm StateFlags = 0x400
-	// Defines bad value received.
+	// ReceivedAsBad defines a Measurement flag for a bad value received.
 	ReceivedAsBad StateFlags = 0x800
-	// Defines calculated value state.
+	// CalculatedValue defines a Measurement flag for a calculated value state.
 	CalculatedValue StateFlags = 0x1000
-	// Defines calculation error with the value.
+	// CalculationError defines a Measurement flag for a calculation error with the value.
 	CalculationError StateFlags = 0x2000
-	// Defines calculation warning with the value.
+	// CalculationWarning defines a Measurement flag for a calculation warning with the value.
 	CalculationWarning StateFlags = 0x4000
-	// Defines reserved quality flag.
+	// ReservedQualityFlag defines a Measurement flag for a reserved quality.
 	ReservedQualityFlag StateFlags = 0x8000
-	// Defines bad time state.
+	// BadTime defines a Measurement flag for a bad time state.
 	BadTime StateFlags = 0x10000
-	// Defines suspect time state.
+	// SuspectTime defines a Measurement flag for a suspect time state.
 	SuspectTime StateFlags = 0x20000
-	// Defines late time alarm.
+	// LateTimeAlarm defines a Measurement flag for a late time alarm.
 	LateTimeAlarm StateFlags = 0x40000
-	// Defines future time alarm.
+	// FutureTimeAlarm defines a Measurement flag for a future time alarm.
 	FutureTimeAlarm StateFlags = 0x80000
-	// Defines up-sampled state.
+	// UpSampled defines a Measurement flag for a up-sampled state.
 	UpSampled StateFlags = 0x100000
-	// Defines down-sampled state.
+	// DownSampled defines a Measurement flag for a down-sampled state.
 	DownSampled StateFlags = 0x200000
-	// Defines discarded value state.
+	// DiscardedValue defines a Measurement flag for a discarded value state.
 	DiscardedValue StateFlags = 0x400000
-	// Defines reserved time flag.
+	// ReservedTimeFlag defines a Measurement flag for a reserved time
 	ReservedTimeFlag StateFlags = 0x800000
-	// Defines user defined flag 1.
+	// UserDefinedFlag1 defines a Measurement flag for user defined state 1.
 	UserDefinedFlag1 StateFlags = 0x1000000
-	// Defines user defined flag 2.
+	// UserDefinedFlag2 defines a Measurement flag for user defined state 2.
 	UserDefinedFlag2 StateFlags = 0x2000000
-	// Defines user defined flag 3.
+	// UserDefinedFlag3 defines a Measurement flag for user defined state 3.
 	UserDefinedFlag3 StateFlags = 0x4000000
-	// Defines user defined flag 4.
+	// UserDefinedFlag4 defines a Measurement flag for user defined state 4.
 	UserDefinedFlag4 StateFlags = 0x8000000
-	// Defines user defined flag 5.
+	// UserDefinedFlag5 defines a Measurement flag for user defined state 5.
 	UserDefinedFlag5 StateFlags = 0x10000000
-	// Defines system error state.
+	// SystemError defines a Measurement flag for a system error state.
 	SystemError StateFlags = 0x20000000
-	// Defines system warning state.
+	// SystemWarning defines a Measurement flag for a system warning state.
 	SystemWarning StateFlags = 0x40000000
-	// Defines measurement error flag.
+	// MeasurementError defines a Measurement flag for an error state.
 	MeasurementError StateFlags = 0x80000000
 )
