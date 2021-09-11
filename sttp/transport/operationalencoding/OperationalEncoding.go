@@ -23,6 +23,7 @@
 
 package operationalencoding
 
+// OperationalEncoding define the possible string encoding options of an STTP session.
 type OperationalEncoding uint32
 
 const (
