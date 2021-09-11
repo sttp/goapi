@@ -31,6 +31,7 @@ import (
 	"github.com/sttp/goapi/sttp/ticks"
 )
 
+// MeasurementMetadata defines the ancillary information associated with a Measurement.
 type MeasurementMetadata struct {
 	// Measurement's globally unique identifier.
 	SignalID guid.Guid
@@ -39,7 +40,7 @@ type MeasurementMetadata struct {
 	Adder float64
 
 	// Multiplicative value modifier.
-	Multipler float64
+	Multiplier float64
 
 	// Identification number used in human-readable measurement key.
 	ID uint64
@@ -51,6 +52,7 @@ type MeasurementMetadata struct {
 	Tag string
 }
 
+// Measurement defines a measured value received or to be sent by STTP
 type Measurement struct {
 	// Measurement's globally unique identifier.
 	SignalID guid.Guid
@@ -69,25 +71,29 @@ var (
 	measurementRegistry = make(map[guid.Guid]MeasurementMetadata)
 )
 
+// RegisterMetadata adds a MeasurementMetadata value to the local registry.
 func RegisterMetadata(metadata MeasurementMetadata) {
 	measurementRegistry[metadata.SignalID] = metadata
 }
 
+// LookupMetadata attempts to find MeasurementMetadata in the local registry.
 func LookupMetadata(signalID guid.Guid) (MeasurementMetadata, bool) {
 	metadata, ok := measurementRegistry[signalID]
 	return metadata, ok
 }
 
+// AdjustedValue gets the Value of a Measurement with any linear adjustments applied from the measurement's Adder and Multiplier metadata.
 func (m *Measurement) AdjustedValue() float64 {
 	metadata, ok := measurementRegistry[m.SignalID]
 
 	if ok {
-		return m.Value*metadata.Multipler + metadata.Adder
+		return m.Value*metadata.Multiplier + metadata.Adder
 	}
 
 	return m.Value
 }
 
+// Gets the measurement's STTP timestamp as a standard Go Time value.
 func (m *Measurement) GetDateTime() time.Time {
 	return ticks.ToTime(m.Timestamp)
 }
