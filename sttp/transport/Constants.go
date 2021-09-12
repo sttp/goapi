@@ -413,3 +413,20 @@ var OperationalEncoding = struct {
 	UTF16BE: 0x00000100,
 	UTF8:    0x00000200,
 }
+
+// CompressionModesEnum defines the type for the CompressionModes enumeration.
+type CompressionModesEnum uint32
+
+// CompressionModes is an enumeration of the possible compression modes supported by STTP.
+var CompressionModes = struct {
+	// GZip defines a bit flag used determine if GZip compression will be used to metadata exchange.
+	GZip CompressionModesEnum
+	// TSSC defines a bit flag used determine if the time-series special compression algorithm will be used for data exchange.
+	TSSC CompressionModesEnum
+	// None defines state where no compression will be used.
+	None CompressionModesEnum
+}{
+	GZip: 0x00000020,
+	TSSC: 0x00000040,
+	None: 0x00000000,
+}
