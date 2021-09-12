@@ -23,24 +23,12 @@
 
 package transport
 
-import (
-	"github.com/sttp/goapi/sttp/ticks"
-)
-
-// Function pointer types
-type DispatcherFunction func(*DataSubscriber, []byte)
-type MessageCallback func(*DataSubscriber, string)
-type DataStartTimeCallback func(*DataSubscriber, ticks.Ticks)
-type MetadataCallback func(*DataSubscriber, []byte)
-type SubscriptionUpdatedCallback func(*DataSubscriber, *SignalIndexCache)
-type NewMeasurementsCallback func(*DataSubscriber, []*Measurement)
-type ConfigurationChangedCallback func(*DataSubscriber)
-type ConnectionTerminatedCallback func(*DataSubscriber)
-
+// DataSubscriber represents a client subscription for an STTP connection.
 type DataSubscriber struct {
 	subscriptionInfo SubscriptionInfo
 }
 
+// SetSubscriptionInfo assigns the desired SubscriptionInfo for a DataSubscriber.
 func (ds *DataSubscriber) SetSubscriptionInfo(info SubscriptionInfo) {
 	ds.subscriptionInfo = info
 }
