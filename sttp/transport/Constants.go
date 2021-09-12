@@ -24,9 +24,12 @@
 package transport
 
 const (
-	maxPacketSize      uint32 = 32768
-	payloadHeaderSize  uint32 = 4
-	responseHeaderSize uint32 = 6
+	maxPacketSize          uint32  = 32768
+	payloadHeaderSize      uint32  = 4
+	responseHeaderSize     uint32  = 6
+	defaultLagTime         float64 = 5.0
+	defaultLeadTime        float64 = 5.0
+	defaultPublishInterval float64 = 1.0
 )
 
 // StateFlagsEnum defines the type for the StateFlags enumeration.
@@ -157,6 +160,98 @@ var DataPacketFlags = struct {
 	CipherIndex:  0x04,
 	Compressed:   0x08,
 	NoFlags:      0x0,
+}
+
+// ServerCommandEnum defines the type for the ServerCommand enumeration.
+type ServerCommandEnum byte
+
+// ServerCommand is an enumeration of the possible server commands received
+// by a DataPublisher and sent by a DataSubscriber during an STTP session.
+var ServerCommand = struct {
+	/*
+	   Solicited server commands will receive a ServerResponse.Succeeded or ServerResponse.Failed response
+	   code along with an associated success or failure message. Message type for successful responses will
+	   be based on server command - for example, server response for a successful MetaDataRefresh command
+	   will return a serialized DataSet of the available server metadata. Message type for failed responses
+	   will always be a string of text representing the error message.
+	*/
+
+	// Connect defines a service command code for handling connect operations. Only used as part of connection refused response.
+	Connect ServerCommandEnum
+	// MetaDataRefresh defines a service command code for requesting an updated set of metadata.
+	MetadataRefresh ServerCommandEnum
+	// Subscribe defines a service command code for requesting a subscription of streaming data from server based on connection string that follows.
+	Subscribe ServerCommandEnum
+	// Unsubscribe  defines a service command code for requesting that server stop sending streaming data to the client and cancel the current subscription.
+	Unsubscribe ServerCommandEnum
+	// RotateCipherKeys defines a service command code for manually requesting that server send a new set of cipher keys for data packet encryption (UDP only).
+	RotateCipherKeys ServerCommandEnum
+	// UpdateProcessingInterval defines a service command code for manually requesting that server to update the processing interval with the following specified value.
+	UpdateProcessingInterval ServerCommandEnum
+	// DefineOperationalModes defines a service command code for establishing operational modes. As soon as connection is established, requests that server set operational modes that affect how the subscriber and publisher will communicate.
+	DefineOperationalModes ServerCommandEnum
+	// ConfirmNotification defines a service command code for receipt of a notification. This message is sent in response to ServerResponse.Notify.
+	ConfirmNotification ServerCommandEnum
+	// ConfirmBufferBlock defines a service command code for receipt of a buffer block measurement. This message is sent in response to ServerResponse.BufferBlock.
+	ConfirmBufferBlock ServerCommandEnum
+	// UserCommand00 defines a service command code for handling user-defined commands.
+	UserCommand00 ServerCommandEnum
+	// UserCommand01 defines a service command code for handling user-defined commands.
+	UserCommand01 ServerCommandEnum
+	// UserCommand02 defines a service command code for handling user-defined commands.
+	UserCommand02 ServerCommandEnum
+	// UserCommand03 defines a service command code for handling user-defined commands.
+	UserCommand03 ServerCommandEnum
+	// UserCommand04 defines a service command code for handling user-defined commands.
+	UserCommand04 ServerCommandEnum
+	// UserCommand05 defines a service command code for handling user-defined commands.
+	UserCommand05 ServerCommandEnum
+	// UserCommand06 defines a service command code for handling user-defined commands.
+	UserCommand06 ServerCommandEnum
+	// UserCommand07 defines a service command code for handling user-defined commands.
+	UserCommand07 ServerCommandEnum
+	// UserCommand08 defines a service command code for handling user-defined commands.
+	UserCommand08 ServerCommandEnum
+	// UserCommand09 defines a service command code for handling user-defined commands.
+	UserCommand09 ServerCommandEnum
+	// UserCommand10 defines a service command code for handling user-defined commands.
+	UserCommand10 ServerCommandEnum
+	// UserCommand11 defines a service command code for handling user-defined commands.
+	UserCommand11 ServerCommandEnum
+	// UserCommand12 defines a service command code for handling user-defined commands.
+	UserCommand12 ServerCommandEnum
+	// UserCommand13 defines a service command code for handling user-defined commands.
+	UserCommand13 ServerCommandEnum
+	// UserCommand14 defines a service command code for handling user-defined commands.
+	UserCommand14 ServerCommandEnum
+	// UserCommand15 defines a service command code for handling user-defined commands.
+	UserCommand15 ServerCommandEnum
+}{
+	Connect:                  0x00,
+	MetadataRefresh:          0x01,
+	Subscribe:                0x02,
+	Unsubscribe:              0x03,
+	RotateCipherKeys:         0x04,
+	UpdateProcessingInterval: 0x05,
+	DefineOperationalModes:   0x06,
+	ConfirmNotification:      0x07,
+	ConfirmBufferBlock:       0x08,
+	UserCommand00:            0xD0,
+	UserCommand01:            0xD1,
+	UserCommand02:            0xD2,
+	UserCommand03:            0xD3,
+	UserCommand04:            0xD4,
+	UserCommand05:            0xD5,
+	UserCommand06:            0xD6,
+	UserCommand07:            0xD7,
+	UserCommand08:            0xD8,
+	UserCommand09:            0xD9,
+	UserCommand10:            0xDA,
+	UserCommand11:            0xDB,
+	UserCommand12:            0xDC,
+	UserCommand13:            0xDD,
+	UserCommand14:            0xDE,
+	UserCommand15:            0xDF,
 }
 
 // OperationalEncodingEnum defines the type for the OperationalEncoding enumeration.
