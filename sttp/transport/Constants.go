@@ -194,6 +194,8 @@ var ServerCommand = struct {
 	ConfirmNotification ServerCommandEnum
 	// ConfirmBufferBlock defines a service command code for receipt of a buffer block measurement. This message is sent in response to ServerResponse.BufferBlock.
 	ConfirmBufferBlock ServerCommandEnum
+	// ConfirmSignalIndexCache defines a service command for confirming the receipt of a signal index cache. This allows publisher to safely transition to next signal index cache.
+	ConfirmSignalIndexCache ServerCommandEnum
 	// UserCommand00 defines a service command code for handling user-defined commands.
 	UserCommand00 ServerCommandEnum
 	// UserCommand01 defines a service command code for handling user-defined commands.
@@ -236,6 +238,7 @@ var ServerCommand = struct {
 	DefineOperationalModes:   0x06,
 	ConfirmNotification:      0x07,
 	ConfirmBufferBlock:       0x08,
+	ConfirmSignalIndexCache:  0x0A,
 	UserCommand00:            0xD0,
 	UserCommand01:            0xD1,
 	UserCommand02:            0xD2,
@@ -349,6 +352,49 @@ var ServerResponse = struct {
 	UserResponse14:         0xEE,
 	UserResponse15:         0xEF,
 	NoOP:                   0xFF,
+}
+
+/*
+   Operational modes are sent from a subscriber to a publisher to request operational behaviors for the
+   connection, as a result the operation modes must be sent before any other command. The publisher may
+   silently refuse some requests (e.g., compression) based on its configuration. Operational modes only
+   apply to fundamental protocol control.
+*/
+
+// OperationalModesEnum defines the type for the OperationalModes enumeration.
+type OperationalModesEnum uint32
+
+// OperationalModes is an enumeration of the possible modes that affect how DataPublisher and DataSubscriber
+// communicate during an STTP session.
+var OperationalModes = struct {
+	// ServerResponseEnumVersionMask defines a bit mask used to get version number of protocol. Version number is currently set to 2.
+	ServerResponseEnumVersionMask OperationalModesEnum
+	// ServerResponseEnumCompressionModeMask defines a bit mask used to get mode of compression. GZip and TSSC compression are the only modes currently supported. Remaining bits are reserved for future compression modes.
+	ServerResponseEnumCompressionModeMask OperationalModesEnum
+	// ServerResponseEnumEncodingMask defines a bit mask used to get character encoding used when exchanging messages between publisher and subscriber.
+	ServerResponseEnumEncodingMask OperationalModesEnum
+	// ServerResponseEnumReceiveExternalMetadata defines a bit flag used to determine whether external measurements are exchanged during metadata synchronization. Bit set = external measurements are exchanged, bit clear = no external measurements are exchanged.
+	ServerResponseEnumReceiveExternalMetadata OperationalModesEnum
+	// ServerResponseEnumReceiveInternalMetadata defines a bit flag used to determine whether internal measurements are exchanged during metadata synchronization. Bit set = internal measurements are exchanged, bit clear = no internal measurements are exchanged.
+	ServerResponseEnumReceiveInternalMetadata OperationalModesEnum
+	// ServerResponseEnumCompressPayloadData defines a bit flag used to determine whether payload data is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
+	ServerResponseEnumCompressPayloadData OperationalModesEnum
+	// ServerResponseEnumCompressSignalIndexCache defines a bit flag used to determine whether the signal index cache is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
+	ServerResponseEnumCompressSignalIndexCache OperationalModesEnum
+	// ServerResponseEnumCompressMetadata defines a bit flag used to determine whether metadata is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
+	ServerResponseEnumCompressMetadata OperationalModesEnum
+	// ServerResponseEnumNoFlags defines state where there are no flags set.
+	ServerResponseEnumNoFlags OperationalModesEnum
+}{
+	ServerResponseEnumVersionMask:              0x0000001F,
+	ServerResponseEnumCompressionModeMask:      0x000000E0,
+	ServerResponseEnumEncodingMask:             0x00000300,
+	ServerResponseEnumReceiveExternalMetadata:  0x02000000,
+	ServerResponseEnumReceiveInternalMetadata:  0x04000000,
+	ServerResponseEnumCompressPayloadData:      0x20000000,
+	ServerResponseEnumCompressSignalIndexCache: 0x40000000,
+	ServerResponseEnumCompressMetadata:         0x80000000,
+	ServerResponseEnumNoFlags:                  0x00000000,
 }
 
 // OperationalEncodingEnum defines the type for the OperationalEncoding enumeration.
