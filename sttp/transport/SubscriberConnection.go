@@ -28,6 +28,7 @@ type SubscriberConnection struct {
 	encoding OperationalEncodingEnum
 }
 
+// DecodeString decodes an STTP string according to the defined operational modes.
 func (sc *SubscriberConnection) DecodeString(data []byte, length uint32) string {
 	// Latest version of STTP only encodes to UTF8, the default for Go
 	if sc.encoding != OperationalEncoding.UTF8 {
@@ -37,6 +38,7 @@ func (sc *SubscriberConnection) DecodeString(data []byte, length uint32) string 
 	return string(data[:length])
 }
 
+// EncodeString encodes an STTP string according to the defined operational modes.
 func (sc *SubscriberConnection) EncodeString(value string) []byte {
 	// Latest version of STTP only encodes to UTF8, the default for Go
 	if sc.encoding != OperationalEncoding.UTF8 {
