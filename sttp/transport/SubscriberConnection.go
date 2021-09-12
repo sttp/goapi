@@ -23,19 +23,9 @@
 
 package transport
 
-// SubscriberConnection represents a subscriber connection to a data publisher
+// SubscriberConnection represents a connection from a DataPublisher to DataSubscriber.
 type SubscriberConnection struct {
 	encoding OperationalEncodingEnum
-}
-
-// DecodeString decodes an STTP string according to the defined operational modes.
-func (sc *SubscriberConnection) DecodeString(data []byte, length uint32) string {
-	// Latest version of STTP only encodes to UTF8, the default for Go
-	if sc.encoding != OperationalEncoding.UTF8 {
-		panic("Go implementation of STTP only supports UTF8 string encoding")
-	}
-
-	return string(data[:length])
 }
 
 // EncodeString encodes an STTP string according to the defined operational modes.
@@ -47,3 +37,5 @@ func (sc *SubscriberConnection) EncodeString(value string) []byte {
 
 	return []byte(value)
 }
+
+// TODO: Flesh this for out the DataPublisher implementation

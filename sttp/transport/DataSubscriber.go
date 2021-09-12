@@ -26,9 +26,20 @@ package transport
 // DataSubscriber represents a client subscription for an STTP connection.
 type DataSubscriber struct {
 	subscriptionInfo SubscriptionInfo
+	encoding         OperationalEncodingEnum
 }
 
 // SetSubscriptionInfo assigns the desired SubscriptionInfo for a DataSubscriber.
 func (ds *DataSubscriber) SetSubscriptionInfo(info SubscriptionInfo) {
 	ds.subscriptionInfo = info
+}
+
+// DecodeString decodes an STTP string according to the defined operational modes.
+func (ds *DataSubscriber) DecodeString(data []byte, length uint32) string {
+	// Latest version of STTP only encodes to UTF8, the default for Go
+	if ds.encoding != OperationalEncoding.UTF8 {
+		panic("Go implementation of STTP only supports UTF8 string encoding")
+	}
+
+	return string(data[:length])
 }

@@ -141,8 +141,8 @@ func (sic *SignalIndexCache) RecalculateBinaryLength(connection *SubscriberConne
 	sic.binaryLength = binaryLength
 }
 
-// Parse decodes a SignalIndexCache from a byte buffer received from a DataPublisher.
-func (sic *SignalIndexCache) Parse(connection *SubscriberConnection, buffer []byte, subscriberID *guid.Guid) {
+// Decode parses a SignalIndexCache from a byte buffer received from a DataPublisher.
+func (sic *SignalIndexCache) Decode(subscriber *DataSubscriber, buffer []byte, subscriberID *guid.Guid) {
 	length := uint32(len(buffer))
 
 	if length < 4 {
@@ -186,7 +186,7 @@ func (sic *SignalIndexCache) Parse(connection *SubscriberConnection, buffer []by
 		var sourceSize uint32 = binary.BigEndian.Uint32(buffer[offset:])
 		offset += 4
 
-		var source string = connection.DecodeString(buffer[offset:], sourceSize)
+		var source string = subscriber.DecodeString(buffer[offset:], sourceSize)
 		offset += sourceSize
 
 		// ID
@@ -200,7 +200,7 @@ func (sic *SignalIndexCache) Parse(connection *SubscriberConnection, buffer []by
 	// that may need to be parsed in the future...
 }
 
-// Serialize encodes a SignalIndexCache to a byte buffer for publication to a DataSubscriber.
-func (sic *SignalIndexCache) Serialize(connection *SubscriberConnection, buffer []byte) {
+// Encode serializes a SignalIndexCache to a byte buffer for publication to a DataSubscriber.
+func (sic *SignalIndexCache) Encode(connection *SubscriberConnection, buffer []byte) {
 	// TODO: This will be needed by DataPublisher implementation
 }
