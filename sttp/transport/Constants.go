@@ -430,3 +430,18 @@ var CompressionModes = struct {
 	TSSC: 0x00000040,
 	None: 0x00000000,
 }
+
+// SecurityModeEnum defines the type for the SecurityMode enumeration.
+type SecurityModeEnum int
+
+// SecurityMode is an enumeration of the possible security modes used by the DataPublisher
+// to secure data sent over the command channel in STTP.
+var SecurityMode = struct {
+	// None defines that data will be sent over the wire unencrypted.
+	None SecurityModeEnum
+	// TLS defines that data will be sent over wire using Transport Layer Security.
+	TLS SecurityModeEnum
+}{
+	None: 0,
+	TLS:  1,
+}
