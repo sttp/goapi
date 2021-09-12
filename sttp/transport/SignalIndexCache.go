@@ -41,6 +41,7 @@ type SignalIndexCache struct {
 	binaryLength  uint32
 }
 
+// AddMeasurementKey adds a new record to the SignalIndexCache for provided key Measurement details.
 func (sic *SignalIndexCache) AddMeasurementKey(signalIndex int32, signalID guid.Guid, source string, id uint64, charSizeEstimate uint32 /* = 1 */) {
 	sic.reference[signalIndex] = uint32(len(sic.signalIDList))
 	sic.signalIDList = append(sic.signalIDList, signalID)
@@ -53,6 +54,7 @@ func (sic *SignalIndexCache) AddMeasurementKey(signalIndex int32, signalID guid.
 	sic.binaryLength += 32 + uint32(len(source))*charSizeEstimate
 }
 
+// Clear removes all records from the SignalIndexCache.
 func (sic *SignalIndexCache) Clear() {
 	sic.reference = map[int32]uint32{}
 	sic.signalIDList = nil
@@ -61,11 +63,13 @@ func (sic *SignalIndexCache) Clear() {
 	sic.signalIDCache = map[guid.Guid]int32{}
 }
 
+// Contains determines if the specified signalIndex exists with the SignalIndexCache.
 func (sic *SignalIndexCache) Contains(signalIndex int32) bool {
 	_, ok := sic.reference[signalIndex]
 	return ok
 }
 
+// GetSignalID returns the signal ID Guid for the specified signalIndex in the SignalIndexCache.
 func (sic *SignalIndexCache) GetSignalID(signalIndex int32) guid.Guid {
 	if index, ok := sic.reference[signalIndex]; ok {
 		return sic.signalIDList[index]
@@ -74,10 +78,12 @@ func (sic *SignalIndexCache) GetSignalID(signalIndex int32) guid.Guid {
 	return guid.Empty
 }
 
+// GetSignalIDs returns a HashSet for all the Guid values found in the SignalIndexCache.
 func (sic *SignalIndexCache) GetSignalIDs() guid.HashSet {
 	return guid.NewHashSet(sic.signalIDList)
 }
 
+// GetSource returns the Measurement source string for the specified signalIndex in the SignalIndexCache.
 func (sic *SignalIndexCache) GetSource(signalIndex int32) string {
 	if index, ok := sic.reference[signalIndex]; ok {
 		return sic.sourceList[index]
@@ -86,6 +92,7 @@ func (sic *SignalIndexCache) GetSource(signalIndex int32) string {
 	return ""
 }
 
+// GetSource returns the Measurement integer ID for the specified signalIndex in the SignalIndexCache.
 func (sic *SignalIndexCache) GetID(signalIndex int32) uint64 {
 	if index, ok := sic.reference[signalIndex]; ok {
 		return sic.idList[index]
@@ -94,6 +101,8 @@ func (sic *SignalIndexCache) GetID(signalIndex int32) uint64 {
 	return math.MaxUint64
 }
 
+// GetMeasurementKey returns the key Measurement values, signalID Guid, source string, and integer ID and
+// a final boolean value representing find success for the specified signalIndex in the SignalIndexCache.
 func (sic *SignalIndexCache) GetMeasurementKey(signalIndex int32) (guid.Guid, string, uint64, bool) {
 	if index, ok := sic.reference[signalIndex]; ok {
 		return sic.signalIDList[index], sic.sourceList[index], sic.idList[index], true
@@ -102,6 +111,7 @@ func (sic *SignalIndexCache) GetMeasurementKey(signalIndex int32) (guid.Guid, st
 	return guid.Empty, "", 0, false
 }
 
+// GetSignalIndex returns the signal index for the specified signalID Guid in the SignalIndexCache.
 func (sic *SignalIndexCache) GetSignalIndex(signalID guid.Guid) int32 {
 	if index, ok := sic.signalIDCache[signalID]; ok {
 		return index
@@ -110,14 +120,17 @@ func (sic *SignalIndexCache) GetSignalIndex(signalID guid.Guid) int32 {
 	return -1
 }
 
+// Count returns the number of Measurement records that can be found in the SignalIndexCache.
 func (sic *SignalIndexCache) Count() uint32 {
 	return uint32(len(sic.signalIDCache))
 }
 
+// GetBinaryLength gets the binary length, in bytes, for the SignalIndexCache.
 func (sic *SignalIndexCache) GetBinaryLength() uint32 {
 	return sic.binaryLength
 }
 
+// RecalculateBinaryLength forces a new recalculation the cached binary length of the SignalIndexCache.
 func (sic *SignalIndexCache) RecalculateBinaryLength(connection *SubscriberConnection) {
 	var binaryLength uint32 = 28
 
@@ -128,6 +141,7 @@ func (sic *SignalIndexCache) RecalculateBinaryLength(connection *SubscriberConne
 	sic.binaryLength = binaryLength
 }
 
+// Parse decodes a SignalIndexCache from a byte buffer received from a DataPublisher.
 func (sic *SignalIndexCache) Parse(connection *SubscriberConnection, buffer []byte, subscriberID *guid.Guid) {
 	length := uint32(len(buffer))
 
@@ -186,6 +200,7 @@ func (sic *SignalIndexCache) Parse(connection *SubscriberConnection, buffer []by
 	// that may need to be parsed in the future...
 }
 
+// Serialize encodes a SignalIndexCache to a byte buffer for publication to a DataSubscriber.
 func (sic *SignalIndexCache) Serialize(connection *SubscriberConnection, buffer []byte) {
 	// TODO: This will be needed by DataPublisher implementation
 }
