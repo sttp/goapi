@@ -168,14 +168,6 @@ type ServerCommandEnum byte
 // ServerCommand is an enumeration of the possible server commands received
 // by a DataPublisher and sent by a DataSubscriber during an STTP session.
 var ServerCommand = struct {
-	/*
-	   Solicited server commands will receive a ServerResponse.Succeeded or ServerResponse.Failed response
-	   code along with an associated success or failure message. Message type for successful responses will
-	   be based on server command - for example, server response for a successful MetaDataRefresh command
-	   will return a serialized DataSet of the available server metadata. Message type for failed responses
-	   will always be a string of text representing the error message.
-	*/
-
 	// Connect defines a service command code for handling connect operations. Only used as part of connection refused response.
 	Connect ServerCommandEnum
 	// MetaDataRefresh defines a service command code for requesting an updated set of metadata.
@@ -229,6 +221,13 @@ var ServerCommand = struct {
 	// UserCommand15 defines a service command code for handling user-defined commands.
 	UserCommand15 ServerCommandEnum
 }{
+	/*
+	   Solicited server commands will receive a ServerResponse.Succeeded or ServerResponse.Failed response
+	   code along with an associated success or failure message. Message type for successful responses will
+	   be based on server command - for example, server response for a successful MetaDataRefresh command
+	   will return a serialized DataSet of the available server metadata. Message type for failed responses
+	   will always be a string of text representing the error message.
+	*/
 	Connect:                  0x00,
 	MetadataRefresh:          0x01,
 	Subscribe:                0x02,
@@ -257,10 +256,6 @@ var ServerCommand = struct {
 	UserCommand15:            0xDF,
 }
 
-/*
-   Although the server commands and responses will be on two different paths, the response enumeration values
-   are defined as distinct from the command values to make it easier to identify codes from a wire analysis.
-*/
 // ServerResponseEnum defines the type for the ServerResponse enumeration.
 type ServerResponseEnum byte
 
@@ -324,6 +319,10 @@ var ServerResponse = struct {
 	// NoOP defines a service response code for indicating a nil-operation keep-alive ping. The command channel can remain quiet for some time, this command allows a period test of client connectivity.
 	NoOP ServerResponseEnum
 }{
+	/*
+		Although the server commands and responses will be on two different paths, the response enumeration values
+		are defined as distinct from the command values to make it easier to identify codes from a wire analysis.
+	*/
 	Succeeded:              0x80,
 	Failed:                 0x81,
 	DataPacket:             0x82,
