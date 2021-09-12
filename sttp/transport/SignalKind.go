@@ -33,29 +33,29 @@ type SignalKindEnum uint16
 
 // SignalKind is an enumeration of the possible kinds of signals a Measurement can represent.
 var SignalKind = struct {
-	// Angle defines a phase angle signal type.
+	// Angle defines a phase angle signal kind (could be a voltage or a current).
 	Angle SignalKindEnum
-	// Magnitude defines a phase magnitude signal type.
+	// Magnitude defines a phase magnitude signal kind (could be a voltage or a current).
 	Magnitude SignalKindEnum
-	// Frequency defines a line frequency signal type.
+	// Frequency defines a line frequency signal kind.
 	Frequency SignalKindEnum
-	// DfDt defines a frequency delta over time (dF/dt) signal type.
+	// DfDt defines a frequency delta over time (dF/dt) signal kind.
 	DfDt SignalKindEnum
-	// Status defines a status flags signal type.
+	// Status defines a status flags signal kind.
 	Status SignalKindEnum
-	// Digital defines a digital value signal type.
+	// Digital defines a digital value signal kind.
 	Digital SignalKindEnum
-	// Analog defines an analog value signal type.
+	// Analog defines an analog value signal kind.
 	Analog SignalKindEnum
-	// Calculation defines a calculated value signal type.
+	// Calculation defines a calculated value signal kind.
 	Calculation SignalKindEnum
-	// Statistic defines a statistical value signal type.
+	// Statistic defines a statistical value signal kind.
 	Statistic SignalKindEnum
-	// Alarm defines an alarm value signal type.
+	// Alarm defines an alarm value signal kind.
 	Alarm SignalKindEnum
-	// Quality defines a quality flags signal type.
+	// Quality defines a quality flags signal kind.
 	Quality SignalKindEnum
-	// Unknown defines an undetermined signal type.
+	// Unknown defines an undetermined signal kind.
 	Unknown SignalKindEnum
 }{
 	Angle:       0,
@@ -73,8 +73,8 @@ var SignalKind = struct {
 }
 
 var (
-	// Description defines the string representations of the SignalKind enumeration values.
-	Description = [...]string{
+	// SignalKindDescription defines the string representations of the SignalKind enumeration values.
+	SignalKindDescription = [...]string{
 		"Angle",
 		"Magnitude",
 		"Frequency",
@@ -88,8 +88,8 @@ var (
 		"Quality",
 		"Unknown"}
 
-	// Acronym defines the abbreviated string representations of the SignalKind enumeration values.
-	Acronym = [...]string{
+	// SignalKindAcronym defines the abbreviated string representations of the SignalKind enumeration values.
+	SignalKindAcronym = [...]string{
 		"PA",
 		"PM",
 		"FQ",
@@ -107,6 +107,8 @@ var (
 // GetSignalTypeAcronym gets the specific four-character signal type acronym for a SignalKind
 // enumeration value and phasor type, i.e., "V" voltage or "I" current.
 func GetSignalTypeAcronym(kind SignalKindEnum, phasorType rune) string {
+	// A SignalType represents a more specific measurement type than SignalKind, i.e.,
+	// a phasor type (voltage or current) can also be determined by the type.
 	switch kind {
 	case SignalKind.Angle:
 		if unicode.ToUpper(phasorType) == 'V' {
@@ -141,8 +143,8 @@ func GetSignalTypeAcronym(kind SignalKindEnum, phasorType rune) string {
 	return "NULL"
 }
 
-// Parse gets the SignalKind enumeration value for the specified acronym.
-func Parse(acronym string) SignalKindEnum {
+// ParseSignalKindAcronym gets the SignalKind enumeration value for the specified acronym.
+func ParseSignalKindAcronym(acronym string) SignalKindEnum {
 	acronym = strings.TrimSpace(strings.ToUpper(acronym))
 
 	if acronym == "PA" { // Phase Angle
