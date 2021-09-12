@@ -25,29 +25,51 @@ package transport
 
 // SubscriptionInfo defines connection related settings for a DataSubscriber instance.
 type SubscriptionInfo struct {
+	// FilterExpression defines the desired measurements for a subscription. Examples include:
+	//
+	// * Directly specified signal IDs (UUID values in string format):
+	//     38A47B0-F10B-4143-9A0A-0DBC4FFEF1E8; E4BBFE6A-35BD-4E5B-92C9-11FF913E7877
+	//
+	// * Directly specified tag names:
+	//     DOM_GPLAINS-BUS1:VH; TVA_SHELBY-BUS1:VH
+	//
+	// * Directly specified identifiers in "measurement key" format:
+	//     PPA:15; STAT:20
+	//
+	// * A filter expression against a selection view:
+	//     FILTER ActiveMeasurements WHERE Company='GPA' AND SignalType='FREQ'
 	FilterExpression string
 
-	// Down-sampling properties
-	Throttled       bool
+	// Throttled determines if data will be published using down-sampling.
+	Throttled bool
+	// PublishInterval defines the down-sampling publish interval to use when Throttled is true.
 	PublishInterval float64
 
-	// UDP channel properties
-	UdpDataChannel       bool
+	// UdpDataChannel requests that a UDP channel be used for data publication.
+	UdpDataChannel bool
+	// DataChannelLocalPort defines the desired UDP port to use for publication.
 	DataChannelLocalPort uint16
 
-	// Compact measurement properties
-	IncludeTime              bool
-	LagTime                  float64
-	LeadTime                 float64
-	UseLocalClockAsRealTime  bool
+	// IncludeTime determines if time should be included in non-compressed, compact measurements.
+	IncludeTime bool
+	// UseMillisecondResolution determines if time should be restricted to milliseconds in non-compressed, compact measurements.
 	UseMillisecondResolution bool
-	RequestNaNValueFilter    bool
+	// RequestNaNValueFilter requests that the publisher filter, i.e., does not send, any NaN values.
+	RequestNaNValueFilter bool
 
-	// Temporal playback properties
-	StartTime            string
-	StopTime             string
+	// StartTime defines the start time for a requested temporal data playback, i.e., a historical subscription.
+	// Simply by specifying a StartTime and StopTime, a subscription is considered a historical subscription.
+	// Note that the publisher may not support historical subscriptions, in which was the subscribe will fail.
+	StartTime string
+	// StopTime defines the stop time for a requested temporal data playback, i.e., a historical subscription.
+	// Simply by specifying a StartTime and StopTime, a subscription is considered a historical subscription.
+	// Note that the publisher may not support historical subscriptions, in which was the subscribe will fail.
+	StopTime string
+	// ConstraintParameters defines any custom constraint parameters for a requested temporal data playback.
 	ConstraintParameters string
-	ProcessingInterval   int32
+	// ProcessingInterval defines the initial playback speed, in milliseconds, a requested temporal data playback.
+	ProcessingInterval int32
 
+	// ExtraConnectionStringParameters defines any extra custom connection string parameters that may be needed for a subscription.
 	ExtraConnectionStringParameters string
 }
