@@ -24,6 +24,7 @@
 package transport
 
 import (
+	"encoding/binary"
 	"math"
 
 	"github.com/sttp/goapi/sttp/guid"
@@ -127,8 +128,62 @@ func (sic *SignalIndexCache) RecalculateBinaryLength(connection *SubscriberConne
 	sic.binaryLength = binaryLength
 }
 
-func (sic *SignalIndexCache) Parse(buffer []byte, subscriberID *guid.Guid) {
+func (sic *SignalIndexCache) Parse(connection *SubscriberConnection, buffer []byte, subscriberID *guid.Guid) {
+	length := uint32(len(buffer))
+
+	if length < 4 {
+		return
+	}
+
+	var offset uint32 = 0
+
+	// Byte size of cache
+	binaryLength := binary.BigEndian.Uint32(buffer[offset:])
+
+	if length < binaryLength {
+		return
+	}
+
+	// We know we have enough data so we can empty the reference cache
+	for k := range sic.reference {
+		delete(sic.reference, k)
+	}
+
+	// Subscriber ID
 	*subscriberID = guid.FromBytes(buffer[4:], false)
+	offset += 16
+
+	// Number of references
+	referenceCount := binary.BigEndian.Uint32(buffer[offset:])
+	offset += 4
+
+	var i uint32
+
+	for i = 0; i < referenceCount; i++ {
+		// Signal index
+		var signalIndex int32 = int32(binary.BigEndian.Uint32(buffer[offset:]))
+		offset += 4
+
+		// Signal ID
+		var signalID guid.Guid = guid.FromBytes(buffer[offset:], false)
+		offset += 16
+
+		// Source
+		var sourceSize uint32 = binary.BigEndian.Uint32(buffer[offset:])
+		offset += 4
+
+		var source string = connection.DecodeString(buffer[offset:], sourceSize)
+		offset += sourceSize
+
+		// ID
+		var id uint64 = binary.BigEndian.Uint64(buffer[offset:])
+		offset += 8
+
+		sic.AddMeasurementKey(signalIndex, signalID, source, id, 1)
+	}
+
+	// There is additional data here about unauthorized signal IDs
+	// that may need to be parsed in the future...
 }
 
 func (sic *SignalIndexCache) Serialize(connection *SubscriberConnection, buffer []byte) {

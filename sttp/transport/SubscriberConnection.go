@@ -30,13 +30,13 @@ type SubscriberConnection struct {
 	encoding operationalencoding.OperationalEncoding
 }
 
-func (sc *SubscriberConnection) DecodeString(data []byte, offset uint32, length uint32) string {
+func (sc *SubscriberConnection) DecodeString(data []byte, length uint32) string {
 	// Latest version of STTP only encodes to UTF8, the default for Go
 	if sc.encoding != operationalencoding.UTF8 {
 		panic("Go implementation of STTP only supports UTF8 string encoding")
 	}
 
-	return string(data[offset : offset+length])
+	return string(data[:length])
 }
 
 func (sc *SubscriberConnection) EncodeString(value string) []byte {
