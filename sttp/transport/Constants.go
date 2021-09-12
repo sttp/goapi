@@ -254,6 +254,103 @@ var ServerCommand = struct {
 	UserCommand15:            0xDF,
 }
 
+/*
+   Although the server commands and responses will be on two different paths, the response enumeration values
+   are defined as distinct from the command values to make it easier to identify codes from a wire analysis.
+*/
+// ServerResponseEnum defines the type for the ServerResponse enumeration.
+type ServerResponseEnum byte
+
+// ServerResponse is an enumeration of the possible server responses received sent
+// by a DataPublisher and received by a DataSubscriber during an STTP session.
+var ServerResponse = struct {
+	// Succeeded defines a service response code for indicating a succeeded response. Informs client that its solicited server command succeeded, original command and success message follow.
+	Succeeded ServerResponseEnum
+	// Failed defines a service response code for indicating a failed response. Informs client that its solicited server command failed, original command and failure message follow.
+	Failed ServerResponseEnum
+	// DataPacket defines a service response code for indicating a data packet. Unsolicited response informs client that a data packet follows.
+	DataPacket ServerResponseEnum
+	// UpdateSignalIndexCache defines a service response code for indicating a signal index cache update. Unsolicited response requests that client update its runtime signal index cache with the one that follows.
+	UpdateSignalIndexCache ServerResponseEnum
+	// UpdateBaseTimes defines a service response code for indicating a runtime base-timestamp offsets have been updated. Unsolicited response requests that client update its runtime base-timestamp offsets with those that follow.
+	UpdateBaseTimes ServerResponseEnum
+	// UpdateCipherKeys defines a service response code for indicating a runtime cipher keys have been updated. Response, solicited or unsolicited, requests that client update its runtime data cipher keys with those that follow.
+	UpdateCipherKeys ServerResponseEnum
+	// DataStartTime defines a service response code for indicating the start time of data being published. Unsolicited response provides the start time of data being processed from the first measurement.
+	DataStartTime ServerResponseEnum
+	// ProcessingComplete defines a service response code for indicating that processing has completed. Unsolicited response provides notification that input processing has completed, typically via temporal constraint.
+	ProcessingComplete ServerResponseEnum
+	// BufferBlock defines a service response code for indicating a buffer block. Unsolicited response informs client that a raw buffer block follows.
+	BufferBlock ServerResponseEnum
+	// Notify defines a service response code for indicating a notification. Unsolicited response provides a notification message to the client.
+	Notify ServerResponseEnum
+	// ConfigurationChanged defines a service response code for indicating a that the publisher configuration metadata has changed. Unsolicited response provides a notification that the publisher's source configuration has changed and that client may want to request a meta-data refresh.
+	ConfigurationChanged ServerResponseEnum
+	// UserResponse00 defines a service response code for handling user-defined responses.
+	UserResponse00 ServerResponseEnum
+	// UserResponse01 defines a service response code for handling user-defined responses.
+	UserResponse01 ServerResponseEnum
+	// UserResponse02 defines a service response code for handling user-defined responses.
+	UserResponse02 ServerResponseEnum
+	// UserResponse03 defines a service response code for handling user-defined responses.
+	UserResponse03 ServerResponseEnum
+	// UserResponse04 defines a service response code for handling user-defined responses.
+	UserResponse04 ServerResponseEnum
+	// UserResponse05 defines a service response code for handling user-defined responses.
+	UserResponse05 ServerResponseEnum
+	// UserResponse06 defines a service response code for handling user-defined responses.
+	UserResponse06 ServerResponseEnum
+	// UserResponse07 defines a service response code for handling user-defined responses.
+	UserResponse07 ServerResponseEnum
+	// UserResponse08 defines a service response code for handling user-defined responses.
+	UserResponse08 ServerResponseEnum
+	// UserResponse09 defines a service response code for handling user-defined responses.
+	UserResponse09 ServerResponseEnum
+	// UserResponse10 defines a service response code for handling user-defined responses.
+	UserResponse10 ServerResponseEnum
+	// UserResponse11 defines a service response code for handling user-defined responses.
+	UserResponse11 ServerResponseEnum
+	// UserResponse12 defines a service response code for handling user-defined responses.
+	UserResponse12 ServerResponseEnum
+	// UserResponse13 defines a service response code for handling user-defined responses.
+	UserResponse13 ServerResponseEnum
+	// UserResponse14 defines a service response code for handling user-defined responses.
+	UserResponse14 ServerResponseEnum
+	// UserResponse15 defines a service response code for handling user-defined responses.
+	UserResponse15 ServerResponseEnum
+	// NoOP defines a service response code for indicating a nil-operation keep-alive ping. The command channel can remain quiet for some time, this command allows a period test of client connectivity.
+	NoOP ServerResponseEnum
+}{
+	Succeeded:              0x80,
+	Failed:                 0x81,
+	DataPacket:             0x82,
+	UpdateSignalIndexCache: 0x83,
+	UpdateBaseTimes:        0x84,
+	UpdateCipherKeys:       0x85,
+	DataStartTime:          0x86,
+	ProcessingComplete:     0x87,
+	BufferBlock:            0x88,
+	Notify:                 0x89,
+	ConfigurationChanged:   0x8A,
+	UserResponse00:         0xE0,
+	UserResponse01:         0xE1,
+	UserResponse02:         0xE2,
+	UserResponse03:         0xE3,
+	UserResponse04:         0xE4,
+	UserResponse05:         0xE5,
+	UserResponse06:         0xE6,
+	UserResponse07:         0xE7,
+	UserResponse08:         0xE8,
+	UserResponse09:         0xE9,
+	UserResponse10:         0xEA,
+	UserResponse11:         0xEB,
+	UserResponse12:         0xEC,
+	UserResponse13:         0xED,
+	UserResponse14:         0xEE,
+	UserResponse15:         0xEF,
+	NoOP:                   0xFF,
+}
+
 // OperationalEncodingEnum defines the type for the OperationalEncoding enumeration.
 type OperationalEncodingEnum uint32
 
