@@ -61,13 +61,13 @@ const PerDay Ticks = 24 * PerHour
 // LeapSecondFlag is the flag (64th bit) that marks a Ticks value as a leap second, i.e., second 60 (one beyond normal second 59).
 const LeapSecondFlag Ticks = 1 << 63
 
-// ReservedUTCFlag is the reserved flag (63rd bit) that should be unset when serializing and deserailing Ticks.
+// ReservedUTCFlag is the reserved flag (63rd bit) that should be unset when serializing and deserializing Ticks.
 const ReservedUTCFlag Ticks = 1 << 62
 
-// ValueMask defines all bits (bits 1 to 62) that make up the value porition of a Ticks that represent time.
+// ValueMask defines all bits (bits 1 to 62) that make up the value portion of a Ticks that represent time.
 const ValueMask Ticks = ^LeapSecondFlag & ^ReservedUTCFlag
 
-// UnixBaseOffset is the Ticks representation of the Unix epcoh timestamp starting at January 1, 1970.
+// UnixBaseOffset is the Ticks representation of the Unix epoch timestamp starting at January 1, 1970.
 const UnixBaseOffset Ticks = 621355968000000000
 
 // ToTime converts a Ticks value to standard Go Time value.
