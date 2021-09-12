@@ -52,7 +52,7 @@ const PerMicrosecond Ticks = PerSecond / 1000000
 // PerMinute is the number of Ticks that occur in a minute.
 const PerMinute Ticks = 60 * PerSecond
 
-// PerHours is the number of Ticks that occur in an hour.
+// PerHour is the number of Ticks that occur in an hour.
 const PerHour Ticks = 60 * PerMinute
 
 // PerDay is the number of Ticks that occur in a day.

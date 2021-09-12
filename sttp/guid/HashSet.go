@@ -226,7 +226,7 @@ func (hs HashSet) Overlaps(other []Guid) bool {
 	return false
 }
 
-// Overlaps determines whether the current set and a specified set share common elements.
+// OverlapsSet determines whether the current set and a specified set share common elements.
 // Returns true if the current set and other set share at least one common element; otherwise, false.
 func (hs HashSet) OverlapsSet(other HashSet) bool {
 	return hs.Overlaps(other.Keys())
