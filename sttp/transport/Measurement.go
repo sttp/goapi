@@ -21,13 +21,12 @@
 //
 //******************************************************************************************************
 
-package measurement
+package transport
 
 import (
 	"time"
 
 	"github.com/sttp/goapi/sttp/guid"
-	"github.com/sttp/goapi/sttp/stateflags"
 	"github.com/sttp/goapi/sttp/ticks"
 )
 
@@ -64,7 +63,7 @@ type Measurement struct {
 	Timestamp ticks.Ticks
 
 	// Flags indicating the state of the measurement as reported by the device that took it.
-	Flags stateflags.StateFlags
+	Flags StateFlagsEnum
 }
 
 var (

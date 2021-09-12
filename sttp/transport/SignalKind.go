@@ -21,42 +21,56 @@
 //
 //******************************************************************************************************
 
-package signalkind
+package transport
 
 import (
 	"strings"
 	"unicode"
 )
 
-// SignalKind defines the kinds of signals a Measurement can represent
-type SignalKind uint16
+// SignalKindEnum defines the type for the SignalKind enumeration.
+type SignalKindEnum uint16
 
-const (
+// SignalKind is an enumeration of the possible kinds of signals a Measurement can represent.
+var SignalKind = struct {
 	// Angle defines a phase angle signal type.
-	Angle SignalKind = iota
+	Angle SignalKindEnum
 	// Magnitude defines a phase magnitude signal type.
-	Magnitude
+	Magnitude SignalKindEnum
 	// Frequency defines a line frequency signal type.
-	Frequency
+	Frequency SignalKindEnum
 	// DfDt defines a frequency delta over time (dF/dt) signal type.
-	DfDt
+	DfDt SignalKindEnum
 	// Status defines a status flags signal type.
-	Status
+	Status SignalKindEnum
 	// Digital defines a digital value signal type.
-	Digital
+	Digital SignalKindEnum
 	// Analog defines an analog value signal type.
-	Analog
+	Analog SignalKindEnum
 	// Calculation defines a calculated value signal type.
-	Calculation
+	Calculation SignalKindEnum
 	// Statistic defines a statistical value signal type.
-	Statistic
+	Statistic SignalKindEnum
 	// Alarm defines an alarm value signal type.
-	Alarm
+	Alarm SignalKindEnum
 	// Quality defines a quality flags signal type.
-	Quality
+	Quality SignalKindEnum
 	// Unknown defines an undetermined signal type.
-	Unknown
-)
+	Unknown SignalKindEnum
+}{
+	Angle:       0,
+	Magnitude:   1,
+	Frequency:   2,
+	DfDt:        3,
+	Status:      4,
+	Digital:     5,
+	Analog:      6,
+	Calculation: 7,
+	Statistic:   8,
+	Alarm:       9,
+	Quality:     10,
+	Unknown:     11,
+}
 
 var (
 	// Description defines the string representations of the SignalKind enumeration values.
@@ -92,35 +106,35 @@ var (
 
 // GetSignalTypeAcronym gets the specific four-character signal type acronym for a SignalKind
 // enumeration value and phasor type, i.e., "V" voltage or "I" current.
-func GetSignalTypeAcronym(kind SignalKind, phasorType rune) string {
+func GetSignalTypeAcronym(kind SignalKindEnum, phasorType rune) string {
 	switch kind {
-	case Angle:
+	case SignalKind.Angle:
 		if unicode.ToUpper(phasorType) == 'V' {
 			return "VPHA"
 		}
 		return "IPHA"
-	case Magnitude:
+	case SignalKind.Magnitude:
 		if unicode.ToUpper(phasorType) == 'V' {
 			return "VPHM"
 		}
 		return "IPHM"
-	case Frequency:
+	case SignalKind.Frequency:
 		return "FREQ"
-	case DfDt:
+	case SignalKind.DfDt:
 		return "DFDT"
-	case Status:
+	case SignalKind.Status:
 		return "FLAG"
-	case Digital:
+	case SignalKind.Digital:
 		return "DIGI"
-	case Analog:
+	case SignalKind.Analog:
 		return "ALOG"
-	case Calculation:
+	case SignalKind.Calculation:
 		return "CALC"
-	case Statistic:
+	case SignalKind.Statistic:
 		return "STAT"
-	case Alarm:
+	case SignalKind.Alarm:
 		return "ALRM"
-	case Quality:
+	case SignalKind.Quality:
 		return "QUAL"
 	}
 
@@ -128,52 +142,52 @@ func GetSignalTypeAcronym(kind SignalKind, phasorType rune) string {
 }
 
 // Parse gets the SignalKind enumeration value for the specified acronym.
-func Parse(acronym string) SignalKind {
+func Parse(acronym string) SignalKindEnum {
 	acronym = strings.TrimSpace(strings.ToUpper(acronym))
 
 	if acronym == "PA" { // Phase Angle
-		return Angle
+		return SignalKind.Angle
 	}
 
 	if acronym == "PM" { // Phase Magnitude
-		return Magnitude
+		return SignalKind.Magnitude
 	}
 
 	if acronym == "FQ" { // Frequency
-		return Frequency
+		return SignalKind.Frequency
 	}
 
 	if acronym == "DF" { // dF/dt
-		return DfDt
+		return SignalKind.DfDt
 	}
 
 	if acronym == "SF" { // Status Flags
-		return Status
+		return SignalKind.Status
 	}
 
 	if acronym == "DV" { // Digital Value
-		return Digital
+		return SignalKind.Digital
 	}
 
 	if acronym == "AV" { // Analog Value
-		return Analog
+		return SignalKind.Analog
 	}
 
 	if acronym == "CV" { // Calculated Value
-		return Calculation
+		return SignalKind.Calculation
 	}
 
 	if acronym == "ST" { // Statistical Value
-		return Statistic
+		return SignalKind.Statistic
 	}
 
 	if acronym == "AL" { // Alarm Value
-		return Alarm
+		return SignalKind.Alarm
 	}
 
 	if acronym == "QF" { // Quality Flags
-		return Quality
+		return SignalKind.Quality
 	}
 
-	return Unknown
+	return SignalKind.Unknown
 }

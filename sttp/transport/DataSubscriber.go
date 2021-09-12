@@ -24,7 +24,6 @@
 package transport
 
 import (
-	"github.com/sttp/goapi/sttp/measurement"
 	"github.com/sttp/goapi/sttp/ticks"
 )
 
@@ -34,7 +33,7 @@ type MessageCallback func(*DataSubscriber, string)
 type DataStartTimeCallback func(*DataSubscriber, ticks.Ticks)
 type MetadataCallback func(*DataSubscriber, []byte)
 type SubscriptionUpdatedCallback func(*DataSubscriber, *SignalIndexCache)
-type NewMeasurementsCallback func(*DataSubscriber, []*measurement.Measurement)
+type NewMeasurementsCallback func(*DataSubscriber, []*Measurement)
 type ConfigurationChangedCallback func(*DataSubscriber)
 type ConnectionTerminatedCallback func(*DataSubscriber)
 
