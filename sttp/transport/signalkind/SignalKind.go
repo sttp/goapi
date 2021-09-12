@@ -32,7 +32,7 @@ import (
 type SignalKind uint16
 
 const (
-	// Angle defines a phase angle signal.
+	// Angle defines a phase angle signal type.
 	Angle SignalKind = iota
 	// Magnitude defines a phase magnitude signal type.
 	Magnitude
