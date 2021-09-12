@@ -27,9 +27,14 @@ import (
 	"time"
 )
 
+// ErrorMessageCallback is a delegate for error message call backs.
 type ErrorMessageCallback func(*DataSubscriber, string)
+
+// ReconnectCallback is a delegate for reconnect operation call backs.
 type ReconnectCallback func(*DataSubscriber)
 
+// SubscriberConnector represents a connector that will establish to reestablish
+// a connection from a DataSubscriber to a DataPublisher.
 type SubscriberConnector struct {
 	errorMessageCallback ErrorMessageCallback
 	reconnectCallback    ReconnectCallback
@@ -47,8 +52,13 @@ type SubscriberConnector struct {
 	cancel            bool
 }
 
+// ConnectSuccess defines that a connection succeeded.
 const ConnectSuccess int = 1
+
+// ConnectFailed defines that a connection failed.
 const ConnectFailed int = 0
+
+// ConnectCanceled defines that a connection was cancelled.
 const ConnectCanceled int = -1
 
 // RegisterErrorMessageCallback registers a callback to provide error messages each time the subscriber

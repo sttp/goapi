@@ -92,7 +92,7 @@ func (sic *SignalIndexCache) GetSource(signalIndex int32) string {
 	return ""
 }
 
-// GetSource returns the Measurement integer ID for the specified signalIndex in the SignalIndexCache.
+// GetID returns the Measurement integer ID for the specified signalIndex in the SignalIndexCache.
 func (sic *SignalIndexCache) GetID(signalIndex int32) uint64 {
 	if index, ok := sic.reference[signalIndex]; ok {
 		return sic.idList[index]
