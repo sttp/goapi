@@ -1,4 +1,4 @@
-## goapi - Streaming Telemetry Transport Protocol ([IEEE 2664](https://standards.ieee.org/project/2664.html)) implementation for Go
+## goapi - Go STTP ([IEEE 2664](https://standards.ieee.org/project/2664.html)) Implementation
 
 <img align="right" src="assets/sttp.png">
 
