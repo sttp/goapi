@@ -81,7 +81,8 @@ func LookupMetadata(signalID guid.Guid) (MeasurementMetadata, bool) {
 	return metadata, ok
 }
 
-// AdjustedValue gets the Value of a Measurement with any linear adjustments applied from the measurement's Adder and Multiplier metadata.
+// AdjustedValue gets the Value of a Measurement with any linear adjustments applied from the
+// measurement's Adder and Multiplier metadata.
 func (m *Measurement) AdjustedValue() float64 {
 	metadata, ok := measurementRegistry[m.SignalID]
 
@@ -90,6 +91,12 @@ func (m *Measurement) AdjustedValue() float64 {
 	}
 
 	return m.Value
+}
+
+// TickValue gets the integer-based time from a Measurement Ticks based timestamp, i.e.,
+// the 62-bit time value excluding any reserved flags.
+func (m *Measurement) TicksValue() int64 {
+	return int64(m.Timestamp & ticks.ValueMask)
 }
 
 // GetDateTime gets a Measurement Ticks based timestamp as a standard Go Time value.
