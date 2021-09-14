@@ -36,21 +36,37 @@ import (
 // SubscriberConnector represents a connector that will establish to reestablish
 // a connection from a DataSubscriber to a DataPublisher.
 type SubscriberConnector struct {
+	// ErrorMessageCallback is called when an error message should be logged.
 	ErrorMessageCallback func(*DataSubscriber, string)
-	ReconnectCallback    func(*DataSubscriber)
 
+	// ReconnectCallback is called when SubscriberConnector attempts to reconnect.
+	ReconnectCallback func(*DataSubscriber)
+
+	// Hostname is the DataPublisher DNS name or IP.
 	Hostname string
-	Port     uint16
 
-	MaxRetries       int32
-	RetryInterval    int32
+	// Port it the TCP/IP listening port of the DataPublisher.
+	Port uint16
+
+	// MaxRetries defines the maximum number of times to retry a connection.
+	// Set value to -1 to retry infinitely.
+	MaxRetries int32
+
+	// RetryInterval defines the base retry interval, in milliseconds. Retries will
+	// exponentially back-off starting from this interval.
+	RetryInterval int32
+
+	// MaxRetryInterval defines the maximum retry interval, in milliseconds.
 	MaxRetryInterval int32
-	AutoReconnect    bool
+
+	// AutoReconnect defines flag that determines if connections should be
+	// automatically reattempted.
+	AutoReconnect bool
 
 	connectAttempt    int32
 	connectionRefused bool
 	cancel            bool
-	reconnectThread   thread.Thread
+	reconnectThread   *thread.Thread
 }
 
 // ConnectSuccess defines that a connection succeeded.
@@ -62,19 +78,6 @@ const ConnectFailed int = 0
 // ConnectCanceled defines that a connection was cancelled.
 const ConnectCanceled int = -1
 
-// RegisterErrorMessageCallback registers a callback to provide error messages each time the subscriber
-// fails to connect during a connection sequence.
-func (sc *SubscriberConnector) RegisterErrorMessageCallback(errorMessageCallback func(*DataSubscriber, string)) {
-	sc.ErrorMessageCallback = errorMessageCallback
-}
-
-// RegisterReconnectCallback registers a callback to notify after an automatic reconnection attempt
-// has been made. This callback will be called whether the connection was successful or not, so it
-// is recommended to check the connected state of the subscriber using the IsConnected() method.
-func (sc *SubscriberConnector) RegisterReconnectCallback(reconnectCallback func(*DataSubscriber)) {
-	sc.ReconnectCallback = reconnectCallback
-}
-
 func autoReconnect(subscriber *DataSubscriber) {
 	connector := subscriber.GetSubscriberConnector()
 
@@ -83,7 +86,9 @@ func autoReconnect(subscriber *DataSubscriber) {
 	}
 
 	// Make sure to wait on any running reconnect to complete...
-	connector.reconnectThread.Join()
+	if connector.reconnectThread != nil {
+		connector.reconnectThread.Join()
+	}
 
 	connector.reconnectThread = thread.NewThread(func() {
 		// Reset connection attempt counter if last attempt was not refused
@@ -175,14 +180,14 @@ func (sc *SubscriberConnector) Connect(subscriber *DataSubscriber, info Subscrip
 
 func (sc *SubscriberConnector) connect(subscriber *DataSubscriber, autoReconnecting bool) int {
 	if sc.AutoReconnect {
-		subscriber.RegisterAutoReconnectCallback(autoReconnect)
+		subscriber.AutoReconnectCallback = autoReconnect
 	}
 
 	sc.cancel = false
 
-	for !subscriber.disposing {
+	//for !subscriber.disposing {
 
-	}
+	//}
 
 	return ConnectSuccess
 }

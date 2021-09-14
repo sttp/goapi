@@ -29,9 +29,11 @@ type DataSubscriber struct {
 	encoding         OperationalEncodingEnum
 	connector        SubscriberConnector
 
-	// Callbacks
-	connectionTerminatedCallback func(*DataSubscriber)
-	autoReconnectCallback        func(*DataSubscriber)
+	// ConnectionTerminatedCallback is called when DataSubscriber terminates its connection.
+	ConnectionTerminatedCallback func(*DataSubscriber)
+
+	// AutoReconnectCallback is called when DataSubscriber automatically reconnects.
+	AutoReconnectCallback func(*DataSubscriber)
 
 	disposing bool
 }
@@ -54,9 +56,4 @@ func (ds *DataSubscriber) DecodeString(data []byte, length uint32) string {
 	}
 
 	return string(data[:length])
-}
-
-// RegisterAutoReconnectCallback registers the auto-reconnect DataSubscriber callback.
-func (ds *DataSubscriber) RegisterAutoReconnectCallback(autoReconnectCallback func(*DataSubscriber)) {
-	ds.autoReconnectCallback = autoReconnectCallback
 }
