@@ -32,10 +32,8 @@ type Thread struct {
 }
 
 // NewThread creates a new Thread.
-func NewThread(body func()) *Thread {
-	return &Thread{
-		body: body,
-	}
+func NewThread(body func()) Thread {
+	return Thread{body: body}
 }
 
 // Starts causes the thread to be scheduled for execution via a new Go routine.
