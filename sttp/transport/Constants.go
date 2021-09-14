@@ -366,34 +366,34 @@ type OperationalModesEnum uint32
 // OperationalModes is an enumeration of the possible modes that affect how DataPublisher and DataSubscriber
 // communicate during an STTP session.
 var OperationalModes = struct {
-	// ServerResponseEnumVersionMask defines a bit mask used to get version number of protocol. Version number is currently set to 2.
-	ServerResponseEnumVersionMask OperationalModesEnum
-	// ServerResponseEnumCompressionModeMask defines a bit mask used to get mode of compression. GZip and TSSC compression are the only modes currently supported. Remaining bits are reserved for future compression modes.
-	ServerResponseEnumCompressionModeMask OperationalModesEnum
-	// ServerResponseEnumEncodingMask defines a bit mask used to get character encoding used when exchanging messages between publisher and subscriber.
-	ServerResponseEnumEncodingMask OperationalModesEnum
-	// ServerResponseEnumReceiveExternalMetadata defines a bit flag used to determine whether external measurements are exchanged during metadata synchronization. Bit set = external measurements are exchanged, bit clear = no external measurements are exchanged.
-	ServerResponseEnumReceiveExternalMetadata OperationalModesEnum
-	// ServerResponseEnumReceiveInternalMetadata defines a bit flag used to determine whether internal measurements are exchanged during metadata synchronization. Bit set = internal measurements are exchanged, bit clear = no internal measurements are exchanged.
-	ServerResponseEnumReceiveInternalMetadata OperationalModesEnum
-	// ServerResponseEnumCompressPayloadData defines a bit flag used to determine whether payload data is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
-	ServerResponseEnumCompressPayloadData OperationalModesEnum
-	// ServerResponseEnumCompressSignalIndexCache defines a bit flag used to determine whether the signal index cache is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
-	ServerResponseEnumCompressSignalIndexCache OperationalModesEnum
-	// ServerResponseEnumCompressMetadata defines a bit flag used to determine whether metadata is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
-	ServerResponseEnumCompressMetadata OperationalModesEnum
-	// ServerResponseEnumNoFlags defines state where there are no flags set.
-	ServerResponseEnumNoFlags OperationalModesEnum
+	// VersionMask defines a bit mask used to get version number of protocol. Version number is currently set to 2.
+	VersionMask OperationalModesEnum
+	// CompressionModeMask defines a bit mask used to get mode of compression. GZip and TSSC compression are the only modes currently supported. Remaining bits are reserved for future compression modes.
+	CompressionModeMask OperationalModesEnum
+	// EncodingMask defines a bit mask used to get character encoding used when exchanging messages between publisher and subscriber.
+	EncodingMask OperationalModesEnum
+	// ReceiveExternalMetadata defines a bit flag used to determine whether external measurements are exchanged during metadata synchronization. Bit set = external measurements are exchanged, bit clear = no external measurements are exchanged.
+	ReceiveExternalMetadata OperationalModesEnum
+	// ReceiveInternalMetadata defines a bit flag used to determine whether internal measurements are exchanged during metadata synchronization. Bit set = internal measurements are exchanged, bit clear = no internal measurements are exchanged.
+	ReceiveInternalMetadata OperationalModesEnum
+	// CompressPayloadData defines a bit flag used to determine whether payload data is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
+	CompressPayloadData OperationalModesEnum
+	// CompressSignalIndexCache defines a bit flag used to determine whether the signal index cache is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
+	CompressSignalIndexCache OperationalModesEnum
+	// CommpressMetadata defines a bit flag used to determine whether metadata is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
+	CommpressMetadata OperationalModesEnum
+	// NoFlags defines state where there are no flags set.
+	NoFlags OperationalModesEnum
 }{
-	ServerResponseEnumVersionMask:              0x0000001F,
-	ServerResponseEnumCompressionModeMask:      0x000000E0,
-	ServerResponseEnumEncodingMask:             0x00000300,
-	ServerResponseEnumReceiveExternalMetadata:  0x02000000,
-	ServerResponseEnumReceiveInternalMetadata:  0x04000000,
-	ServerResponseEnumCompressPayloadData:      0x20000000,
-	ServerResponseEnumCompressSignalIndexCache: 0x40000000,
-	ServerResponseEnumCompressMetadata:         0x80000000,
-	ServerResponseEnumNoFlags:                  0x00000000,
+	VersionMask:              0x0000001F,
+	CompressionModeMask:      0x000000E0,
+	EncodingMask:             0x00000300,
+	ReceiveExternalMetadata:  0x02000000,
+	ReceiveInternalMetadata:  0x04000000,
+	CompressPayloadData:      0x20000000,
+	CompressSignalIndexCache: 0x40000000,
+	CommpressMetadata:        0x80000000,
+	NoFlags:                  0x00000000,
 }
 
 // OperationalEncodingEnum defines the type for the OperationalEncoding enumeration.
