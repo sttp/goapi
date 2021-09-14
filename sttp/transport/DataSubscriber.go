@@ -23,11 +23,18 @@
 
 package transport
 
+import (
+	"net"
+	"strconv"
+)
+
 // DataSubscriber represents a client subscription for an STTP connection.
 type DataSubscriber struct {
 	subscriptionInfo SubscriptionInfo
 	encoding         OperationalEncodingEnum
 	connector        SubscriberConnector
+	connected        bool
+	connection       net.Conn
 
 	// ConnectionTerminatedCallback is called when DataSubscriber terminates its connection.
 	ConnectionTerminatedCallback func(*DataSubscriber)
@@ -56,4 +63,16 @@ func (ds *DataSubscriber) DecodeString(data []byte, length uint32) string {
 	}
 
 	return string(data[:length])
+}
+
+func (ds *DataSubscriber) Connect(hostName string, port uint16, autoReconnecting bool) error {
+	if ds.connected {
+		panic("Subscriber is already connected; disconnect first")
+	}
+
+	var err error
+
+	ds.connection, err = net.Dial("tcp", hostName+":"+strconv.Itoa(int(port)))
+
+	return err
 }
