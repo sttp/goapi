@@ -81,93 +81,97 @@ const ConnectFailed ConnectStatus = 0
 const ConnectCanceled ConnectStatus = -1
 
 func autoReconnect(subscriber *DataSubscriber) {
-	connector := subscriber.GetSubscriberConnector()
+	sc := subscriber.GetSubscriberConnector()
 
-	if connector.cancel || subscriber.disposing {
+	if sc.cancel || subscriber.disposing {
 		return
 	}
 
 	// Make sure to wait on any running reconnect to complete...
-	if connector.reconnectThread != nil {
-		connector.reconnectThread.Join()
+	if sc.reconnectThread != nil {
+		sc.reconnectThread.Join()
 	}
 
-	connector.reconnectThread = thread.NewThread(func() {
+	sc.reconnectThread = thread.NewThread(func() {
 		// Reset connection attempt counter if last attempt was not refused
-		if !connector.connectionRefused {
-			connector.ResetConnection()
+		if !sc.connectionRefused {
+			sc.ResetConnection()
 		}
 
-		if connector.MaxRetries != -1 && connector.connectAttempt >= connector.MaxRetries {
-			if connector.ErrorMessageCallback != nil {
-				connector.ErrorMessageCallback(subscriber, "Maximum connection retries attempted. Auto-reconnect canceled.")
+		if sc.MaxRetries != -1 && sc.connectAttempt >= sc.MaxRetries {
+			if sc.ErrorMessageCallback != nil {
+				sc.ErrorMessageCallback(subscriber, "Maximum connection retries attempted. Auto-reconnect canceled.")
 			}
 
 			return
 		}
 
-		// Apply exponential back-off algorithm for retry attempt delays
-		var exponent float64
+		sc.waitForRetry(subscriber)
 
-		if connector.connectAttempt > 13 {
-			exponent = 12
-		} else {
-			exponent = float64(connector.connectAttempt - 1)
-		}
-
-		var retryInterval int32
-
-		if connector.connectAttempt > 0 {
-			retryInterval = connector.RetryInterval * int32(math.Pow(2, exponent))
-		}
-
-		if retryInterval > connector.MaxRetryInterval {
-			retryInterval = connector.MaxRetryInterval
-		}
-
-		// Notify the user that we are attempting to reconnect.
-		if connector.ErrorMessageCallback != nil {
-			var message strings.Builder
-
-			message.WriteString("Connection")
-
-			if connector.connectAttempt > 0 {
-				message.WriteString(" attempt ")
-				message.WriteString(strconv.Itoa(int(connector.connectAttempt + 1)))
-			}
-
-			message.WriteString(" to \"")
-			message.WriteString(connector.Hostname)
-			message.WriteString(":")
-			message.WriteString(strconv.Itoa(int(connector.Port)))
-			message.WriteString("\" was terminated. ")
-
-			if retryInterval > 0 {
-				message.WriteString("Attempting to reconnect in ")
-				message.WriteString(fmt.Sprintf("%.2f", float64(connector.RetryInterval)/1000.0))
-				message.WriteString(" seconds...")
-			} else {
-				message.WriteString("Attempting to reconnect...")
-			}
-
-			connector.ErrorMessageCallback(subscriber, message.String())
-		}
-
-		time.Sleep(time.Duration(retryInterval) * time.Millisecond)
-
-		if connector.cancel || subscriber.disposing {
+		if sc.cancel || subscriber.disposing {
 			return
 		}
 
-		if connector.connect(subscriber, true) == ConnectCanceled {
+		if sc.connect(subscriber, true) == ConnectCanceled {
 			return
 		}
 
 		// Notify the user that reconnect attempt was completed.
-		if !connector.cancel && connector.ReconnectCallback != nil {
-			connector.ReconnectCallback(subscriber)
+		if !sc.cancel && sc.ReconnectCallback != nil {
+			sc.ReconnectCallback(subscriber)
 		}
 	})
+}
+
+func (sc *SubscriberConnector) waitForRetry(subscriber *DataSubscriber) {
+	// Apply exponential back-off algorithm for retry attempt delays
+	var exponent float64
+
+	if sc.connectAttempt > 13 {
+		exponent = 12
+	} else {
+		exponent = float64(sc.connectAttempt - 1)
+	}
+
+	var retryInterval int32
+
+	if sc.connectAttempt > 0 {
+		retryInterval = sc.RetryInterval * int32(math.Pow(2, exponent))
+	}
+
+	if retryInterval > sc.MaxRetryInterval {
+		retryInterval = sc.MaxRetryInterval
+	}
+
+	// Notify the user that we are attempting to reconnect.
+	if sc.ErrorMessageCallback != nil {
+		var message strings.Builder
+
+		message.WriteString("Connection")
+
+		if sc.connectAttempt > 0 {
+			message.WriteString(" attempt ")
+			message.WriteString(strconv.Itoa(int(sc.connectAttempt + 1)))
+		}
+
+		message.WriteString(" to \"")
+		message.WriteString(sc.Hostname)
+		message.WriteString(":")
+		message.WriteString(strconv.Itoa(int(sc.Port)))
+		message.WriteString("\" was terminated. ")
+
+		if retryInterval > 0 {
+			message.WriteString("Attempting to reconnect in ")
+			message.WriteString(fmt.Sprintf("%.2f", float64(sc.RetryInterval)/1000.0))
+			message.WriteString(" seconds...")
+		} else {
+			message.WriteString("Attempting to reconnect...")
+		}
+
+		sc.ErrorMessageCallback(subscriber, message.String())
+	}
+
+	time.Sleep(time.Duration(retryInterval) * time.Millisecond)
 }
 
 // Connect initiates a connection sequence for a DataSubscriber for the specified SubscriptionInfo.
@@ -187,9 +191,32 @@ func (sc *SubscriberConnector) connect(subscriber *DataSubscriber, autoReconnect
 
 	sc.cancel = false
 
-	//for !subscriber.disposing {
+	for !subscriber.disposing {
+		if sc.MaxRetries != -1 && sc.connectAttempt >= sc.MaxRetries {
+			if sc.ErrorMessageCallback != nil {
+				sc.ErrorMessageCallback(subscriber, "Maximum connection retries attempted. Auto-reconnect canceled.")
+			}
 
-	//}
+			break
+		}
+
+		connected := false
+
+		err := subscriber.Connect(sc.Hostname, sc.Port, autoReconnecting)
+
+		if err == nil {
+			connected = true
+			break
+		}
+
+		if !connected && !subscriber.disposing && sc.RetryInterval > 0 {
+			sc.waitForRetry(subscriber)
+
+			if sc.cancel {
+				return ConnectCanceled
+			}
+		}
+	}
 
 	return ConnectSuccess
 }
