@@ -51,7 +51,7 @@ type MeasurementMetadata struct {
 	Tag string
 }
 
-// Measurement defines a measured value received or to be sent by STTP
+// Measurement defines a basic unit of data for use by the STTP API.
 type Measurement struct {
 	// Measurement's globally unique identifier.
 	SignalID guid.Guid
@@ -93,7 +93,7 @@ func (m *Measurement) AdjustedValue() float64 {
 	return m.Value
 }
 
-// TickValue gets the integer-based time from a Measurement Ticks based timestamp, i.e.,
+// TicksValue gets the integer-based time from a Measurement Ticks based timestamp, i.e.,
 // the 62-bit time value excluding any reserved flags.
 func (m *Measurement) TicksValue() int64 {
 	return int64(m.Timestamp & ticks.ValueMask)
