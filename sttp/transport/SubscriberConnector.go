@@ -69,14 +69,16 @@ type SubscriberConnector struct {
 	reconnectThread   *thread.Thread
 }
 
+type ConnectStatus int
+
 // ConnectSuccess defines that a connection succeeded.
-const ConnectSuccess int = 1
+const ConnectSuccess ConnectStatus = 1
 
 // ConnectFailed defines that a connection failed.
-const ConnectFailed int = 0
+const ConnectFailed ConnectStatus = 0
 
 // ConnectCanceled defines that a connection was cancelled.
-const ConnectCanceled int = -1
+const ConnectCanceled ConnectStatus = -1
 
 func autoReconnect(subscriber *DataSubscriber) {
 	connector := subscriber.GetSubscriberConnector()
@@ -169,7 +171,7 @@ func autoReconnect(subscriber *DataSubscriber) {
 }
 
 // Connect initiates a connection sequence for a DataSubscriber for the specified SubscriptionInfo.
-func (sc *SubscriberConnector) Connect(subscriber *DataSubscriber, info SubscriptionInfo) int {
+func (sc *SubscriberConnector) Connect(subscriber *DataSubscriber, info SubscriptionInfo) ConnectStatus {
 	if sc.cancel {
 		return ConnectCanceled
 	}
@@ -178,7 +180,7 @@ func (sc *SubscriberConnector) Connect(subscriber *DataSubscriber, info Subscrip
 	return sc.connect(subscriber, false)
 }
 
-func (sc *SubscriberConnector) connect(subscriber *DataSubscriber, autoReconnecting bool) int {
+func (sc *SubscriberConnector) connect(subscriber *DataSubscriber, autoReconnecting bool) ConnectStatus {
 	if sc.AutoReconnect {
 		subscriber.AutoReconnectCallback = autoReconnect
 	}
