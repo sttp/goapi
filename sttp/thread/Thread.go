@@ -27,8 +27,8 @@ import "sync"
 
 // Thread represents a thread-like wrapper for a Go routine.
 type Thread struct {
-	body func()
-	mux  sync.Mutex
+	body  func()
+	mutex sync.Mutex
 }
 
 // NewThread creates a new Thread.
@@ -40,18 +40,26 @@ func NewThread(body func()) *Thread {
 
 // Starts causes the thread to be scheduled for execution via a new Go routine.
 func (thread *Thread) Start() {
-	thread.mux.Lock()
+	if thread.body == nil {
+		return
+	}
+
+	thread.mutex.Lock()
 	go thread.run()
 }
 
 // Join blocks the calling thread until this Thread terminates.
 func (thread *Thread) Join() {
-	thread.mux.Lock()
+	if thread.body == nil {
+		return
+	}
+
+	thread.mutex.Lock()
 	//lint:ignore SA2001 -- desired behavior
-	thread.mux.Unlock()
+	thread.mutex.Unlock()
 }
 
 func (thread *Thread) run() {
 	thread.body()
-	thread.mux.Unlock()
+	thread.mutex.Unlock()
 }
