@@ -23,23 +23,31 @@
 
 package thread
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 // Thread represents a thread-like wrapper for a Go routine.
 type Thread struct {
-	body  func()
-	mutex sync.Mutex
+	exec    func()
+	mutex   sync.Mutex
+	running int32
 }
 
 // NewThread creates a new Thread.
-func NewThread(body func()) *Thread {
-	return &Thread{body: body}
+func NewThread(exec func()) *Thread {
+	return &Thread{exec: exec}
 }
 
-// Starts causes the thread to be scheduled for execution via a new Go routine.
+// Starts causes the thread function to be scheduled for execution via a new Go routine.
 func (thread *Thread) Start() {
-	if thread.body == nil {
-		return
+	if thread.exec == nil {
+		panic("Thread has no execution function defined")
+	}
+
+	if thread.IsRunning() {
+		panic("Thread is already running")
 	}
 
 	thread.mutex.Lock()
@@ -48,7 +56,7 @@ func (thread *Thread) Start() {
 
 // Join blocks the calling thread until this Thread terminates.
 func (thread *Thread) Join() {
-	if thread.body == nil {
+	if thread.exec == nil || !thread.IsRunning() {
 		return
 	}
 
@@ -57,7 +65,25 @@ func (thread *Thread) Join() {
 	thread.mutex.Unlock()
 }
 
+// IsRunning safely determines if the thread function is currently executing.
+func (thread *Thread) IsRunning() bool {
+	return atomic.LoadInt32(&(thread.running)) != 0
+}
+
+func (thread *Thread) setIsRunning(value bool) {
+	var i int32 = 0
+
+	if value {
+		i = 1
+	}
+
+	atomic.StoreInt32(&(thread.running), i)
+}
+
 func (thread *Thread) run() {
-	thread.body()
-	thread.mutex.Unlock()
+	defer thread.setIsRunning(false)
+	defer thread.mutex.Unlock()
+
+	thread.setIsRunning(true)
+	thread.exec()
 }
