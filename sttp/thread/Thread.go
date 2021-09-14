@@ -40,7 +40,7 @@ func NewThread(exec func()) *Thread {
 	return &Thread{exec: exec}
 }
 
-// Starts causes the thread function to be scheduled for execution via a new Go routine.
+// Start causes the thread function to be scheduled for execution via a new Go routine.
 func (thread *Thread) Start() {
 	if thread.exec == nil {
 		panic("Thread has no execution function defined")
