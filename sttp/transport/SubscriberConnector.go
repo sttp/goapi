@@ -67,6 +67,7 @@ type SubscriberConnector struct {
 	connectionRefused bool
 	cancel            bool
 	reconnectThread   *thread.Thread
+	waitTimer         *time.Timer
 }
 
 type ConnectStatus int
@@ -171,7 +172,8 @@ func (sc *SubscriberConnector) waitForRetry(subscriber *DataSubscriber) {
 		sc.ErrorMessageCallback(subscriber, message.String())
 	}
 
-	time.Sleep(time.Duration(retryInterval) * time.Millisecond)
+	sc.waitTimer = time.NewTimer(time.Duration(retryInterval) * time.Millisecond)
+	<-sc.waitTimer.C
 }
 
 // Connect initiates a connection sequence for a DataSubscriber for the specified SubscriptionInfo.
@@ -200,16 +202,19 @@ func (sc *SubscriberConnector) connect(subscriber *DataSubscriber, autoReconnect
 			break
 		}
 
-		connected := false
+		sc.connectAttempt++
+
+		if subscriber.disposing {
+			return ConnectCanceled
+		}
 
 		err := subscriber.Connect(sc.Hostname, sc.Port, autoReconnecting)
 
 		if err == nil {
-			connected = true
 			break
 		}
 
-		if !connected && !subscriber.disposing && sc.RetryInterval > 0 {
+		if !subscriber.disposing && sc.RetryInterval > 0 {
 			sc.waitForRetry(subscriber)
 
 			if sc.cancel {
@@ -218,7 +223,28 @@ func (sc *SubscriberConnector) connect(subscriber *DataSubscriber, autoReconnect
 		}
 	}
 
-	return ConnectSuccess
+	if subscriber.disposing {
+		return ConnectCanceled
+	}
+
+	if subscriber.IsConnected() {
+		return ConnectSuccess
+	}
+
+	return ConnectFailed
+}
+
+// Cancel stops all current and future connection sequences.
+func (sc *SubscriberConnector) Cancel() {
+	sc.cancel = true
+
+	if sc.waitTimer != nil {
+		sc.waitTimer.Stop()
+	}
+
+	if sc.reconnectThread != nil {
+		sc.reconnectThread.Join()
+	}
 }
 
 // ResetConnection resets SubscriberConnector for a new connection.

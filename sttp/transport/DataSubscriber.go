@@ -55,6 +55,10 @@ func (ds *DataSubscriber) GetSubscriberConnector() SubscriberConnector {
 	return ds.connector
 }
 
+func (ds *DataSubscriber) IsConnected() bool {
+	return ds.connected
+}
+
 // DecodeString decodes an STTP string according to the defined operational modes.
 func (ds *DataSubscriber) DecodeString(data []byte, length uint32) string {
 	// Latest version of STTP only encodes to UTF8, the default for Go
