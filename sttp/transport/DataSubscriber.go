@@ -27,11 +27,23 @@ package transport
 type DataSubscriber struct {
 	subscriptionInfo SubscriptionInfo
 	encoding         OperationalEncodingEnum
+	connector        SubscriberConnector
+
+	// Callbacks
+	connectionTerminatedCallback func(*DataSubscriber)
+	autoReconnectCallback        func(*DataSubscriber)
+
+	disposing bool
 }
 
 // SetSubscriptionInfo assigns the desired SubscriptionInfo for a DataSubscriber.
 func (ds *DataSubscriber) SetSubscriptionInfo(info SubscriptionInfo) {
 	ds.subscriptionInfo = info
+}
+
+// GetSubscriberConnector gets the SubscriberConnector for a DataSubscriber.
+func (ds *DataSubscriber) GetSubscriberConnector() SubscriberConnector {
+	return ds.connector
 }
 
 // DecodeString decodes an STTP string according to the defined operational modes.
@@ -42,4 +54,9 @@ func (ds *DataSubscriber) DecodeString(data []byte, length uint32) string {
 	}
 
 	return string(data[:length])
+}
+
+// RegisterAutoReconnectCallback registers the auto-reconnect DataSubscriber callback.
+func (ds *DataSubscriber) RegisterAutoReconnectCallback(autoReconnectCallback func(*DataSubscriber)) {
+	ds.autoReconnectCallback = autoReconnectCallback
 }
