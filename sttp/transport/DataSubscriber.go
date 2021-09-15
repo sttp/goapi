@@ -92,6 +92,12 @@ type DataSubscriber struct {
 	// ConfigurationChangedCallback is called when the DataPublisher sends a notification that configuration has changed.
 	ConfigurationChangedCallback func(*DataSubscriber)
 
+	// NewMeasurementsCallback is called when DataSubscriber receives a set of new measurements from the DataPublisher.
+	NewMeasurementsCallback func(*DataSubscriber, []Measurement)
+
+	// NewBufferBlockMeasurementsCallback is called when DataSubscriber receives a set of new buffer block measurements from the DataPublisher.
+	NewBufferBlockMeasurementsCallback func(*DataSubscriber, []BufferBlockMeasurement)
+
 	// ProcessingCompleteCallback is called when the DataPublished sends a notification that temporal processing has completed,
 	// i.e., the end of a historical playback data stream has been reached.
 	ProcessingCompleteCallback func(*DataSubscriber)
@@ -121,14 +127,18 @@ type DataSubscriber struct {
 	STTPUpdatedOnInfo string
 
 	// Measurement parsing
-	signalIndexCache   []SignalIndexCache
-	cacheIndex         int32
-	timeIndex          int32
-	baseTimeOffsets    [2]int64
-	keyIVs             [][][]byte
-	tsscResetRequested bool
-	tsscSequenceNumber uint16
+	signalIndexCache     []SignalIndexCache
+	signalIndexCacheLock sync.Mutex
+	cacheIndex           int32
+	timeIndex            int32
+	baseTimeOffsets      [2]int64
+	keyIVs               [][][]byte
+	tsscResetRequested   bool
+	tsscSequenceNumber   uint16
 	//tsscDecoder      tssc.TSSCDecoder
+
+	bufferBlockExpectedSequenceNumber uint32
+	bufferBlockCache                  []BufferBlockMeasurement
 }
 
 func NewDataSubscriber() *DataSubscriber {
@@ -190,15 +200,18 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 
 	// Let any pending connect or disconnect operation complete before new connect,
 	// this prevents destruction disconnect before connection is completed
-	defer ds.connectActionMutex.Unlock()
 	ds.connectActionMutex.Lock()
+	defer ds.connectActionMutex.Unlock()
 
 	var err error
 
 	ds.disconnected = false
+	ds.subscribed = false
 	ds.totalCommandChannelBytesReceived = 0
 	ds.totalDataChannelBytesReceived = 0
 	ds.totalMeasurementsReceived = 0
+	ds.keyIVs = nil
+	ds.bufferBlockExpectedSequenceNumber = 0
 
 	if !autoReconnecting {
 		ds.connector.ResetConnection()
@@ -460,6 +473,14 @@ func (ds *DataSubscriber) dispatchErrorMessage(message string) {
 	}
 }
 
+func (ds *DataSubscriber) dispatchNewMeasurements(measurements []Measurement) {
+	if ds.NewMeasurementsCallback != nil {
+		// Do not use Go routine here, processing sequence may be important.
+		// Execute callback directly from socket processing thread:
+		ds.NewMeasurementsCallback(ds, measurements)
+	}
+}
+
 func (ds *DataSubscriber) runCommandChannelResponseThread() {
 	ds.reader = bufio.NewReader(ds.commandChannelSocket)
 
@@ -633,7 +654,8 @@ func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
 
 func (ds *DataSubscriber) handleDataStartTime(data []byte) {
 	if ds.DataStartTimeCallback != nil {
-		// Processing sequence may be important, execute callback directly from socket processing thread
+		// Do not use Go routine here, processing sequence may be important.
+		// Execute callback directly from socket processing thread:
 		ds.DataStartTimeCallback(ds, ticks.Ticks(binary.BigEndian.Uint64(data)))
 	}
 }
@@ -682,8 +704,10 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 	var signalIndexCache SignalIndexCache
 	signalIndexCache.Decode(ds, data, &ds.subscriberID)
 
+	ds.signalIndexCacheLock.Lock()
 	ds.signalIndexCache[cacheIndex] = signalIndexCache
 	ds.cacheIndex = cacheIndex
+	ds.signalIndexCacheLock.Unlock()
 
 	if version > 1 {
 		ds.SendServerCommand(ServerCommand.ConfirmSignalIndexCache)
@@ -773,6 +797,76 @@ func (ds *DataSubscriber) ParseCompactMeasurements(data []byte) {
 }
 
 func (ds *DataSubscriber) handleBufferBlock(data []byte) {
+	// Buffer block received - wrap as a BufferBlockMeasurement and expose back to consumer
+	sequenceNumber := binary.BigEndian.Uint32(data)
+	bufferCacheIndex := int(sequenceNumber - ds.bufferBlockExpectedSequenceNumber)
+	var signalIndexCacheIndex int32
+
+	if ds.Version > 1 && data[4:][0] > 0 {
+		signalIndexCacheIndex = 1
+	}
+
+	// Check if this buffer block has already been processed (e.g., mistaken retransmission due to timeout)
+	if bufferCacheIndex >= 0 && (bufferCacheIndex >= len(ds.bufferBlockCache) || ds.bufferBlockCache[bufferCacheIndex].Buffer == nil) {
+		// Send confirmation that buffer block is received
+		ds.SendServerCommandWithPayload(ServerCommand.ConfirmBufferBlock, data[:4])
+
+		if ds.Version > 1 {
+			data = data[5:]
+		} else {
+			data = data[4:]
+		}
+
+		// Get measurement key from signal index cache
+		signalIndex := int32(binary.BigEndian.Uint32(data))
+
+		ds.signalIndexCacheLock.Lock()
+		signalIndexCache := ds.signalIndexCache[signalIndexCacheIndex]
+		ds.signalIndexCacheLock.Unlock()
+
+		signalID := signalIndexCache.GetSignalID(signalIndex)
+		bufferBlockMeasurement := BufferBlockMeasurement{SignalID: signalID}
+
+		// Determine if this is the next buffer block in the sequence
+		if sequenceNumber == ds.bufferBlockExpectedSequenceNumber {
+			bufferBlockMeasurements := make([]BufferBlockMeasurement, 1+len(ds.bufferBlockCache))
+			var i int
+
+			// Add the buffer block measurement to the list of measurements to be published
+			bufferBlockMeasurements[0] = bufferBlockMeasurement
+			ds.bufferBlockExpectedSequenceNumber++
+
+			// Add cached buffer block measurements to the list of measurements to be published
+			for i = 1; i < len(ds.bufferBlockCache); i++ {
+				if ds.bufferBlockCache[i].Buffer == nil {
+					break
+				}
+
+				bufferBlockMeasurements[i] = ds.bufferBlockCache[i]
+				ds.bufferBlockExpectedSequenceNumber++
+			}
+
+			// Remove published measurements from the buffer block queue
+			if len(ds.bufferBlockCache) > 0 {
+				ds.bufferBlockCache = ds.bufferBlockCache[i:]
+			}
+
+			// Publish measurements
+			if ds.NewBufferBlockMeasurementsCallback != nil {
+				// Do not use Go routine here, processing sequence may be important.
+				// Execute callback directly from socket processing thread:
+				ds.NewBufferBlockMeasurementsCallback(ds, bufferBlockMeasurements)
+			}
+		} else {
+			// Ensure that the list has at least as many elements as it needs to cache this measurement
+			for i := len(ds.bufferBlockCache); i <= bufferCacheIndex; i++ {
+				ds.bufferBlockCache = append(ds.bufferBlockCache, BufferBlockMeasurement{})
+			}
+
+			// Insert this buffer block into the proper location in the list
+			ds.bufferBlockCache[bufferCacheIndex] = bufferBlockMeasurement
+		}
+	}
 }
 
 func (ds *DataSubscriber) handleNotify(data []byte) {
