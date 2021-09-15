@@ -58,6 +58,14 @@ type DataSubscriber struct {
 	dataChannelSocket            net.Conn
 	dataChannelResponseThread    *thread.Thread
 
+	connectActionMutex          sync.Mutex
+	connectionTerminationThread *thread.Thread
+
+	disconnectThread *thread.Thread
+	disconnecting    bool
+	disconnected     bool
+	disposing        bool
+
 	// Statistics counters
 	totalCommandChannelBytesReceived uint64
 	totalDataChannelBytesReceived    uint64
@@ -81,6 +89,16 @@ type DataSubscriber struct {
 	// DataStartTimeCallback is called with timestamp of first received measurement in a subscription.
 	DataStartTimeCallback func(*DataSubscriber, ticks.Ticks)
 
+	// ConfigurationChangedCallback is called when the DataPublisher sends a notification that configuration has changed.
+	ConfigurationChangedCallback func(*DataSubscriber)
+
+	// ProcessingCompleteCallback is called when the DataPublished sends a notification that temporal processing has completed,
+	// i.e., the end of a historical playback data stream has been reached.
+	ProcessingCompleteCallback func(*DataSubscriber)
+
+	// NotificationCallback is called when the DataPublisher sends a notification that requires receipt.
+	NotificationCallback func(*DataSubscriber, string)
+
 	// CompressPayloadData determines whether payload data is compressed using TSSC.
 	CompressPayloadData bool
 
@@ -90,42 +108,44 @@ type DataSubscriber struct {
 	// CompressSignalIndexCache determines whether the signal index cache is compressed using GZip.
 	CompressSignalIndexCache bool
 
-	// Source defines the STTP library API title for identification of DataSubscriber to a DataPublisher.
-	Source string
+	// Version defines the STTP protocol version used by this library
+	Version byte
 
-	// Version defines the STTP library API version for identification of DataSubscriber to a DataPublisher.
-	Version string
+	// STTPSourceInfo defines the STTP library API title as identification information of DataSubscriber to a DataPublisher.
+	STTPSourceInfo string
 
-	// UpdatedOn defines when the STTP library API was last updated for identification of DataSubscriber to a DataPublisher.
-	UpdatedOn string
+	// STTPVersionInfo defines the STTP library API version as identification information of DataSubscriber to a DataPublisher.
+	STTPVersionInfo string
+
+	// STTPUpdatedOnInfo defines when the STTP library API was last updated as identification information of DataSubscriber to a DataPublisher.
+	STTPUpdatedOnInfo string
 
 	// Measurement parsing
-	signalIndexCache   SignalIndexCache
+	signalIndexCache   []SignalIndexCache
+	cacheIndex         int32
 	timeIndex          int32
 	baseTimeOffsets    [2]int64
+	keyIVs             [][][]byte
 	tsscResetRequested bool
 	tsscSequenceNumber uint16
 	//tsscDecoder      tssc.TSSCDecoder
-
-	connectActionMutex          sync.Mutex
-	connectionTerminationThread *thread.Thread
-
-	disconnectThread *thread.Thread
-	disconnecting    bool
-	disconnected     bool
-	disposing        bool
 }
 
 func NewDataSubscriber() *DataSubscriber {
 	return &DataSubscriber{
-		subscriptionInfo: SubscriptionInfo{},
-		encoding:         OperationalEncoding.UTF8,
-		connector:        SubscriberConnector{},
-		readBuffer:       make([]byte, maxPacketSize),
-		writeBuffer:      make([]byte, maxPacketSize),
-		Source:           sttp.Source,
-		Version:          sttp.Version,
-		UpdatedOn:        sttp.UpdatedOn,
+		subscriptionInfo:         SubscriptionInfo{},
+		encoding:                 OperationalEncoding.UTF8,
+		connector:                SubscriberConnector{},
+		readBuffer:               make([]byte, maxPacketSize),
+		writeBuffer:              make([]byte, maxPacketSize),
+		CompressPayloadData:      true,
+		CompressMetadata:         true,
+		CompressSignalIndexCache: true,
+		Version:                  2,
+		STTPSourceInfo:           sttp.Source,
+		STTPVersionInfo:          sttp.Version,
+		STTPUpdatedOnInfo:        sttp.UpdatedOn,
+		signalIndexCache:         make([]SignalIndexCache, 2),
 	}
 }
 
@@ -148,13 +168,13 @@ func (ds *DataSubscriber) IsSubscribed() bool {
 }
 
 // DecodeString decodes an STTP string according to the defined operational modes.
-func (ds *DataSubscriber) DecodeString(data []byte, length uint32) string {
+func (ds *DataSubscriber) DecodeString(data []byte) string {
 	// Latest version of STTP only encodes to UTF8, the default for Go
 	if ds.encoding != OperationalEncoding.UTF8 {
 		panic("Go implementation of STTP only supports UTF8 string encoding")
 	}
 
-	return string(data[:length])
+	return string(data)
 }
 
 // Connect requests the the DataSubscriber initiate a connection to the DataPublisher.
@@ -227,11 +247,11 @@ func (ds *DataSubscriber) Subscribe(subscriptionInfo SubscriptionInfo) error {
 	connectionBuilder.WriteString(";requestNaNValueFilter")
 	connectionBuilder.WriteString(strconv.FormatBool(ds.subscriptionInfo.RequestNaNValueFilter))
 	connectionBuilder.WriteString(";assemblyInfo={source=")
-	connectionBuilder.WriteString(ds.Source)
+	connectionBuilder.WriteString(ds.STTPSourceInfo)
 	connectionBuilder.WriteString(";version=")
-	connectionBuilder.WriteString(ds.Version)
+	connectionBuilder.WriteString(ds.STTPVersionInfo)
 	connectionBuilder.WriteString(";updatedOn=")
-	connectionBuilder.WriteString(ds.UpdatedOn)
+	connectionBuilder.WriteString(ds.STTPUpdatedOnInfo)
 	connectionBuilder.WriteString("}")
 
 	if len(ds.subscriptionInfo.FilterExpression) > 0 {
@@ -290,7 +310,7 @@ func (ds *DataSubscriber) Subscribe(subscriptionInfo SubscriptionInfo) error {
 	binary.BigEndian.PutUint32(buffer[1:], length)
 	copy(buffer[5:], connectionString)
 
-	ds.sendServerCommandWithPayload(ServerCommand.Subscribe, buffer)
+	ds.SendServerCommandWithPayload(ServerCommand.Subscribe, buffer)
 
 	// Reset TSSC decompressor on successful (re)subscription
 	ds.tsscResetRequested = true
@@ -320,7 +340,7 @@ func (ds *DataSubscriber) Unsubscribe() {
 
 	ds.disconnecting = false
 
-	ds.sendServerCommand(ServerCommand.Unsubscribe)
+	ds.SendServerCommand(ServerCommand.Unsubscribe)
 }
 
 // Disconnect initiates a DataSubscriber disconnect sequence.
@@ -534,8 +554,10 @@ func (ds *DataSubscriber) processServerResponse(buffer []byte) {
 		ds.handleUpdateSignalIndexCache(data)
 	case ServerResponse.UpdateBaseTimes:
 		ds.handleUpdateBaseTimes(data)
+	case ServerResponse.UpdateCipherKeys:
+		ds.handleUpdateCipherKeys(data)
 	case ServerResponse.ConfigurationChanged:
-		ds.handleConfigurationChanged(data)
+		ds.handleConfigurationChanged()
 	case ServerResponse.BufferBlock:
 		ds.handleBufferBlock(data)
 	case ServerResponse.Notify:
@@ -617,6 +639,9 @@ func (ds *DataSubscriber) handleDataStartTime(data []byte) {
 }
 
 func (ds *DataSubscriber) handleProcessingComplete(data []byte) {
+	if ds.ProcessingCompleteCallback != nil {
+		go ds.ProcessingCompleteCallback(ds)
+	}
 }
 
 func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
@@ -624,11 +649,23 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 		return
 	}
 
+	version := ds.Version
+	var cacheIndex int32
+
+	// Get active cache index
+	if version > 1 {
+		if data[0] > 0 {
+			cacheIndex = 1
+		}
+
+		data = data[1:]
+	}
+
 	if ds.CompressSignalIndexCache {
-		reader, err := gzip.NewReader(bytes.NewReader([]byte(data)))
+		reader, err := gzip.NewReader(bytes.NewReader(data))
 
 		if err != nil {
-			ds.dispatchErrorMessage("Failed to decompress gzip signal index cache: " + err.Error())
+			ds.dispatchErrorMessage("Failed to created gzip reader for decompressing signal index cache: " + err.Error())
 			return
 		}
 
@@ -645,8 +682,12 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 	var signalIndexCache SignalIndexCache
 	signalIndexCache.Decode(ds, data, &ds.subscriberID)
 
-	// TODO: Implement STTP V2 handling of Signal Index Cache
-	ds.signalIndexCache = signalIndexCache
+	ds.signalIndexCache[cacheIndex] = signalIndexCache
+	ds.cacheIndex = cacheIndex
+
+	if version > 1 {
+		ds.SendServerCommand(ServerCommand.ConfirmSignalIndexCache)
+	}
 }
 
 func (ds *DataSubscriber) handleUpdateBaseTimes(data []byte) {
@@ -662,7 +703,63 @@ func (ds *DataSubscriber) handleUpdateBaseTimes(data []byte) {
 	ds.dispatchStatusMessage("Received new base time offset from publisher: " + string(timestamp))
 }
 
-func (ds *DataSubscriber) handleConfigurationChanged(data []byte) {
+func (ds *DataSubscriber) handleUpdateCipherKeys(data []byte) {
+	// Deserialize new cipher keys
+	keyIVs := make([][][]byte, 2)
+	keyIVs[evenKey] = make([][]byte, 2)
+	keyIVs[oddKey] = make([][]byte, 2)
+
+	// Move past active cipher index (not currently used anywhere else)
+	var index uint32 = 1
+
+	// Read even key size
+	bufferLen := binary.BigEndian.Uint32(data[index:])
+	index += 4
+
+	// Read even key
+	keyIVs[evenKey][keyIndex] = make([]byte, bufferLen)
+	copy(keyIVs[evenKey][keyIndex], data[index:])
+	index += bufferLen
+
+	// Read even initialization vector size
+	bufferLen = binary.BigEndian.Uint32(data[index:])
+	index += 4
+
+	// Read even initialization vector
+	keyIVs[evenKey][ivIndex] = make([]byte, bufferLen)
+	copy(keyIVs[evenKey][ivIndex], data[index:])
+	index += bufferLen
+
+	// Read odd key size
+	bufferLen = binary.BigEndian.Uint32(data[index:])
+	index += 4
+
+	// Read odd key
+	keyIVs[oddKey][keyIndex] = make([]byte, bufferLen)
+	copy(keyIVs[oddKey][keyIndex], data[index:])
+	index += bufferLen
+
+	// Read odd initialization vector size
+	bufferLen = binary.BigEndian.Uint32(data[index:])
+	index += 4
+
+	// Read odd initialization vector
+	keyIVs[oddKey][ivIndex] = make([]byte, bufferLen)
+	copy(keyIVs[oddKey][ivIndex], data[index:])
+	//index += bufferLen
+
+	// Exchange keys
+	ds.keyIVs = keyIVs
+
+	ds.dispatchStatusMessage("Successfully established new cipher keys for UDP data packet transmissions.")
+}
+
+func (ds *DataSubscriber) handleConfigurationChanged() {
+	ds.dispatchStatusMessage("Received notification from publisher that configuration has changed.")
+
+	if ds.ConfigurationChangedCallback != nil {
+		go ds.ConfigurationChangedCallback(ds)
+	}
 }
 
 func (ds *DataSubscriber) handleDataPacket(data []byte) {
@@ -679,22 +776,36 @@ func (ds *DataSubscriber) handleBufferBlock(data []byte) {
 }
 
 func (ds *DataSubscriber) handleNotify(data []byte) {
+	// Skip the 4-byte hash and decode notification message
+	message := ds.DecodeString(data[4:])
+
+	ds.dispatchStatusMessage("NOTIFICATION: " + message)
+
+	if ds.NotificationCallback != nil {
+		go ds.NotificationCallback(ds, message)
+	}
+
+	// Send confirmation of receipt of the notification with 4-byte hash
+	ds.SendServerCommandWithPayload(ServerCommand.ConfirmNotification, data[:4])
 }
 
-func (ds *DataSubscriber) sendServerCommand(commandCode ServerCommandEnum) {
-	ds.sendServerCommandWithPayload(commandCode, nil)
+// SendServerCommand sends a server command code to the DataPublisher with no payload.
+func (ds *DataSubscriber) SendServerCommand(commandCode ServerCommandEnum) {
+	ds.SendServerCommandWithPayload(commandCode, nil)
 }
 
-func (ds *DataSubscriber) sendServerCommandWithMessage(commandCode ServerCommandEnum, message string) {
+// SendServerCommandWithMessage sends a server command code to the DataPublisher along with the specified string message as payload.
+func (ds *DataSubscriber) SendServerCommandWithMessage(commandCode ServerCommandEnum, message string) {
 	// Latest version of STTP only encodes to UTF8, the default for Go
 	if ds.encoding != OperationalEncoding.UTF8 {
 		panic("Go implementation of STTP only supports UTF8 string encoding")
 	}
 
-	ds.sendServerCommandWithPayload(commandCode, []byte(message))
+	ds.SendServerCommandWithPayload(commandCode, []byte(message))
 }
 
-func (ds *DataSubscriber) sendServerCommandWithPayload(commandCode ServerCommandEnum, data []byte) {
+// SendServerCommandWithPayload sends a server command code to the DataPublisher along with the specified data payload.
+func (ds *DataSubscriber) SendServerCommandWithPayload(commandCode ServerCommandEnum, data []byte) {
 	if !ds.connected {
 		return
 	}
@@ -727,7 +838,7 @@ func (ds *DataSubscriber) sendServerCommandWithPayload(commandCode ServerCommand
 func (ds *DataSubscriber) sendOperationalModes() {
 	var operationalModes OperationalModesEnum = OperationalModesEnum(CompressionModes.GZip)
 
-	operationalModes |= OperationalModes.VersionMask & 2
+	operationalModes |= OperationalModes.VersionMask & OperationalModesEnum(ds.Version)
 	operationalModes |= OperationalModesEnum(ds.encoding)
 
 	// TSSC compression only works with stateful connections
@@ -746,7 +857,7 @@ func (ds *DataSubscriber) sendOperationalModes() {
 	buffer := make([]byte, 4)
 	binary.BigEndian.PutUint32(buffer, uint32(operationalModes))
 
-	ds.sendServerCommandWithPayload(ServerCommand.DefineOperationalModes, buffer)
+	ds.SendServerCommandWithPayload(ServerCommand.DefineOperationalModes, buffer)
 }
 
 // GetTotalCommandChannelBytesReceived gets the total number of bytes received via the command channel since last connection.

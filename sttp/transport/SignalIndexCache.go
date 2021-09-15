@@ -175,22 +175,22 @@ func (sic *SignalIndexCache) Decode(subscriber *DataSubscriber, buffer []byte, s
 
 	for i = 0; i < referenceCount; i++ {
 		// Signal index
-		var signalIndex int32 = int32(binary.BigEndian.Uint32(buffer[offset:]))
+		signalIndex := int32(binary.BigEndian.Uint32(buffer[offset:]))
 		offset += 4
 
 		// Signal ID
-		var signalID guid.Guid = guid.FromBytes(buffer[offset:], false)
+		signalID := guid.FromBytes(buffer[offset:], false)
 		offset += 16
 
 		// Source
-		var sourceSize uint32 = binary.BigEndian.Uint32(buffer[offset:])
+		sourceSize := binary.BigEndian.Uint32(buffer[offset:])
 		offset += 4
 
-		var source string = subscriber.DecodeString(buffer[offset:], sourceSize)
+		source := subscriber.DecodeString(buffer[offset:sourceSize])
 		offset += sourceSize
 
 		// ID
-		var id uint64 = binary.BigEndian.Uint64(buffer[offset:])
+		id := binary.BigEndian.Uint64(buffer[offset:])
 		offset += 8
 
 		sic.AddMeasurementKey(signalIndex, signalID, source, id, 1)

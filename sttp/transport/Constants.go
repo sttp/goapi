@@ -27,6 +27,10 @@ const (
 	maxPacketSize          = 32768
 	payloadHeaderSize      = 4
 	responseHeaderSize     = 6
+	evenKey                = 0
+	oddKey                 = 1
+	keyIndex               = 0
+	ivIndex                = 1
 	defaultLagTime         = 5.0
 	defaultLeadTime        = 5.0
 	defaultPublishInterval = 1.0
