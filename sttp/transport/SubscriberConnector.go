@@ -82,7 +82,7 @@ const ConnectFailed ConnectStatus = 0
 const ConnectCanceled ConnectStatus = -1
 
 func autoReconnect(subscriber *DataSubscriber) {
-	sc := subscriber.GetSubscriberConnector()
+	sc := subscriber.connector
 
 	if sc.cancel || subscriber.disposing {
 		return
@@ -176,13 +176,12 @@ func (sc *SubscriberConnector) waitForRetry(subscriber *DataSubscriber) {
 	<-sc.waitTimer.C
 }
 
-// Connect initiates a connection sequence for a DataSubscriber for the specified SubscriptionInfo.
-func (sc *SubscriberConnector) Connect(subscriber *DataSubscriber, info SubscriptionInfo) ConnectStatus {
+// Connect initiates a connection sequence for a DataSubscriber
+func (sc *SubscriberConnector) Connect(subscriber *DataSubscriber) ConnectStatus {
 	if sc.cancel {
 		return ConnectCanceled
 	}
 
-	subscriber.SetSubscriptionInfo(info)
 	return sc.connect(subscriber, false)
 }
 
@@ -208,7 +207,7 @@ func (sc *SubscriberConnector) connect(subscriber *DataSubscriber, autoReconnect
 			return ConnectCanceled
 		}
 
-		err := subscriber.Connect(sc.Hostname, sc.Port, autoReconnecting)
+		err := subscriber.connect(sc.Hostname, sc.Port, autoReconnecting)
 
 		if err == nil {
 			break

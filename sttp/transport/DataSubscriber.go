@@ -24,17 +24,50 @@
 package transport
 
 import (
+	"bufio"
+	"bytes"
+	"compress/gzip"
+	"encoding/binary"
+	"errors"
+	"io"
 	"net"
 	"strconv"
+	"strings"
+	"sync"
+
+	"github.com/sttp/goapi/sttp"
+	"github.com/sttp/goapi/sttp/guid"
+	"github.com/sttp/goapi/sttp/thread"
+	"github.com/sttp/goapi/sttp/ticks"
 )
 
 // DataSubscriber represents a client subscription for an STTP connection.
 type DataSubscriber struct {
 	subscriptionInfo SubscriptionInfo
+	subscriberID     guid.Guid
 	encoding         OperationalEncodingEnum
 	connector        SubscriberConnector
 	connected        bool
-	connection       net.Conn
+	subscribed       bool
+
+	commandChannelSocket         net.Conn
+	commandChannelResponseThread *thread.Thread
+	readBuffer                   []byte
+	reader                       *bufio.Reader
+	writeBuffer                  []byte
+	dataChannelSocket            net.Conn
+	dataChannelResponseThread    *thread.Thread
+
+	// Statistics counters
+	totalCommandChannelBytesReceived uint64
+	totalDataChannelBytesReceived    uint64
+	totalMeasurementsReceived        uint64
+
+	// StatusMessageCallback is called when a informational message should be logged.
+	StatusMessageCallback func(*DataSubscriber, string)
+
+	// ErrorMessageCallback is called when an error message should be logged.
+	ErrorMessageCallback func(*DataSubscriber, string)
 
 	// ConnectionTerminatedCallback is called when DataSubscriber terminates its connection.
 	ConnectionTerminatedCallback func(*DataSubscriber)
@@ -42,21 +75,76 @@ type DataSubscriber struct {
 	// AutoReconnectCallback is called when DataSubscriber automatically reconnects.
 	AutoReconnectCallback func(*DataSubscriber)
 
-	disposing bool
+	// MetadataReceivedCallback is called when DataSubscriber receives a metadata response.
+	MetadataReceivedCallback func(*DataSubscriber, []byte)
+
+	// DataStartTimeCallback is called with timestamp of first received measurement in a subscription.
+	DataStartTimeCallback func(*DataSubscriber, ticks.Ticks)
+
+	// CompressPayloadData determines whether payload data is compressed using TSSC.
+	CompressPayloadData bool
+
+	// CompressMetadata determines whether the metadata transfer is compressed using GZip.
+	CompressMetadata bool
+
+	// CompressSignalIndexCache determines whether the signal index cache is compressed using GZip.
+	CompressSignalIndexCache bool
+
+	// Source defines the STTP library API title for identification of DataSubscriber to a DataPublisher.
+	Source string
+
+	// Version defines the STTP library API version for identification of DataSubscriber to a DataPublisher.
+	Version string
+
+	// UpdatedOn defines when the STTP library API was last updated for identification of DataSubscriber to a DataPublisher.
+	UpdatedOn string
+
+	// Measurement parsing
+	signalIndexCache   SignalIndexCache
+	timeIndex          int32
+	baseTimeOffsets    [2]int64
+	tsscResetRequested bool
+	tsscSequenceNumber uint16
+	//tsscDecoder      tssc.TSSCDecoder
+
+	connectActionMutex          sync.Mutex
+	connectionTerminationThread *thread.Thread
+
+	disconnectThread *thread.Thread
+	disconnecting    bool
+	disconnected     bool
+	disposing        bool
 }
 
-// SetSubscriptionInfo assigns the desired SubscriptionInfo for a DataSubscriber.
-func (ds *DataSubscriber) SetSubscriptionInfo(info SubscriptionInfo) {
-	ds.subscriptionInfo = info
+func NewDataSubscriber() *DataSubscriber {
+	return &DataSubscriber{
+		subscriptionInfo: SubscriptionInfo{},
+		encoding:         OperationalEncoding.UTF8,
+		connector:        SubscriberConnector{},
+		readBuffer:       make([]byte, maxPacketSize),
+		writeBuffer:      make([]byte, maxPacketSize),
+		Source:           sttp.Source,
+		Version:          sttp.Version,
+		UpdatedOn:        sttp.UpdatedOn,
+	}
 }
 
-// GetSubscriberConnector gets the SubscriberConnector for a DataSubscriber.
-func (ds *DataSubscriber) GetSubscriberConnector() SubscriberConnector {
-	return ds.connector
+// Dispose cleanly shuts down a DataSubscriber that is no longer being used, e.g.,
+// during a normal application exit.
+func (ds *DataSubscriber) Dispose() {
+	ds.disposing = true
+	ds.connector.Cancel()
+	ds.disconnect(true, false)
 }
 
+// IsConnected determines if a DataSubscriber is currently connected to a DataPublisher.
 func (ds *DataSubscriber) IsConnected() bool {
 	return ds.connected
+}
+
+// IsSubscribed determines if a DataSubscriber is currently subscribed to a data stream.
+func (ds *DataSubscriber) IsSubscribed() bool {
+	return ds.subscribed
 }
 
 // DecodeString decodes an STTP string according to the defined operational modes.
@@ -69,14 +157,613 @@ func (ds *DataSubscriber) DecodeString(data []byte, length uint32) string {
 	return string(data[:length])
 }
 
-func (ds *DataSubscriber) Connect(hostName string, port uint16, autoReconnecting bool) error {
+// Connect requests the the DataSubscriber initiate a connection to the DataPublisher.
+func (ds *DataSubscriber) Connect(hostName string, port uint16) error {
+	// User requests to connection are not an auto-reconnect attempt
+	return ds.connect(hostName, port, false)
+}
+
+func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting bool) error {
 	if ds.connected {
 		panic("Subscriber is already connected; disconnect first")
 	}
 
+	// Let any pending connect or disconnect operation complete before new connect,
+	// this prevents destruction disconnect before connection is completed
+	defer ds.connectActionMutex.Unlock()
+	ds.connectActionMutex.Lock()
+
 	var err error
 
-	ds.connection, err = net.Dial("tcp", hostName+":"+strconv.Itoa(int(port)))
+	ds.disconnected = false
+	ds.totalCommandChannelBytesReceived = 0
+	ds.totalDataChannelBytesReceived = 0
+	ds.totalMeasurementsReceived = 0
+
+	if !autoReconnecting {
+		ds.connector.ResetConnection()
+	}
+
+	ds.connector.connectionRefused = false
+	ds.commandChannelSocket, err = net.Dial("tcp", hostName+":"+strconv.Itoa(int(port)))
+
+	if err == nil {
+		ds.commandChannelResponseThread = thread.NewThread(ds.runCommandChannelResponseThread)
+		ds.connected = true
+		ds.sendOperationalModes()
+	}
 
 	return err
+}
+
+// Subscribe notifies the DataPublisher that a DataSubscriber would like to start receiving streaming data.
+func (ds *DataSubscriber) Subscribe(subscriptionInfo SubscriptionInfo) error {
+	if !ds.connected {
+		return errors.New("subscriber is not connected; cannot subscribe")
+	}
+
+	ds.subscriptionInfo = subscriptionInfo
+
+	// Make sure to unsubscribe before attempting another
+	// subscription so we don't leave UDP sockets open
+	if ds.subscribed {
+		ds.Unsubscribe()
+	}
+
+	ds.totalMeasurementsReceived = 0
+
+	var connectionBuilder strings.Builder
+
+	connectionBuilder.WriteString("throttled=")
+	connectionBuilder.WriteString(strconv.FormatBool(ds.subscriptionInfo.Throttled))
+	connectionBuilder.WriteString(";publishInterval=")
+	connectionBuilder.WriteString(strconv.FormatFloat(ds.subscriptionInfo.PublishInterval, 'f', 6, 64))
+	connectionBuilder.WriteString(";includeTime=")
+	connectionBuilder.WriteString(strconv.FormatBool(ds.subscriptionInfo.IncludeTime))
+	connectionBuilder.WriteString(";processingInterval=")
+	connectionBuilder.WriteString(strconv.FormatInt(int64(ds.subscriptionInfo.ProcessingInterval), 10))
+	connectionBuilder.WriteString(";useMillisecondResolution=")
+	connectionBuilder.WriteString(strconv.FormatBool(ds.subscriptionInfo.UseMillisecondResolution))
+	connectionBuilder.WriteString(";requestNaNValueFilter")
+	connectionBuilder.WriteString(strconv.FormatBool(ds.subscriptionInfo.RequestNaNValueFilter))
+	connectionBuilder.WriteString(";assemblyInfo={source=")
+	connectionBuilder.WriteString(ds.Source)
+	connectionBuilder.WriteString(";version=")
+	connectionBuilder.WriteString(ds.Version)
+	connectionBuilder.WriteString(";updatedOn=")
+	connectionBuilder.WriteString(ds.UpdatedOn)
+	connectionBuilder.WriteString("}")
+
+	if len(ds.subscriptionInfo.FilterExpression) > 0 {
+		connectionBuilder.WriteString(";filterExpression={")
+		connectionBuilder.WriteString(ds.subscriptionInfo.FilterExpression)
+		connectionBuilder.WriteString("}")
+	}
+
+	if ds.subscriptionInfo.UdpDataChannel {
+		udpPort := strconv.Itoa(int(ds.subscriptionInfo.DataChannelLocalPort))
+		udpAddr, err := net.ResolveUDPAddr("udp", ":"+udpPort)
+
+		if err != nil {
+			return errors.New("Failed to resolve UDP address for port " + udpPort + ": " + err.Error())
+		}
+
+		ds.dataChannelSocket, err = net.ListenUDP("udp", udpAddr)
+
+		if err != nil {
+			return errors.New("Failed to open UDP socket for port " + udpPort + ": " + err.Error())
+		}
+
+		ds.dataChannelResponseThread = thread.NewThread(ds.runDataChannelResponseThread)
+		ds.dataChannelResponseThread.Start()
+
+		connectionBuilder.WriteString(";dataChannel={localport=")
+		connectionBuilder.WriteString(udpPort)
+		connectionBuilder.WriteString("}")
+	}
+
+	if len(ds.subscriptionInfo.StartTime) > 0 {
+		connectionBuilder.WriteString(";startTimeConstraint=")
+		connectionBuilder.WriteString(ds.subscriptionInfo.StartTime)
+	}
+
+	if len(ds.subscriptionInfo.StopTime) > 0 {
+		connectionBuilder.WriteString(";stopTimeConstraint=")
+		connectionBuilder.WriteString(ds.subscriptionInfo.StopTime)
+	}
+
+	if len(ds.subscriptionInfo.ConstraintParameters) > 0 {
+		connectionBuilder.WriteString(";timeConstraintParameters=")
+		connectionBuilder.WriteString(ds.subscriptionInfo.ConstraintParameters)
+	}
+
+	if len(ds.subscriptionInfo.ExtraConnectionStringParameters) > 0 {
+		connectionBuilder.WriteRune(';')
+		connectionBuilder.WriteString(ds.subscriptionInfo.ExtraConnectionStringParameters)
+	}
+
+	connectionString := connectionBuilder.String()
+	length := uint32(len(connectionString))
+	buffer := make([]byte, 5+length)
+
+	buffer[0] = byte(DataPacketFlags.Compact)
+	binary.BigEndian.PutUint32(buffer[1:], length)
+	copy(buffer[5:], connectionString)
+
+	ds.sendServerCommandWithPayload(ServerCommand.Subscribe, buffer)
+
+	// Reset TSSC decompressor on successful (re)subscription
+	ds.tsscResetRequested = true
+
+	return nil
+}
+
+// Unsubscribe notifies the DataPublisher that a DataSubscriber would like to stop receiving streaming data.
+func (ds *DataSubscriber) Unsubscribe() {
+	if ds.connected {
+		return
+	}
+
+	ds.disconnecting = true
+
+	if ds.dataChannelSocket != nil {
+		err := ds.dataChannelSocket.Close()
+
+		if err != nil {
+			ds.dispatchErrorMessage("Exception while disconnecting data subscriber UDP data channel: " + err.Error())
+		}
+	}
+
+	if ds.dataChannelResponseThread != nil {
+		ds.dataChannelResponseThread.Join()
+	}
+
+	ds.disconnecting = false
+
+	ds.sendServerCommand(ServerCommand.Unsubscribe)
+}
+
+// Disconnect initiates a DataSubscriber disconnect sequence.
+func (ds *DataSubscriber) Disconnect() {
+	if ds.disconnecting {
+		return
+	}
+
+	// Disconnect method executes shutdown on a separate thread without stopping to prevent
+	// issues where user may call disconnect method from a dispatched event thread. Also,
+	// user requests to disconnect are not an auto-reconnect attempt
+	ds.disconnect(false, false)
+}
+
+func (ds *DataSubscriber) disconnect(joinThread bool, autoReconnecting bool) {
+	// Check if disconnect thread is running or subscriber has already disconnected
+	if ds.disconnecting {
+		if !autoReconnecting && ds.disconnecting && !ds.disconnected {
+			ds.connector.Cancel()
+		}
+
+		if joinThread && !ds.disconnected && ds.disconnectThread != nil {
+			ds.disconnectThread.Join()
+		}
+
+		return
+	}
+
+	// Notify running threads that the subscriber is disconnecting, i.e., disconnect thread is active
+	ds.disconnecting = true
+	ds.connected = false
+	ds.subscribed = false
+
+	ds.disconnectThread = thread.NewThread(func() {
+		// Let any pending connect operation complete before disconnect - prevents destruction disconnect before connection is completed
+		if !autoReconnecting {
+			ds.connector.Cancel()
+			ds.connectionTerminationThread.Join()
+			ds.connectActionMutex.Lock()
+		}
+
+		var err error
+
+		// Release queues and close sockets so that threads can shut down gracefully
+		if ds.commandChannelSocket != nil {
+			err = ds.commandChannelSocket.Close()
+
+			if err != nil {
+				ds.dispatchErrorMessage("Exception while disconnecting data subscriber TCP command channel: " + err.Error())
+			}
+		}
+
+		if ds.dataChannelSocket != nil {
+			err = ds.dataChannelSocket.Close()
+
+			if err != nil {
+				ds.dispatchErrorMessage("Exception while disconnecting data subscriber UDP data channel: " + err.Error())
+			}
+		}
+
+		// Join with all threads to guarantee their completion before returning control to the caller
+		if ds.commandChannelResponseThread != nil {
+			ds.commandChannelResponseThread.Join()
+		}
+
+		if ds.dataChannelResponseThread != nil {
+			ds.dataChannelResponseThread.Join()
+		}
+
+		// Notify consumers of disconnect
+		if ds.ConnectionTerminatedCallback != nil {
+			ds.ConnectionTerminatedCallback(ds)
+		}
+
+		// Disconnect complete
+		ds.disconnected = true
+		ds.disconnecting = false
+
+		if autoReconnecting {
+			// Handling auto-connect callback separately from connection terminated callback
+			// since they serve two different use cases and current implementation does not
+			// support multiple callback registrations
+			if ds.AutoReconnectCallback != nil && !ds.disposing {
+				ds.AutoReconnectCallback(ds)
+			}
+		} else {
+			ds.connectActionMutex.Unlock()
+		}
+	})
+
+	if joinThread {
+		ds.disconnectThread.Join()
+	}
+}
+
+// Dispatcher for connection terminated. This is called from its own separate thread
+// in order to cleanly shut down the subscriber in case the connection was terminated
+// by the peer. Additionally, this allows the user to automatically reconnect in their
+// callback function without having to spawn their own separate thread.
+func (ds *DataSubscriber) dispatchConnectionTerminated() {
+	ds.connectionTerminationThread = thread.NewThread(func() {
+		ds.disconnect(false, true)
+	})
+
+	ds.connectionTerminationThread.Start()
+}
+
+func (ds *DataSubscriber) dispatchStatusMessage(message string) {
+	if ds.StatusMessageCallback != nil {
+		go ds.StatusMessageCallback(ds, message)
+	}
+}
+
+func (ds *DataSubscriber) dispatchErrorMessage(message string) {
+	if ds.ErrorMessageCallback != nil {
+		go ds.ErrorMessageCallback(ds, message)
+	}
+}
+
+func (ds *DataSubscriber) runCommandChannelResponseThread() {
+	ds.reader = bufio.NewReader(ds.commandChannelSocket)
+
+	for ds.connected {
+		ds.readPayloadHeader(io.ReadFull(ds.reader, ds.readBuffer[:payloadHeaderSize]))
+	}
+}
+
+func (ds *DataSubscriber) readPayloadHeader(bytesTransferred int, err error) {
+	if ds.disconnecting {
+		return
+	}
+
+	if err != nil {
+		// Read error, connection may have been closed by peer; terminate connection
+		ds.dispatchConnectionTerminated()
+		return
+	}
+
+	// Gather statistics
+	ds.totalCommandChannelBytesReceived += uint64(bytesTransferred)
+
+	packetSize := binary.BigEndian.Uint32(ds.readBuffer)
+
+	if int(packetSize) > cap(ds.readBuffer) {
+		ds.readBuffer = ds.readBuffer[:packetSize]
+	}
+
+	// Read packet (payload body)
+	// This read method is guaranteed not to return until the
+	// requested size has been read or an error has occurred.
+	ds.readPacket(io.ReadFull(ds.reader, ds.readBuffer[:packetSize]))
+}
+
+func (ds *DataSubscriber) readPacket(bytesTransferred int, err error) {
+	if ds.disconnecting {
+		return
+	}
+
+	if err != nil {
+		// Read error, connection may have been closed by peer; terminate connection
+		ds.dispatchConnectionTerminated()
+		return
+	}
+
+	// Gather statistics
+	ds.totalCommandChannelBytesReceived += uint64(bytesTransferred)
+
+	// Process response
+	ds.processServerResponse(ds.readBuffer[:bytesTransferred])
+}
+
+// If the user defines a separate UDP channel for their
+// subscription, data packets get handled from this thread.
+func (ds *DataSubscriber) runDataChannelResponseThread() {
+	reader := bufio.NewReader(ds.dataChannelSocket)
+	buffer := make([]byte, maxPacketSize)
+
+	for ds.connected {
+		length, err := reader.Read(buffer)
+
+		if err != nil {
+			ds.dispatchErrorMessage("Error reading data from command channel: " + err.Error())
+			break
+		}
+
+		// Gather statistics
+		ds.totalDataChannelBytesReceived += uint64(length)
+
+		// Process response
+		ds.processServerResponse(buffer[:length])
+	}
+}
+
+func (ds *DataSubscriber) processServerResponse(buffer []byte) {
+	data := buffer[responseHeaderSize:]
+	responseCode := ServerResponseEnum(buffer[0])
+	commandCode := ServerCommandEnum(buffer[1])
+
+	switch responseCode {
+	case ServerResponse.Succeeded:
+		ds.handleSucceeded(commandCode, data)
+	case ServerResponse.Failed:
+		ds.handleFailed(commandCode, data)
+	case ServerResponse.DataPacket:
+		ds.handleDataPacket(data)
+	case ServerResponse.DataStartTime:
+		ds.handleDataStartTime(data)
+	case ServerResponse.ProcessingComplete:
+		ds.handleProcessingComplete(data)
+	case ServerResponse.UpdateSignalIndexCache:
+		ds.handleUpdateSignalIndexCache(data)
+	case ServerResponse.UpdateBaseTimes:
+		ds.handleUpdateBaseTimes(data)
+	case ServerResponse.ConfigurationChanged:
+		ds.handleConfigurationChanged(data)
+	case ServerResponse.BufferBlock:
+		ds.handleBufferBlock(data)
+	case ServerResponse.Notify:
+		ds.handleNotify(data)
+	case ServerResponse.NoOP:
+		// NoOP handled
+	default:
+		var message strings.Builder
+		message.WriteString("Encountered unexpected server response code: 0x")
+		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
+		ds.dispatchErrorMessage(message.String())
+	}
+}
+
+func (ds *DataSubscriber) handleSucceeded(commandCode ServerCommandEnum, data []byte) {
+	switch commandCode {
+	case ServerCommand.MetadataRefresh:
+		ds.handleMetadataRefresh(data)
+	case ServerCommand.Subscribe, ServerCommand.Unsubscribe:
+		ds.subscribed = commandCode == ServerCommand.Subscribe
+		// Fallthrough on these messages because there is
+		// still an associated message to be processed.
+		fallthrough
+	case ServerCommand.RotateCipherKeys, ServerCommand.UpdateProcessingInterval:
+		// Each of these responses come with a message that will
+		// be delivered to the user via the status message callback.
+		var message strings.Builder
+		message.WriteString("Received success code in response to server command 0x")
+		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
+
+		if data != nil {
+			message.Write(data)
+		}
+
+		ds.dispatchStatusMessage(message.String())
+	default:
+		// If we don't know what the message is, we can't interpret
+		// the data sent with the packet. Deliver an error message
+		// to the user via the error message callback.
+		var message strings.Builder
+		message.WriteString("Received success code in response to unknown server command 0x")
+		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
+		ds.dispatchErrorMessage(message.String())
+	}
+}
+
+func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byte) {
+	if data == nil {
+		return
+	}
+
+	var message strings.Builder
+
+	if commandCode == ServerCommand.Connect {
+		ds.connector.connectionRefused = true
+	} else {
+		message.WriteString("Received failure code in response to server command 0x")
+		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
+	}
+
+	if data != nil {
+		message.Write(data)
+	}
+
+	ds.dispatchErrorMessage(message.String())
+}
+
+func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
+	if ds.MetadataReceivedCallback != nil {
+		go ds.MetadataReceivedCallback(ds, data)
+	}
+}
+
+func (ds *DataSubscriber) handleDataStartTime(data []byte) {
+	if ds.DataStartTimeCallback != nil {
+		// Processing sequence may be important, execute callback directly from socket processing thread
+		ds.DataStartTimeCallback(ds, ticks.Ticks(binary.BigEndian.Uint64(data)))
+	}
+}
+
+func (ds *DataSubscriber) handleProcessingComplete(data []byte) {
+}
+
+func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
+	if data == nil {
+		return
+	}
+
+	if ds.CompressSignalIndexCache {
+		reader, err := gzip.NewReader(bytes.NewReader([]byte(data)))
+
+		if err != nil {
+			ds.dispatchErrorMessage("Failed to decompress gzip signal index cache: " + err.Error())
+			return
+		}
+
+		defer reader.Close()
+
+		data, err = io.ReadAll(reader)
+
+		if err != nil {
+			ds.dispatchErrorMessage("Failed to decompress gzip signal index cache: " + err.Error())
+			return
+		}
+	}
+
+	var signalIndexCache SignalIndexCache
+	signalIndexCache.Decode(ds, data, &ds.subscriberID)
+
+	// TODO: Implement STTP V2 handling of Signal Index Cache
+	ds.signalIndexCache = signalIndexCache
+}
+
+func (ds *DataSubscriber) handleUpdateBaseTimes(data []byte) {
+	if data == nil {
+		return
+	}
+
+	ds.timeIndex = int32(binary.BigEndian.Uint32(data))
+	ds.baseTimeOffsets[0] = int64(binary.BigEndian.Uint64(data[4:]))
+	ds.baseTimeOffsets[1] = int64(binary.BigEndian.Uint64(data[8:]))
+
+	timestamp, _ := ticks.ToTime(ticks.Ticks(ds.baseTimeOffsets[ds.timeIndex^1])).MarshalText()
+	ds.dispatchStatusMessage("Received new base time offset from publisher: " + string(timestamp))
+}
+
+func (ds *DataSubscriber) handleConfigurationChanged(data []byte) {
+}
+
+func (ds *DataSubscriber) handleDataPacket(data []byte) {
+	// Processing sequence may be important, execute callback directly from socket processing thread
+}
+
+func (ds *DataSubscriber) ParseTSSCMeasurements(data []byte) {
+}
+
+func (ds *DataSubscriber) ParseCompactMeasurements(data []byte) {
+}
+
+func (ds *DataSubscriber) handleBufferBlock(data []byte) {
+}
+
+func (ds *DataSubscriber) handleNotify(data []byte) {
+}
+
+func (ds *DataSubscriber) sendServerCommand(commandCode ServerCommandEnum) {
+	ds.sendServerCommandWithPayload(commandCode, nil)
+}
+
+func (ds *DataSubscriber) sendServerCommandWithMessage(commandCode ServerCommandEnum, message string) {
+	// Latest version of STTP only encodes to UTF8, the default for Go
+	if ds.encoding != OperationalEncoding.UTF8 {
+		panic("Go implementation of STTP only supports UTF8 string encoding")
+	}
+
+	ds.sendServerCommandWithPayload(commandCode, []byte(message))
+}
+
+func (ds *DataSubscriber) sendServerCommandWithPayload(commandCode ServerCommandEnum, data []byte) {
+	if !ds.connected {
+		return
+	}
+
+	var packetSize uint32 = uint32(len(data)) + 1
+	var commandBufferSize uint32 = packetSize + payloadHeaderSize
+
+	if int(commandBufferSize) > cap(ds.writeBuffer) {
+		ds.writeBuffer = ds.writeBuffer[:commandBufferSize]
+	}
+
+	// Insert packet size
+	binary.BigEndian.PutUint32(ds.writeBuffer, packetSize)
+
+	// Insert command code
+	ds.writeBuffer[4] = byte(commandCode)
+
+	if data != nil {
+		for i := 0; i < len(data); i++ {
+			ds.writeBuffer[5+i] = data[i]
+		}
+	}
+
+	if _, err := ds.dataChannelSocket.Write(ds.writeBuffer[:commandBufferSize]); err != nil {
+		// Write error, connection may have been closed by peer; terminate connection
+		ds.dispatchConnectionTerminated()
+	}
+}
+
+func (ds *DataSubscriber) sendOperationalModes() {
+	var operationalModes OperationalModesEnum = OperationalModesEnum(CompressionModes.GZip)
+
+	operationalModes |= OperationalModes.VersionMask & 2
+	operationalModes |= OperationalModesEnum(ds.encoding)
+
+	// TSSC compression only works with stateful connections
+	if ds.CompressPayloadData && !ds.subscriptionInfo.UdpDataChannel {
+		operationalModes |= OperationalModes.CompressPayloadData | OperationalModesEnum(CompressionModes.TSSC)
+	}
+
+	if ds.CompressMetadata {
+		operationalModes |= OperationalModes.CommpressMetadata
+	}
+
+	if ds.CompressSignalIndexCache {
+		operationalModes |= OperationalModes.CompressSignalIndexCache
+	}
+
+	buffer := make([]byte, 4)
+	binary.BigEndian.PutUint32(buffer, uint32(operationalModes))
+
+	ds.sendServerCommandWithPayload(ServerCommand.DefineOperationalModes, buffer)
+}
+
+// GetTotalCommandChannelBytesReceived gets the total number of bytes received via the command channel since last connection.
+func (ds *DataSubscriber) GetTotalCommandChannelBytesReceived() uint64 {
+	return ds.totalCommandChannelBytesReceived
+}
+
+// GetTotalDataChannelBytesReceived gets the total number of bytes received via the data channel since last connection.
+func (ds *DataSubscriber) GetTotalDataChannelBytesReceived() uint64 {
+	if ds.subscriptionInfo.UdpDataChannel {
+		return ds.totalDataChannelBytesReceived
+	}
+
+	return ds.totalCommandChannelBytesReceived
+}
+
+// GetTotalMeasurementsReceived gets the total number of measurements received since last subscription.
+func (ds *DataSubscriber) GetTotalMeasurementsReceived() uint64 {
+	return ds.totalMeasurementsReceived
 }
