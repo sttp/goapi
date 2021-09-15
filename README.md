@@ -11,14 +11,12 @@
 go get https://github.com/sttp/goapi
 ```
 
-## Docs and Support
-Documentation is available at: https://sttp.github.io/goapi/
-
+## Support
 For discussion and support, [open an issue](https://github.com/sttp/goapi/issues) or join our [discussions channel](https://github.com/sttp/goapi/discussions) on GitHub.
-
 
 ## Links
 
-* [STTP (IEEE 2664)](https://standards.ieee.org/project/2664.html)
-* [STTP Documentation](https://sttp.github.io/documentation/)
+* [STTP API Documentation](https://sttp.github.io/goapi/)
+* [STTP (IEEE 2664) Standard](https://standards.ieee.org/project/2664.html)
+* [General STTP Documentation](https://sttp.github.io/documentation/)
 * [Phasor Protocols Comparison](https://www.osti.gov/servlets/purl/1504742)
