@@ -24,12 +24,12 @@
 package transport
 
 const (
-	maxPacketSize          uint32  = 32768
-	payloadHeaderSize      uint32  = 4
-	responseHeaderSize     uint32  = 6
-	defaultLagTime         float64 = 5.0
-	defaultLeadTime        float64 = 5.0
-	defaultPublishInterval float64 = 1.0
+	maxPacketSize          = 32768
+	payloadHeaderSize      = 4
+	responseHeaderSize     = 6
+	defaultLagTime         = 5.0
+	defaultLeadTime        = 5.0
+	defaultPublishInterval = 1.0
 )
 
 // StateFlagsEnum defines the type for the StateFlags enumeration.
