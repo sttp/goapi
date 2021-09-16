@@ -57,12 +57,18 @@ func NewHashSet(items []Guid) HashSet {
 }
 
 // Add adds the specified element to a set.
-func (hs HashSet) Add(item Guid) {
+// Returns true if item was added to the set; otherwise, false.
+func (hs HashSet) Add(item Guid) bool {
+	if hs.Contains(item) {
+		return false
+	}
+
 	hs[item] = member
+	return true
 }
 
 // Remove removes the specified element from a set.
-// Returns true if item was removed from the set; othwerwise, false.
+// Returns true if item was removed from the set; otherwise, false.
 func (hs HashSet) Remove(item Guid) bool {
 	if hs.Contains(item) {
 		delete(hs, item)
