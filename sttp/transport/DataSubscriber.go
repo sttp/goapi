@@ -129,14 +129,15 @@ type DataSubscriber struct {
 	STTPUpdatedOnInfo string
 
 	// Measurement parsing
-	signalIndexCache     []SignalIndexCache
-	signalIndexCacheLock sync.Mutex
-	cacheIndex           int32
-	timeIndex            int32
-	baseTimeOffsets      [2]int64
-	keyIVs               [][][]byte
-	tsscResetRequested   bool
-	tsscSequenceNumber   uint16
+	signalIndexCache        []SignalIndexCache
+	signalIndexCacheLock    sync.Mutex
+	cacheIndex              int32
+	timeIndex               int32
+	baseTimeOffsets         [2]int64
+	keyIVs                  [][][]byte
+	lastMissingCacheWarning ticks.Ticks
+	tsscResetRequested      bool
+	tsscSequenceNumber      uint16
 	//tsscDecoder      tssc.TSSCDecoder
 
 	bufferBlockExpectedSequenceNumber uint32
@@ -220,11 +221,17 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 	}
 
 	ds.connector.connectionRefused = false
+
+	// TODO: Add TLS implementation options
+	// TODO: Add reverse (client-based) connection options, see:
+	// https://sttp.github.io/documentation/reverse-connections/
+
 	ds.commandChannelSocket, err = net.Dial("tcp", hostName+":"+strconv.Itoa(int(port)))
 
 	if err == nil {
 		ds.commandChannelResponseThread = thread.NewThread(ds.runCommandChannelResponseThread)
 		ds.connected = true
+		ds.lastMissingCacheWarning = 0
 		ds.sendOperationalModes()
 	}
 
@@ -857,7 +864,25 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache SignalIndexCach
 }
 
 func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache SignalIndexCache, dataPacketFlags DataPacketFlagsEnum, data []byte, measurements []Measurement) {
+	useMillisecondResolution := ds.subscriptionInfo.UseMillisecondResolution
+	includeTime := ds.subscriptionInfo.IncludeTime
+	index := 0
 
+	for i := 0; i < len(measurements); i++ {
+		if signalIndexCache.Count() > 0 {
+			// Deserialize compact measurement format
+			compactMeasurement := NewCompactMeasurement(signalIndexCache, includeTime, useMillisecondResolution, &ds.baseTimeOffsets)
+			index += compactMeasurement.Decode(data[index:])
+			measurements[i] = compactMeasurement.Measurement
+		} else if ds.lastMissingCacheWarning+missingCacheWarningInterval < ticks.UtcNow() {
+			// Warning message for missing signal index cache
+			if ds.lastMissingCacheWarning != 0 {
+				ds.dispatchStatusMessage("Signal index cache has not arrived. No compact measurements can be parsed.")
+			}
+
+			ds.lastMissingCacheWarning = ticks.UtcNow()
+		}
+	}
 }
 
 func (ds *DataSubscriber) handleBufferBlock(data []byte) {

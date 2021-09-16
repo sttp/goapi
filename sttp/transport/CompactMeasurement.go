@@ -246,7 +246,7 @@ func (cm *CompactMeasurement) SetRuntimeID(signalIndex int32) {
 }
 
 // Decode parses a CompactMeasurement from the specified byte buffer.
-func (cm *CompactMeasurement) Decode(buffer []byte) {
+func (cm *CompactMeasurement) Decode(buffer []byte) int {
 	if len(buffer) < 1 {
 		panic("Not enough buffer available to deserialize compact measurement.")
 	}
@@ -258,7 +258,7 @@ func (cm *CompactMeasurement) Decode(buffer []byte) {
 	//		  ID          4
 	//		 Value        4
 	//		 [Time]    0/2/4/8
-	var index uint32
+	var index int
 
 	// Decode state flags
 	cm.SetCompactStateFlags(buffer[0])
@@ -273,7 +273,7 @@ func (cm *CompactMeasurement) Decode(buffer []byte) {
 	index += 4
 
 	if !cm.includeTime {
-		return
+		return index
 	}
 
 	if cm.usingBaseTimeOffset {
@@ -284,17 +284,22 @@ func (cm *CompactMeasurement) Decode(buffer []byte) {
 			if baseTimeOffset > 0 {
 				cm.Timestamp = ticks.Ticks(baseTimeOffset + int64(binary.BigEndian.Uint16(buffer[index:]))*int64(ticks.PerMillisecond))
 			}
+			index += 2
 		} else {
 			// Decode 4-byte tick offset timestamp
 			if baseTimeOffset > 0 {
 				cm.Timestamp = ticks.Ticks(baseTimeOffset + int64(binary.BigEndian.Uint32(buffer[index:])))
 			}
+			index += 4
 		}
 	} else {
 		// Decode 8-byte full fidelity timestamp
 		// Note that only a full fidelity timestamp can carry leap second flags
 		cm.Timestamp = ticks.Ticks(binary.BigEndian.Uint64(buffer[index:]))
+		index += 8
 	}
+
+	return index
 }
 
 //// Encode serializes a CompactMeasurement to a byte buffer for publication to a DataSubscriber.
