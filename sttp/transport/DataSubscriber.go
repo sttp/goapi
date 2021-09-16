@@ -27,6 +27,8 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -473,14 +475,6 @@ func (ds *DataSubscriber) dispatchErrorMessage(message string) {
 	}
 }
 
-func (ds *DataSubscriber) dispatchNewMeasurements(measurements []Measurement) {
-	if ds.NewMeasurementsCallback != nil {
-		// Do not use Go routine here, processing sequence may be important.
-		// Execute callback directly from socket processing thread:
-		ds.NewMeasurementsCallback(ds, measurements)
-	}
-}
-
 func (ds *DataSubscriber) runCommandChannelResponseThread() {
 	ds.reader = bufio.NewReader(ds.commandChannelSocket)
 
@@ -786,14 +780,84 @@ func (ds *DataSubscriber) handleConfigurationChanged() {
 	}
 }
 
+func decipherAES(key []byte, iv []byte, data []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+
+	if err != nil {
+		return nil, err
+	}
+
+	mode := cipher.NewCBCDecrypter(block, iv)
+	out := make([]byte, len(data))
+	mode.CryptBlocks(out, data)
+
+	return out, nil
+}
+
 func (ds *DataSubscriber) handleDataPacket(data []byte) {
-	// Processing sequence may be important, execute callback directly from socket processing thread
+	dataPacketFlags := DataPacketFlagsEnum(data[0])
+	compressed := dataPacketFlags&DataPacketFlags.Compressed > 0
+	compact := dataPacketFlags&DataPacketFlags.Compact > 0
+
+	if !compressed && !compact {
+		ds.dispatchErrorMessage("Go implementation of STTP only supports compact or compressed data packet encoding - disconnecting.")
+		ds.dispatchConnectionTerminated()
+		return
+	}
+
+	data = data[1:]
+
+	if ds.keyIVs != nil {
+		// Get a local copy keyIVs - these can change at any time
+		keyIVs := ds.keyIVs
+		var cipherIndex int
+		var err error
+
+		if dataPacketFlags&DataPacketFlags.CipherIndex > 0 {
+			cipherIndex = 1
+		}
+
+		data, err = decipherAES(keyIVs[cipherIndex][keyIndex], keyIVs[cipherIndex][ivIndex], data)
+
+		if err != nil {
+			ds.dispatchErrorMessage("Failed to decrypt data packet - disconnecting: " + err.Error())
+			ds.dispatchConnectionTerminated()
+			return
+		}
+	}
+
+	count := binary.BigEndian.Uint32(data)
+	measurements := make([]Measurement, count)
+	var cacheIndex int
+
+	if dataPacketFlags&DataPacketFlags.CacheIndex > 0 {
+		cacheIndex = 1
+	}
+
+	ds.signalIndexCacheLock.Lock()
+	signalIndexCache := ds.signalIndexCache[cacheIndex]
+	ds.signalIndexCacheLock.Unlock()
+
+	if compressed {
+		ds.parseTSSCMeasurements(signalIndexCache, data[4:], measurements)
+	} else {
+		ds.parseCompactMeasurements(signalIndexCache, dataPacketFlags, data[4:], measurements)
+	}
+
+	if ds.NewMeasurementsCallback != nil {
+		// Do not use Go routine here, processing sequence may be important.
+		// Execute callback directly from socket processing thread:
+		ds.NewMeasurementsCallback(ds, measurements)
+	}
+
+	ds.totalMeasurementsReceived += uint64(count)
 }
 
-func (ds *DataSubscriber) ParseTSSCMeasurements(data []byte) {
+func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache SignalIndexCache, data []byte, measurements []Measurement) {
 }
 
-func (ds *DataSubscriber) ParseCompactMeasurements(data []byte) {
+func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache SignalIndexCache, dataPacketFlags DataPacketFlagsEnum, data []byte, measurements []Measurement) {
+
 }
 
 func (ds *DataSubscriber) handleBufferBlock(data []byte) {

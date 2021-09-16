@@ -148,22 +148,22 @@ type DataPacketFlagsEnum byte
 
 // DataPacketFlags is an enumeration of the possible flags for a data packet.
 var DataPacketFlags = struct {
-	// Synchronized determines if data packet is synchronized. Bit set = synchronized, bit clear = unsynchronized.
-	Synchronized DataPacketFlagsEnum
 	// Compact determines if serialized measurement is compact. Bit set = compact, bit clear = full fidelity.
 	Compact DataPacketFlagsEnum
 	// CipherIndex determines which cipher index to use when encrypting data packet. Bit set = use odd cipher index (i.e., 1), bit clear = use even cipher index (i.e., 0).
 	CipherIndex DataPacketFlagsEnum
 	// Compressed determines if data packet payload is compressed. Bit set = payload compressed, bit clear = payload normal.
 	Compressed DataPacketFlagsEnum
+	// CacheIndex determines with signal index cache to use when decoding a data packet. Used by STTP version 2 or greater.
+	CacheIndex DataPacketFlagsEnum
 	// NoFlags defines state where there are no flags set. This would represent unsynchronized, full fidelity measurement data packets.
 	NoFlags DataPacketFlagsEnum
 }{
-	Synchronized: 0x01,
-	Compact:      0x02,
-	CipherIndex:  0x04,
-	Compressed:   0x08,
-	NoFlags:      0x0,
+	Compact:     0x02,
+	CipherIndex: 0x04,
+	Compressed:  0x08,
+	CacheIndex:  0x10,
+	NoFlags:     0x0,
 }
 
 // ServerCommandEnum defines the type for the ServerCommand enumeration.
