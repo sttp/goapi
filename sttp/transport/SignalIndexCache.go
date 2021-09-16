@@ -41,8 +41,8 @@ type SignalIndexCache struct {
 	binaryLength  uint32
 }
 
-// AddMeasurementKey adds a new record to the SignalIndexCache for provided key Measurement details.
-func (sic *SignalIndexCache) AddMeasurementKey(signalIndex int32, signalID guid.Guid, source string, id uint64, charSizeEstimate uint32 /* = 1 */) {
+// AddRecord adds a new record to the SignalIndexCache for provided key Measurement details.
+func (sic *SignalIndexCache) AddRecord(signalIndex int32, signalID guid.Guid, source string, id uint64, charSizeEstimate uint32 /* = 1 */) {
 	sic.reference[signalIndex] = uint32(len(sic.signalIDList))
 	sic.signalIDList = append(sic.signalIDList, signalID)
 	sic.sourceList = append(sic.sourceList, source)
@@ -101,9 +101,9 @@ func (sic *SignalIndexCache) GetID(signalIndex int32) uint64 {
 	return math.MaxUint64
 }
 
-// GetMeasurementKey returns the key Measurement values, signalID Guid, source string, and integer ID and
-// a final boolean value representing find success for the specified signalIndex in the SignalIndexCache.
-func (sic *SignalIndexCache) GetMeasurementKey(signalIndex int32) (guid.Guid, string, uint64, bool) {
+// GetRecord returns the key Measurement values, signalID Guid, source string, and integer ID and a
+// final boolean value representing find success for the specified signalIndex in the SignalIndexCache.
+func (sic *SignalIndexCache) GetRecord(signalIndex int32) (guid.Guid, string, uint64, bool) {
 	if index, ok := sic.reference[signalIndex]; ok {
 		return sic.signalIDList[index], sic.sourceList[index], sic.idList[index], true
 	}
@@ -193,7 +193,7 @@ func (sic *SignalIndexCache) Decode(subscriber *DataSubscriber, buffer []byte, s
 		id := binary.BigEndian.Uint64(buffer[offset:])
 		offset += 8
 
-		sic.AddMeasurementKey(signalIndex, signalID, source, id, 1)
+		sic.AddRecord(signalIndex, signalID, source, id, 1)
 	}
 
 	// There is additional data here about unauthorized signal IDs
