@@ -25,10 +25,6 @@ package transport
 
 import (
 	"bufio"
-	"bytes"
-	"compress/gzip"
-	"crypto/aes"
-	"crypto/cipher"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -656,6 +652,15 @@ func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byt
 
 func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
 	if ds.MetadataReceivedCallback != nil {
+		if ds.CompressMetadata {
+			var err error
+
+			if data, err = decompressGZip(data); err != nil {
+				ds.dispatchErrorMessage("Failed to decompress received metadata: " + err.Error())
+				return
+			}
+		}
+
 		go ds.MetadataReceivedCallback(ds, data)
 	}
 }
@@ -692,19 +697,10 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 	}
 
 	if ds.CompressSignalIndexCache {
-		reader, err := gzip.NewReader(bytes.NewReader(data))
+		var err error
 
-		if err != nil {
-			ds.dispatchErrorMessage("Failed to created gzip reader for decompressing signal index cache: " + err.Error())
-			return
-		}
-
-		defer reader.Close()
-
-		data, err = io.ReadAll(reader)
-
-		if err != nil {
-			ds.dispatchErrorMessage("Failed to decompress gzip signal index cache: " + err.Error())
+		if data, err = decompressGZip(data); err != nil {
+			ds.dispatchErrorMessage("Failed to decompress received signal index cache: " + err.Error())
 			return
 		}
 	}
@@ -792,20 +788,6 @@ func (ds *DataSubscriber) handleConfigurationChanged() {
 	if ds.ConfigurationChangedCallback != nil {
 		go ds.ConfigurationChangedCallback(ds)
 	}
-}
-
-func decipherAES(key []byte, iv []byte, data []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-
-	if err != nil {
-		return nil, err
-	}
-
-	mode := cipher.NewCBCDecrypter(block, iv)
-	out := make([]byte, len(data))
-	mode.CryptBlocks(out, data)
-
-	return out, nil
 }
 
 func (ds *DataSubscriber) handleDataPacket(data []byte) {
