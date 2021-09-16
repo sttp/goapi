@@ -59,6 +59,10 @@ func TestAdd(t *testing.T) {
 	set.Add(random())
 	set.Add(random())
 
+	if set.Add(set.Keys()[0]) {
+		t.Fatalf("Add: Inserted duplicated %s", set.Keys()[0])
+	}
+
 	if len(set) != 2 {
 		t.Fatalf("Add: len != 2")
 	}
@@ -173,6 +177,13 @@ func TestSymmetricExceptWithSet(t *testing.T) {
 	set1 := NewHashSet([]Guid{random(), random(), random(), random()})
 	set2 := NewHashSet(set1.Keys())
 
+	set3 := HashSet{}
+	set3.SymmetricExceptWithSet(set1)
+
+	if !set1.SetEqualsSet(set3) {
+		t.Fatalf("SymmetricExceptWith: sets not equal")
+	}
+
 	set1.Add(random())
 	set2.Add(random())
 
@@ -195,6 +206,19 @@ func TestIntersectWithSet(t *testing.T) {
 
 	if !set1.SetEqualsSet(set3) {
 		t.Fatalf("IntersectWith: Sets not equal")
+	}
+
+	set4 := HashSet{}
+	set4.IntersectWith(set1.Keys())
+
+	if len(set4) != 0 {
+		t.Fatalf("IntersectWith: empty set intersect caused change")
+	}
+
+	set1.IntersectWith(set4.Keys())
+
+	if len(set1) != 0 {
+		t.Fatalf("IntersectWith: insertsect with empty set should be zero")
 	}
 }
 
@@ -245,10 +269,26 @@ func TestSetEqualsSet(t *testing.T) {
 		t.Fatalf("SetEquals: Sets not equal")
 	}
 
+	first = set2.Keys()[0]
+
+	if !set2.Remove(first) {
+		t.Fatalf("SetEquals: Failed to remove first key")
+	}
+
 	set2.Add(random())
 
-	if set1.SetEqualsSet(set2) {
-		t.Fatalf("SetEquals: Unequal sets are equal")
+	if len(set1) != len(set2) {
+		t.Fatalf("SetEquals: Set lengths are unequal")
+	}
+
+	if set1.SetEquals(set2.Keys()) {
+		t.Fatalf("SetEquals: Same length unequal sets are equal")
+	}
+
+	set2.Add(random())
+
+	if set1.SetEquals(set2.Keys()) {
+		t.Fatalf("SetEquals: Different length unequal sets are equal")
 	}
 }
 
@@ -277,6 +317,19 @@ func TestOverlapsSet(t *testing.T) {
 	if !set2.OverlapsSet(set1) {
 		t.Fatalf("Overlaps: Sets do not overlap")
 	}
+
+	set3 := HashSet{}
+
+	if set3.Overlaps(set1.Keys()) {
+		t.Fatalf("Overlaps: Sets overlap")
+	}
+
+	set3.Add(random())
+	set3.Add(random())
+
+	if set3.Overlaps(set1.Keys()) {
+		t.Fatalf("Overlaps: Sets overlap")
+	}
 }
 
 func TestIsSubsetOfSet(t *testing.T) {
@@ -303,6 +356,19 @@ func TestIsSubsetOfSet(t *testing.T) {
 
 	if set2.IsSubsetOfSet(set1) {
 		t.Fatalf("IsSubsetOf: Set is not expected to be subset")
+	}
+
+	set3 := HashSet{}
+
+	if !set3.IsSubsetOf(set1.Keys()) {
+		t.Fatalf("IsSubsetOf: Empty set is not a subset")
+	}
+
+	set3.Add(random())
+	set3.Add(random())
+
+	if set3.IsSubsetOf(set1.Keys()) {
+		t.Fatalf("IsSubsetOf: Unequal set is a subset")
 	}
 }
 
@@ -331,6 +397,19 @@ func TestIsProperSubsetOfSet(t *testing.T) {
 	if set2.IsProperSubsetOfSet(set1) {
 		t.Fatalf("IsProperSubsetOf: Set is not expected to be proper subset")
 	}
+
+	set3 := HashSet{}
+
+	if !set3.IsProperSubsetOf(set1.Keys()) {
+		t.Fatalf("IsSubsetOf: Empty proper set is not a subset")
+	}
+
+	set3.Add(random())
+	set3.Add(random())
+
+	if set3.IsProperSubsetOf(set1.Keys()) {
+		t.Fatalf("IsSubsetOf: Unequal set is a proper subset")
+	}
 }
 
 func TestIsSupersetOfSet(t *testing.T) {
@@ -358,6 +437,19 @@ func TestIsSupersetOfSet(t *testing.T) {
 	if set1.IsSupersetOfSet(set2) {
 		t.Fatalf("IsSupersetOf: Set is not expected to be superset")
 	}
+
+	set3 := HashSet{}
+
+	if !set1.IsSupersetOf(set3.Keys()) {
+		t.Fatalf("IsSupersetOf: Empty set is not a superset")
+	}
+
+	set3.Add(random())
+	set3.Add(random())
+
+	if set1.IsSupersetOf(set3.Keys()) {
+		t.Fatalf("IsSubsetOf: Unequal set is a superset")
+	}
 }
 
 func TestIsProperSupersetOfSet(t *testing.T) {
@@ -384,5 +476,22 @@ func TestIsProperSupersetOfSet(t *testing.T) {
 
 	if set1.IsProperSupersetOfSet(set2) {
 		t.Fatalf("IsProperSupersetOf: Set is not expected to be proper superset")
+	}
+
+	set3 := HashSet{}
+
+	if !set1.IsProperSupersetOf(set3.Keys()) {
+		t.Fatalf("IsSupersetOf: Empty set is not a proper superset")
+	}
+
+	if !set3.IsProperSupersetOf(set1.Keys()) {
+		t.Fatalf("IsSupersetOf: Empty set is not a proper superset")
+	}
+
+	set3.Add(random())
+	set3.Add(random())
+
+	if set1.IsProperSupersetOf(set3.Keys()) {
+		t.Fatalf("IsSubsetOf: Unequal set is a proper superset")
 	}
 }
