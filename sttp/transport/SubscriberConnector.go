@@ -37,10 +37,10 @@ import (
 // a connection from a DataSubscriber to a DataPublisher.
 type SubscriberConnector struct {
 	// ErrorMessageCallback is called when an error message should be logged.
-	ErrorMessageCallback func(*DataSubscriber, string)
+	ErrorMessageCallback func(string)
 
 	// ReconnectCallback is called when SubscriberConnector attempts to reconnect.
-	ReconnectCallback func(*DataSubscriber)
+	ReconnectCallback func()
 
 	// Hostname is the DataPublisher DNS name or IP.
 	Hostname string
@@ -101,10 +101,7 @@ func autoReconnect(subscriber *DataSubscriber) {
 		}
 
 		if sc.MaxRetries != -1 && sc.connectAttempt >= sc.MaxRetries {
-			if sc.ErrorMessageCallback != nil {
-				sc.ErrorMessageCallback(subscriber, "Maximum connection retries attempted. Auto-reconnect canceled.")
-			}
-
+			sc.dispatchErrorMessage("Maximum connection retries attempted. Auto-reconnect canceled.")
 			return
 		}
 
@@ -120,7 +117,7 @@ func autoReconnect(subscriber *DataSubscriber) {
 
 		// Notify the user that reconnect attempt was completed.
 		if !sc.cancel && sc.ReconnectCallback != nil {
-			sc.ReconnectCallback(subscriber)
+			sc.ReconnectCallback()
 		}
 	})
 }
@@ -146,32 +143,30 @@ func (sc *SubscriberConnector) waitForRetry(subscriber *DataSubscriber) {
 	}
 
 	// Notify the user that we are attempting to reconnect.
-	if sc.ErrorMessageCallback != nil {
-		var message strings.Builder
+	var message strings.Builder
 
-		message.WriteString("Connection")
+	message.WriteString("Connection")
 
-		if sc.connectAttempt > 0 {
-			message.WriteString(" attempt ")
-			message.WriteString(strconv.Itoa(int(sc.connectAttempt + 1)))
-		}
-
-		message.WriteString(" to \"")
-		message.WriteString(sc.Hostname)
-		message.WriteString(":")
-		message.WriteString(strconv.Itoa(int(sc.Port)))
-		message.WriteString("\" was terminated. ")
-
-		if retryInterval > 0 {
-			message.WriteString("Attempting to reconnect in ")
-			message.WriteString(fmt.Sprintf("%.2f", float64(sc.RetryInterval)/1000.0))
-			message.WriteString(" seconds...")
-		} else {
-			message.WriteString("Attempting to reconnect...")
-		}
-
-		sc.ErrorMessageCallback(subscriber, message.String())
+	if sc.connectAttempt > 0 {
+		message.WriteString(" attempt ")
+		message.WriteString(strconv.Itoa(int(sc.connectAttempt + 1)))
 	}
+
+	message.WriteString(" to \"")
+	message.WriteString(sc.Hostname)
+	message.WriteString(":")
+	message.WriteString(strconv.Itoa(int(sc.Port)))
+	message.WriteString("\" was terminated. ")
+
+	if retryInterval > 0 {
+		message.WriteString("Attempting to reconnect in ")
+		message.WriteString(fmt.Sprintf("%.2f", float64(sc.RetryInterval)/1000.0))
+		message.WriteString(" seconds...")
+	} else {
+		message.WriteString("Attempting to reconnect...")
+	}
+
+	sc.dispatchErrorMessage(message.String())
 
 	sc.waitTimer = time.NewTimer(time.Duration(retryInterval) * time.Millisecond)
 	<-sc.waitTimer.C
@@ -195,10 +190,7 @@ func (sc *SubscriberConnector) connect(subscriber *DataSubscriber, autoReconnect
 
 	for !subscriber.disposing {
 		if sc.MaxRetries != -1 && sc.connectAttempt >= sc.MaxRetries {
-			if sc.ErrorMessageCallback != nil {
-				sc.ErrorMessageCallback(subscriber, "Maximum connection retries attempted. Auto-reconnect canceled.")
-			}
-
+			sc.dispatchErrorMessage("Maximum connection retries attempted. Auto-reconnect canceled.")
 			break
 		}
 
@@ -251,4 +243,10 @@ func (sc *SubscriberConnector) Cancel() {
 func (sc *SubscriberConnector) ResetConnection() {
 	sc.connectAttempt = 0
 	sc.cancel = false
+}
+
+func (sc *SubscriberConnector) dispatchErrorMessage(message string) {
+	if sc.ErrorMessageCallback != nil {
+		go sc.ErrorMessageCallback(message)
+	}
 }

@@ -33,7 +33,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sttp/goapi/sttp"
 	"github.com/sttp/goapi/sttp/guid"
 	"github.com/sttp/goapi/sttp/thread"
 	"github.com/sttp/goapi/sttp/ticks"
@@ -70,38 +69,38 @@ type DataSubscriber struct {
 	totalMeasurementsReceived        uint64
 
 	// StatusMessageCallback is called when a informational message should be logged.
-	StatusMessageCallback func(*DataSubscriber, string)
+	StatusMessageCallback func(string)
 
 	// ErrorMessageCallback is called when an error message should be logged.
-	ErrorMessageCallback func(*DataSubscriber, string)
+	ErrorMessageCallback func(string)
 
 	// ConnectionTerminatedCallback is called when DataSubscriber terminates its connection.
-	ConnectionTerminatedCallback func(*DataSubscriber)
+	ConnectionTerminatedCallback func()
 
 	// AutoReconnectCallback is called when DataSubscriber automatically reconnects.
-	AutoReconnectCallback func(*DataSubscriber)
+	AutoReconnectCallback func()
 
 	// MetadataReceivedCallback is called when DataSubscriber receives a metadata response.
-	MetadataReceivedCallback func(*DataSubscriber, []byte)
+	MetadataReceivedCallback func([]byte)
 
 	// DataStartTimeCallback is called with timestamp of first received measurement in a subscription.
-	DataStartTimeCallback func(*DataSubscriber, ticks.Ticks)
+	DataStartTimeCallback func(ticks.Ticks)
 
 	// ConfigurationChangedCallback is called when the DataPublisher sends a notification that configuration has changed.
-	ConfigurationChangedCallback func(*DataSubscriber)
+	ConfigurationChangedCallback func()
 
 	// NewMeasurementsCallback is called when DataSubscriber receives a set of new measurements from the DataPublisher.
-	NewMeasurementsCallback func(*DataSubscriber, []Measurement)
+	NewMeasurementsCallback func([]Measurement)
 
 	// NewBufferBlocksCallback is called when DataSubscriber receives a set of new buffer block measurements from the DataPublisher.
-	NewBufferBlocksCallback func(*DataSubscriber, []BufferBlock)
+	NewBufferBlocksCallback func([]BufferBlock)
 
 	// ProcessingCompleteCallback is called when the DataPublished sends a notification that temporal processing has completed,
 	// i.e., the end of a historical playback data stream has been reached.
-	ProcessingCompleteCallback func(*DataSubscriber)
+	ProcessingCompleteCallback func()
 
 	// NotificationCallback is called when the DataPublisher sends a notification that requires receipt.
-	NotificationCallback func(*DataSubscriber, string)
+	NotificationCallback func(string)
 
 	// CompressPayloadData determines whether payload data is compressed using TSSC.
 	CompressPayloadData bool
@@ -148,13 +147,13 @@ func NewDataSubscriber() *DataSubscriber {
 		connector:                SubscriberConnector{},
 		readBuffer:               make([]byte, maxPacketSize),
 		writeBuffer:              make([]byte, maxPacketSize),
-		CompressPayloadData:      true,
-		CompressMetadata:         true,
-		CompressSignalIndexCache: true,
+		CompressPayloadData:      true, // Defaults to TSSC
+		CompressMetadata:         true, // Defaults to Gzip
+		CompressSignalIndexCache: true, // Defaults to Gzip
 		Version:                  2,
-		STTPSourceInfo:           sttp.Source,
-		STTPVersionInfo:          sttp.Version,
-		STTPUpdatedOnInfo:        sttp.UpdatedOn,
+		STTPSourceInfo:           Source,
+		STTPVersionInfo:          Version,
+		STTPUpdatedOnInfo:        UpdatedOn,
 		signalIndexCache:         make([]SignalIndexCache, 2),
 	}
 }
@@ -220,7 +219,7 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 	ds.connector.connectionRefused = false
 
 	// TODO: Add TLS implementation options
-	// TODO: Add reverse (client-based) connection options, see:
+	// TODO: Add reverse (server-based) connection options, see:
 	// https://sttp.github.io/documentation/reverse-connections/
 
 	ds.commandChannelSocket, err = net.Dial("tcp", hostName+":"+strconv.Itoa(int(port)))
@@ -442,7 +441,7 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 
 	// Notify consumers of disconnect
 	if ds.ConnectionTerminatedCallback != nil {
-		ds.ConnectionTerminatedCallback(ds)
+		ds.ConnectionTerminatedCallback()
 	}
 
 	// Disconnect complete
@@ -454,7 +453,7 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 		// since they serve two different use cases and current implementation does not
 		// support multiple callback registrations
 		if ds.AutoReconnectCallback != nil && !ds.disposing {
-			ds.AutoReconnectCallback(ds)
+			ds.AutoReconnectCallback()
 		}
 	} else {
 		ds.connectActionMutex.Unlock()
@@ -475,13 +474,13 @@ func (ds *DataSubscriber) dispatchConnectionTerminated() {
 
 func (ds *DataSubscriber) dispatchStatusMessage(message string) {
 	if ds.StatusMessageCallback != nil {
-		go ds.StatusMessageCallback(ds, message)
+		go ds.StatusMessageCallback(message)
 	}
 }
 
 func (ds *DataSubscriber) dispatchErrorMessage(message string) {
 	if ds.ErrorMessageCallback != nil {
-		go ds.ErrorMessageCallback(ds, message)
+		go ds.ErrorMessageCallback(message)
 	}
 }
 
@@ -661,7 +660,7 @@ func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
 			}
 		}
 
-		go ds.MetadataReceivedCallback(ds, data)
+		go ds.MetadataReceivedCallback(data)
 	}
 }
 
@@ -669,13 +668,13 @@ func (ds *DataSubscriber) handleDataStartTime(data []byte) {
 	if ds.DataStartTimeCallback != nil {
 		// Do not use Go routine here, processing sequence may be important.
 		// Execute callback directly from socket processing thread:
-		ds.DataStartTimeCallback(ds, ticks.Ticks(binary.BigEndian.Uint64(data)))
+		ds.DataStartTimeCallback(ticks.Ticks(binary.BigEndian.Uint64(data)))
 	}
 }
 
 func (ds *DataSubscriber) handleProcessingComplete(data []byte) {
 	if ds.ProcessingCompleteCallback != nil {
-		go ds.ProcessingCompleteCallback(ds)
+		go ds.ProcessingCompleteCallback()
 	}
 }
 
@@ -791,7 +790,7 @@ func (ds *DataSubscriber) handleConfigurationChanged() {
 	ds.dispatchStatusMessage("Received notification from publisher that configuration has changed.")
 
 	if ds.ConfigurationChangedCallback != nil {
-		go ds.ConfigurationChangedCallback(ds)
+		go ds.ConfigurationChangedCallback()
 	}
 }
 
@@ -848,7 +847,7 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 	if ds.NewMeasurementsCallback != nil {
 		// Do not use Go routine here, processing sequence may be important.
 		// Execute callback directly from socket processing thread:
-		ds.NewMeasurementsCallback(ds, measurements)
+		ds.NewMeasurementsCallback(measurements)
 	}
 
 	ds.totalMeasurementsReceived += uint64(count)
@@ -938,11 +937,11 @@ func (ds *DataSubscriber) handleBufferBlock(data []byte) {
 			if ds.NewBufferBlocksCallback != nil {
 				// Do not use Go routine here, processing sequence may be important.
 				// Execute callback directly from socket processing thread:
-				ds.NewBufferBlocksCallback(ds, bufferBlockMeasurements)
+				ds.NewBufferBlocksCallback(bufferBlockMeasurements)
 			}
 		} else {
-			// Ensure that the list has at least as many elements as it needs to cache this measurement,
-			// this edge case handles possible dropouts and/or out of order packet deliver when data
+			// Ensure that the list has at least as many elements as it needs to cache this measurement.
+			// This edge case handles possible dropouts and/or out of order packet deliver when data
 			// transport is UDP - this use case is not expected when using a TCP only connection.
 			for i := len(ds.bufferBlockCache); i <= bufferCacheIndex; i++ {
 				ds.bufferBlockCache = append(ds.bufferBlockCache, BufferBlock{})
@@ -961,7 +960,7 @@ func (ds *DataSubscriber) handleNotify(data []byte) {
 	ds.dispatchStatusMessage("NOTIFICATION: " + message)
 
 	if ds.NotificationCallback != nil {
-		go ds.NotificationCallback(ds, message)
+		go ds.NotificationCallback(message)
 	}
 
 	// Send confirmation of receipt of the notification with 4-byte hash
