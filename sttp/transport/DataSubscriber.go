@@ -724,8 +724,13 @@ func (ds *DataSubscriber) handleUpdateBaseTimes(data []byte) {
 	}
 
 	ds.timeIndex = int32(binary.BigEndian.Uint32(data))
-	ds.baseTimeOffsets[0] = int64(binary.BigEndian.Uint64(data[4:]))
-	ds.baseTimeOffsets[1] = int64(binary.BigEndian.Uint64(data[8:]))
+
+	var baseTimeOffsets [2]int64
+
+	baseTimeOffsets[0] = int64(binary.BigEndian.Uint64(data[4:]))
+	baseTimeOffsets[1] = int64(binary.BigEndian.Uint64(data[8:]))
+
+	ds.baseTimeOffsets = baseTimeOffsets
 
 	timestamp, _ := ticks.ToTime(ticks.Ticks(ds.baseTimeOffsets[ds.timeIndex^1])).MarshalText()
 	ds.dispatchStatusMessage("Received new base time offset from publisher: " + string(timestamp))
