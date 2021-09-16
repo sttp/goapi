@@ -21,7 +21,7 @@
 //
 //******************************************************************************************************
 
-package sttp
+package transport
 
 const (
 	// Source defines the STTP library API title used for data subscriber identification.
