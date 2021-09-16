@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  BufferBlockMeasurement.go - Gbtc
+//  BufferBlock.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -25,8 +25,8 @@ package transport
 
 import "github.com/sttp/goapi/sttp/guid"
 
-// BufferBlockMeasurement defines an atomic data unit data, i.e., a binary buffer, for transport in STTP.
-type BufferBlockMeasurement struct {
+// BufferBlock defines an atomic data unit data, i.e., a binary buffer, for transport in STTP.
+type BufferBlock struct {
 	// Measurement's globally unique identifier.
 	SignalID guid.Guid
 

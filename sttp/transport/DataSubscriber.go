@@ -97,8 +97,8 @@ type DataSubscriber struct {
 	// NewMeasurementsCallback is called when DataSubscriber receives a set of new measurements from the DataPublisher.
 	NewMeasurementsCallback func(*DataSubscriber, []Measurement)
 
-	// NewBufferBlockMeasurementsCallback is called when DataSubscriber receives a set of new buffer block measurements from the DataPublisher.
-	NewBufferBlockMeasurementsCallback func(*DataSubscriber, []BufferBlockMeasurement)
+	// NewBufferBlocksCallback is called when DataSubscriber receives a set of new buffer block measurements from the DataPublisher.
+	NewBufferBlocksCallback func(*DataSubscriber, []BufferBlock)
 
 	// ProcessingCompleteCallback is called when the DataPublished sends a notification that temporal processing has completed,
 	// i.e., the end of a historical playback data stream has been reached.
@@ -141,7 +141,7 @@ type DataSubscriber struct {
 	//tsscDecoder      tssc.TSSCDecoder
 
 	bufferBlockExpectedSequenceNumber uint32
-	bufferBlockCache                  []BufferBlockMeasurement
+	bufferBlockCache                  []BufferBlock
 }
 
 // NewDataSubscriber creates a new DataSubscriber.
@@ -921,11 +921,11 @@ func (ds *DataSubscriber) handleBufferBlock(data []byte) {
 		ds.signalIndexCacheLock.Unlock()
 
 		signalID := signalIndexCache.GetSignalID(signalIndex)
-		bufferBlockMeasurement := BufferBlockMeasurement{SignalID: signalID}
+		bufferBlockMeasurement := BufferBlock{SignalID: signalID}
 
 		// Determine if this is the next buffer block in the sequence
 		if sequenceNumber == ds.bufferBlockExpectedSequenceNumber {
-			bufferBlockMeasurements := make([]BufferBlockMeasurement, 1+len(ds.bufferBlockCache))
+			bufferBlockMeasurements := make([]BufferBlock, 1+len(ds.bufferBlockCache))
 			var i int
 
 			// Add the buffer block measurement to the list of measurements to be published
@@ -948,15 +948,17 @@ func (ds *DataSubscriber) handleBufferBlock(data []byte) {
 			}
 
 			// Publish measurements
-			if ds.NewBufferBlockMeasurementsCallback != nil {
+			if ds.NewBufferBlocksCallback != nil {
 				// Do not use Go routine here, processing sequence may be important.
 				// Execute callback directly from socket processing thread:
-				ds.NewBufferBlockMeasurementsCallback(ds, bufferBlockMeasurements)
+				ds.NewBufferBlocksCallback(ds, bufferBlockMeasurements)
 			}
 		} else {
-			// Ensure that the list has at least as many elements as it needs to cache this measurement
+			// Ensure that the list has at least as many elements as it needs to cache this measurement,
+			// this edge case handles possible dropouts and/or out of order packet deliver when data
+			// transport is UDP - this use case is not expected when using a TCP only connection.
 			for i := len(ds.bufferBlockCache); i <= bufferCacheIndex; i++ {
-				ds.bufferBlockCache = append(ds.bufferBlockCache, BufferBlockMeasurement{})
+				ds.bufferBlockCache = append(ds.bufferBlockCache, BufferBlock{})
 			}
 
 			// Insert this buffer block into the proper location in the list
