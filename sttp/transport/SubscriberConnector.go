@@ -70,6 +70,7 @@ type SubscriberConnector struct {
 	waitTimer         *time.Timer
 }
 
+// ConnectStatus defines the type for connection status results.
 type ConnectStatus int
 
 // ConnectSuccess defines that a connection succeeded.

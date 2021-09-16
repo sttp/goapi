@@ -24,7 +24,12 @@
 package sttp
 
 const (
-	Source    = "STTP Go Library"
-	Version   = "0.0.1"
+	// Source defines the STTP library API title used for data subscriber identification.
+	Source = "STTP Go Library"
+
+	// Version defines the STTP library API version used for data subscriber identification.
+	Version = "0.0.1"
+
+	// UpdatedOn defines when the STTP library API was last updated used for data subscriber identification.
 	UpdatedOn = "2021-09-15"
 )

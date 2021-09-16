@@ -144,6 +144,7 @@ type DataSubscriber struct {
 	bufferBlockCache                  []BufferBlockMeasurement
 }
 
+// NewDataSubscriber creates a new DataSubscriber.
 func NewDataSubscriber() *DataSubscriber {
 	return &DataSubscriber{
 		subscriptionInfo:         SubscriptionInfo{},
@@ -397,64 +398,70 @@ func (ds *DataSubscriber) disconnect(joinThread bool, autoReconnecting bool) {
 	ds.subscribed = false
 
 	ds.disconnectThread = thread.NewThread(func() {
-		// Let any pending connect operation complete before disconnect - prevents destruction disconnect before connection is completed
-		if !autoReconnecting {
-			ds.connector.Cancel()
-			ds.connectionTerminationThread.Join()
-			ds.connectActionMutex.Lock()
-		}
-
-		var err error
-
-		// Release queues and close sockets so that threads can shut down gracefully
-		if ds.commandChannelSocket != nil {
-			err = ds.commandChannelSocket.Close()
-
-			if err != nil {
-				ds.dispatchErrorMessage("Exception while disconnecting data subscriber TCP command channel: " + err.Error())
-			}
-		}
-
-		if ds.dataChannelSocket != nil {
-			err = ds.dataChannelSocket.Close()
-
-			if err != nil {
-				ds.dispatchErrorMessage("Exception while disconnecting data subscriber UDP data channel: " + err.Error())
-			}
-		}
-
-		// Join with all threads to guarantee their completion before returning control to the caller
-		if ds.commandChannelResponseThread != nil {
-			ds.commandChannelResponseThread.Join()
-		}
-
-		if ds.dataChannelResponseThread != nil {
-			ds.dataChannelResponseThread.Join()
-		}
-
-		// Notify consumers of disconnect
-		if ds.ConnectionTerminatedCallback != nil {
-			ds.ConnectionTerminatedCallback(ds)
-		}
-
-		// Disconnect complete
-		ds.disconnected = true
-		ds.disconnecting = false
-
-		if autoReconnecting {
-			// Handling auto-connect callback separately from connection terminated callback
-			// since they serve two different use cases and current implementation does not
-			// support multiple callback registrations
-			if ds.AutoReconnectCallback != nil && !ds.disposing {
-				ds.AutoReconnectCallback(ds)
-			}
-		} else {
-			ds.connectActionMutex.Unlock()
-		}
+		ds.runDisconnectThread(autoReconnecting)
 	})
+
+	ds.disconnectThread.Start()
 
 	if joinThread {
 		ds.disconnectThread.Join()
+	}
+}
+
+func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
+	// Let any pending connect operation complete before disconnect - prevents destruction disconnect before connection is completed
+	if !autoReconnecting {
+		ds.connector.Cancel()
+		ds.connectionTerminationThread.Join()
+		ds.connectActionMutex.Lock()
+	}
+
+	var err error
+
+	// Release queues and close sockets so that threads can shut down gracefully
+	if ds.commandChannelSocket != nil {
+		err = ds.commandChannelSocket.Close()
+
+		if err != nil {
+			ds.dispatchErrorMessage("Exception while disconnecting data subscriber TCP command channel: " + err.Error())
+		}
+	}
+
+	if ds.dataChannelSocket != nil {
+		err = ds.dataChannelSocket.Close()
+
+		if err != nil {
+			ds.dispatchErrorMessage("Exception while disconnecting data subscriber UDP data channel: " + err.Error())
+		}
+	}
+
+	// Join with all threads to guarantee their completion before returning control to the caller
+	if ds.commandChannelResponseThread != nil {
+		ds.commandChannelResponseThread.Join()
+	}
+
+	if ds.dataChannelResponseThread != nil {
+		ds.dataChannelResponseThread.Join()
+	}
+
+	// Notify consumers of disconnect
+	if ds.ConnectionTerminatedCallback != nil {
+		ds.ConnectionTerminatedCallback(ds)
+	}
+
+	// Disconnect complete
+	ds.disconnected = true
+	ds.disconnecting = false
+
+	if autoReconnecting {
+		// Handling auto-connect callback separately from connection terminated callback
+		// since they serve two different use cases and current implementation does not
+		// support multiple callback registrations
+		if ds.AutoReconnectCallback != nil && !ds.disposing {
+			ds.AutoReconnectCallback(ds)
+		}
+	} else {
+		ds.connectActionMutex.Unlock()
 	}
 }
 
