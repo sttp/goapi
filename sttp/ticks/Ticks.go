@@ -89,3 +89,8 @@ func IsLeapSecond(ticks Ticks) bool {
 func SetLeapSecond(ticks Ticks) Ticks {
 	return ticks | LeapSecondFlag
 }
+
+// UtcNow gets the current time in UTC as a Ticks value.
+func UtcNow() Ticks {
+	return FromTime(time.Now().UTC())
+}
