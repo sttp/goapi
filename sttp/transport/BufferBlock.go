@@ -25,12 +25,12 @@ package transport
 
 import "github.com/sttp/goapi/sttp/guid"
 
-// BufferBlock defines an atomic data unit data, i.e., a binary buffer, for transport in STTP.
+// BufferBlock defines an atomic unit of data, i.e., a binary buffer, for transport in STTP.
 type BufferBlock struct {
 	// Measurement's globally unique identifier.
 	SignalID guid.Guid
 
-	// Buffer is an atomic data unit data, i.e., a binary buffer. This buffer typically
+	// Buffer is an atomic unit of data, i.e., a binary buffer. This buffer typically
 	// represents a partial image of a larger whole.
 	Buffer []byte
 }
