@@ -47,6 +47,18 @@ func Parse(value string) Guid {
 	panic("Failed to parse Guid from string \"" + value + "\": " + err.Error())
 }
 
+// String returns the string form of a Guid, i.e., {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx},
+// or "" if Guid is invalid.
+func (g Guid) String() string {
+	image := uuid.UUID(g).String()
+
+	if len(image) > 0 {
+		return "{" + image + "}"
+	}
+
+	return ""
+}
+
 // FromBytes creates a new Guid from a byte slice.
 func FromBytes(data []byte, swapEndianness bool) Guid {
 	swappedBytes := make([]byte, 16)
