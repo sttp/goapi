@@ -699,7 +699,12 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 	}
 
 	signalIndexCache := NewSignalIndexCache()
-	signalIndexCache.decode(ds, data, &ds.subscriberID)
+	err := signalIndexCache.decode(ds, data, &ds.subscriberID)
+
+	if err != nil {
+		ds.dispatchErrorMessage("Failed to parse signal index cache: " + err.Error())
+		return
+	}
 
 	ds.signalIndexCacheLock.Lock()
 	ds.signalIndexCache[cacheIndex] = signalIndexCache

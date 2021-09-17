@@ -25,6 +25,7 @@ package transport
 
 import (
 	"encoding/binary"
+	"errors"
 	"math"
 
 	"github.com/sttp/goapi/sttp/guid"
@@ -152,11 +153,11 @@ func (sic *SignalIndexCache) BinaryLength() uint32 {
 // }
 
 // decode parses a SignalIndexCache from the specified byte buffer received from a DataPublisher.
-func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, subscriberID *guid.Guid) {
+func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, subscriberID *guid.Guid) error {
 	length := uint32(len(buffer))
 
 	if length < 4 {
-		return
+		return errors.New("not enough buffer provided to parse")
 	}
 
 	var offset uint32 = 0
@@ -165,7 +166,7 @@ func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, s
 	binaryLength := binary.BigEndian.Uint32(buffer[offset:])
 
 	if length < binaryLength {
-		return
+		return errors.New("not enough buffer provided to parse")
 	}
 
 	// We know we have enough data so we can empty the reference cache
@@ -173,8 +174,15 @@ func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, s
 		delete(sic.reference, k)
 	}
 
+	var err error
+
 	// Subscriber ID
-	*subscriberID = guid.FromBytes(buffer[4:], false)
+	*subscriberID, err = guid.FromBytes(buffer[4:], false)
+
+	if err != nil {
+		return errors.New("failed to parse SubscriberID: " + err.Error())
+	}
+
 	offset += 16
 
 	// Number of references
@@ -189,7 +197,12 @@ func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, s
 		offset += 4
 
 		// Signal ID
-		signalID := guid.FromBytes(buffer[offset:], false)
+		signalID, err := guid.FromBytes(buffer[offset:], false)
+
+		if err != nil {
+			return errors.New("failed to parse SignalID: " + err.Error())
+		}
+
 		offset += 16
 
 		// Source
@@ -208,6 +221,8 @@ func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, s
 
 	// There is additional data here about unauthorized signal IDs
 	// that may need to be parsed in the future...
+
+	return nil
 }
 
 //// Encode serializes a SignalIndexCache to a byte buffer for publication to a DataSubscriber.

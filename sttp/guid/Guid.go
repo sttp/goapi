@@ -60,7 +60,7 @@ func (g Guid) String() string {
 }
 
 // FromBytes creates a new Guid from a byte slice.
-func FromBytes(data []byte, swapEndianness bool) Guid {
+func FromBytes(data []byte, swapEndianness bool) (Guid, error) {
 	swappedBytes := make([]byte, 16)
 	var encodedBytes []byte
 
@@ -94,9 +94,5 @@ func FromBytes(data []byte, swapEndianness bool) Guid {
 
 	guid, err := uuid.FromBytes(encodedBytes)
 
-	if err == nil {
-		return Guid(guid)
-	}
-
-	panic("Failed to parse Guid from bytes: " + err.Error())
+	return Guid(guid), err
 }
