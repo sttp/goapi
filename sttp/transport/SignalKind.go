@@ -104,9 +104,9 @@ var (
 		"??"}
 )
 
-// GetSignalTypeAcronym gets the specific four-character signal type acronym for a SignalKind
+// SignalTypeAcronym gets the specific four-character signal type acronym for a SignalKind
 // enumeration value and phasor type, i.e., "V" voltage or "I" current.
-func GetSignalTypeAcronym(kind SignalKindEnum, phasorType rune) string {
+func SignalTypeAcronym(kind SignalKindEnum, phasorType rune) string {
 	// A SignalType represents a more specific measurement type than SignalKind, i.e.,
 	// a phasor type (voltage or current) can also be determined by the type.
 	switch kind {
