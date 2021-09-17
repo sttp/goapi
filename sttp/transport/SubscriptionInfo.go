@@ -23,7 +23,7 @@
 
 package transport
 
-// SubscriptionInfo defines connection related settings for a DataSubscriber instance.
+// SubscriptionInfo defines subscription related settings for a DataSubscriber instance.
 type SubscriptionInfo struct {
 	// FilterExpression defines the desired measurements for a subscription. Examples include:
 	//
@@ -59,15 +59,19 @@ type SubscriptionInfo struct {
 
 	// StartTime defines the start time for a requested temporal data playback, i.e., a historical subscription.
 	// Simply by specifying a StartTime and StopTime, a subscription is considered a historical subscription.
-	// Note that the publisher may not support historical subscriptions, in which was the subscribe will fail.
+	// Note that the publisher may not support historical subscriptions, in which case the subscribe will fail.
 	StartTime string
 	// StopTime defines the stop time for a requested temporal data playback, i.e., a historical subscription.
 	// Simply by specifying a StartTime and StopTime, a subscription is considered a historical subscription.
-	// Note that the publisher may not support historical subscriptions, in which was the subscribe will fail.
+	// Note that the publisher may not support historical subscriptions, in which case the subscribe will fail.
 	StopTime string
-	// ConstraintParameters defines any custom constraint parameters for a requested temporal data playback.
+	// ConstraintParameters defines any custom constraint parameters for a requested temporal data playback. This can
+	// include parameters that may be needed to initiate, filter, or control historical data access.
 	ConstraintParameters string
-	// ProcessingInterval defines the initial playback speed, in milliseconds, a requested temporal data playback.
+	// ProcessingInterval defines the initial playback speed, in milliseconds, for a requested temporal data playback.
+	// With the exception of the values of -1 and 0, this value specifies the desired processing interval for data, i.e.,
+	// basically a delay, or timer interval, over which to process data. A value of -1 means to use the default processing
+	// interval while a value of 0 means to process data as fast as possible.
 	ProcessingInterval int32
 
 	// ExtraConnectionStringParameters defines any extra custom connection string parameters that may be needed for a subscription.

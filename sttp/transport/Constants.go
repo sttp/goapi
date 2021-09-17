@@ -285,8 +285,8 @@ var ServerResponse = struct {
 	ProcessingComplete ServerResponseEnum
 	// BufferBlock defines a service response code for indicating a buffer block. Unsolicited response informs client that a raw buffer block follows.
 	BufferBlock ServerResponseEnum
-	// Notify defines a service response code for indicating a notification. Unsolicited response provides a notification message to the client.
-	Notify ServerResponseEnum
+	// Notification defines a service response code for indicating a notification. Unsolicited response provides a notification message to the client.
+	Notification ServerResponseEnum
 	// ConfigurationChanged defines a service response code for indicating a that the publisher configuration metadata has changed. Unsolicited response provides a notification that the publisher's source configuration has changed and that client may want to request a meta-data refresh.
 	ConfigurationChanged ServerResponseEnum
 	// UserResponse00 defines a service response code for handling user-defined responses.
@@ -337,7 +337,7 @@ var ServerResponse = struct {
 	DataStartTime:          0x86,
 	ProcessingComplete:     0x87,
 	BufferBlock:            0x88,
-	Notify:                 0x89,
+	Notification:           0x89,
 	ConfigurationChanged:   0x8A,
 	UserResponse00:         0xE0,
 	UserResponse01:         0xE1,

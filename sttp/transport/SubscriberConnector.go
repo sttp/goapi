@@ -33,14 +33,14 @@ import (
 	"github.com/sttp/goapi/sttp/thread"
 )
 
-// SubscriberConnector represents a connector that will establish to reestablish
-// a connection from a DataSubscriber to a DataPublisher.
+// SubscriberConnector represents a connector that will establish or automatically
+// reestablish a connection from a DataSubscriber to a DataPublisher.
 type SubscriberConnector struct {
 	// ErrorMessageCallback is called when an error message should be logged.
 	ErrorMessageCallback func(string)
 
 	// ReconnectCallback is called when SubscriberConnector attempts to reconnect.
-	ReconnectCallback func()
+	ReconnectCallback func(*DataSubscriber)
 
 	// Hostname is the DataPublisher DNS name or IP.
 	Hostname string
@@ -82,10 +82,10 @@ const ConnectFailed ConnectStatus = 0
 // ConnectCanceled defines that a connection was cancelled.
 const ConnectCanceled ConnectStatus = -1
 
-func autoReconnect(subscriber *DataSubscriber) {
-	sc := subscriber.connector
+func autoReconnect(ds *DataSubscriber) {
+	sc := ds.connector
 
-	if sc.cancel || subscriber.disposing {
+	if sc.cancel || ds.disposing {
 		return
 	}
 
@@ -105,19 +105,19 @@ func autoReconnect(subscriber *DataSubscriber) {
 			return
 		}
 
-		sc.waitForRetry(subscriber)
+		sc.waitForRetry(ds)
 
-		if sc.cancel || subscriber.disposing {
+		if sc.cancel || ds.disposing {
 			return
 		}
 
-		if sc.connect(subscriber, true) == ConnectCanceled {
+		if sc.connect(ds, true) == ConnectCanceled {
 			return
 		}
 
 		// Notify the user that reconnect attempt was completed.
 		if !sc.cancel && sc.ReconnectCallback != nil {
-			sc.ReconnectCallback()
+			sc.ReconnectCallback(ds)
 		}
 	})
 }

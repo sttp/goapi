@@ -40,12 +40,12 @@ import (
 
 // DataSubscriber represents a client subscription for an STTP connection.
 type DataSubscriber struct {
-	subscriptionInfo SubscriptionInfo
-	subscriberID     guid.Guid
-	encoding         OperationalEncodingEnum
-	connector        SubscriberConnector
-	connected        bool
-	subscribed       bool
+	subscription SubscriptionInfo
+	subscriberID guid.Guid
+	encoding     OperationalEncodingEnum
+	connector    SubscriberConnector
+	connected    bool
+	subscribed   bool
 
 	commandChannelSocket         net.Conn
 	commandChannelResponseThread *thread.Thread
@@ -78,10 +78,13 @@ type DataSubscriber struct {
 	ConnectionTerminatedCallback func()
 
 	// AutoReconnectCallback is called when DataSubscriber automatically reconnects.
-	AutoReconnectCallback func()
+	AutoReconnectCallback func(*DataSubscriber)
 
 	// MetadataReceivedCallback is called when DataSubscriber receives a metadata response.
 	MetadataReceivedCallback func([]byte)
+
+	// SubscriptionUpdatedCallback is called when DataSubscriber receives a new signal index cache.
+	SubscriptionUpdatedCallback func(signalIndexCache *SignalIndexCache)
 
 	// DataStartTimeCallback is called with timestamp of first received measurement in a subscription.
 	DataStartTimeCallback func(ticks.Ticks)
@@ -99,8 +102,8 @@ type DataSubscriber struct {
 	// i.e., the end of a historical playback data stream has been reached.
 	ProcessingCompleteCallback func()
 
-	// NotificationCallback is called when the DataPublisher sends a notification that requires receipt.
-	NotificationCallback func(string)
+	// NotificationReceivedCallback is called when the DataPublisher sends a notification that requires receipt.
+	NotificationReceivedCallback func(string)
 
 	// CompressPayloadData determines whether payload data is compressed using TSSC.
 	CompressPayloadData bool
@@ -124,7 +127,7 @@ type DataSubscriber struct {
 	STTPUpdatedOnInfo string
 
 	// Measurement parsing
-	signalIndexCache        []SignalIndexCache
+	signalIndexCache        [2]*SignalIndexCache
 	signalIndexCacheLock    sync.Mutex
 	cacheIndex              int32
 	timeIndex               int32
@@ -142,7 +145,7 @@ type DataSubscriber struct {
 // NewDataSubscriber creates a new DataSubscriber.
 func NewDataSubscriber() *DataSubscriber {
 	return &DataSubscriber{
-		subscriptionInfo:         SubscriptionInfo{},
+		subscription:             SubscriptionInfo{IncludeTime: true},
 		encoding:                 OperationalEncoding.UTF8,
 		connector:                SubscriberConnector{},
 		readBuffer:               make([]byte, maxPacketSize),
@@ -154,7 +157,7 @@ func NewDataSubscriber() *DataSubscriber {
 		STTPSourceInfo:           Source,
 		STTPVersionInfo:          Version,
 		STTPUpdatedOnInfo:        UpdatedOn,
-		signalIndexCache:         make([]SignalIndexCache, 2),
+		signalIndexCache:         [2]*SignalIndexCache{NewSignalIndexCache(), NewSignalIndexCache()},
 	}
 }
 
@@ -235,12 +238,10 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 }
 
 // Subscribe notifies the DataPublisher that a DataSubscriber would like to start receiving streaming data.
-func (ds *DataSubscriber) Subscribe(subscriptionInfo SubscriptionInfo) error {
+func (ds *DataSubscriber) Subscribe() error {
 	if !ds.connected {
 		return errors.New("subscriber is not connected; cannot subscribe")
 	}
-
-	ds.subscriptionInfo = subscriptionInfo
 
 	// Make sure to unsubscribe before attempting another
 	// subscription so we don't leave UDP sockets open
@@ -253,17 +254,17 @@ func (ds *DataSubscriber) Subscribe(subscriptionInfo SubscriptionInfo) error {
 	var connectionBuilder strings.Builder
 
 	connectionBuilder.WriteString("throttled=")
-	connectionBuilder.WriteString(strconv.FormatBool(ds.subscriptionInfo.Throttled))
+	connectionBuilder.WriteString(strconv.FormatBool(ds.subscription.Throttled))
 	connectionBuilder.WriteString(";publishInterval=")
-	connectionBuilder.WriteString(strconv.FormatFloat(ds.subscriptionInfo.PublishInterval, 'f', 6, 64))
+	connectionBuilder.WriteString(strconv.FormatFloat(ds.subscription.PublishInterval, 'f', 6, 64))
 	connectionBuilder.WriteString(";includeTime=")
-	connectionBuilder.WriteString(strconv.FormatBool(ds.subscriptionInfo.IncludeTime))
+	connectionBuilder.WriteString(strconv.FormatBool(ds.subscription.IncludeTime))
 	connectionBuilder.WriteString(";processingInterval=")
-	connectionBuilder.WriteString(strconv.FormatInt(int64(ds.subscriptionInfo.ProcessingInterval), 10))
+	connectionBuilder.WriteString(strconv.FormatInt(int64(ds.subscription.ProcessingInterval), 10))
 	connectionBuilder.WriteString(";useMillisecondResolution=")
-	connectionBuilder.WriteString(strconv.FormatBool(ds.subscriptionInfo.UseMillisecondResolution))
+	connectionBuilder.WriteString(strconv.FormatBool(ds.subscription.UseMillisecondResolution))
 	connectionBuilder.WriteString(";requestNaNValueFilter")
-	connectionBuilder.WriteString(strconv.FormatBool(ds.subscriptionInfo.RequestNaNValueFilter))
+	connectionBuilder.WriteString(strconv.FormatBool(ds.subscription.RequestNaNValueFilter))
 	connectionBuilder.WriteString(";assemblyInfo={source=")
 	connectionBuilder.WriteString(ds.STTPSourceInfo)
 	connectionBuilder.WriteString(";version=")
@@ -272,14 +273,14 @@ func (ds *DataSubscriber) Subscribe(subscriptionInfo SubscriptionInfo) error {
 	connectionBuilder.WriteString(ds.STTPUpdatedOnInfo)
 	connectionBuilder.WriteString("}")
 
-	if len(ds.subscriptionInfo.FilterExpression) > 0 {
+	if len(ds.subscription.FilterExpression) > 0 {
 		connectionBuilder.WriteString(";filterExpression={")
-		connectionBuilder.WriteString(ds.subscriptionInfo.FilterExpression)
+		connectionBuilder.WriteString(ds.subscription.FilterExpression)
 		connectionBuilder.WriteString("}")
 	}
 
-	if ds.subscriptionInfo.UdpDataChannel {
-		udpPort := strconv.Itoa(int(ds.subscriptionInfo.DataChannelLocalPort))
+	if ds.subscription.UdpDataChannel {
+		udpPort := strconv.Itoa(int(ds.subscription.DataChannelLocalPort))
 		udpAddr, err := net.ResolveUDPAddr("udp", ":"+udpPort)
 
 		if err != nil {
@@ -300,24 +301,24 @@ func (ds *DataSubscriber) Subscribe(subscriptionInfo SubscriptionInfo) error {
 		connectionBuilder.WriteString("}")
 	}
 
-	if len(ds.subscriptionInfo.StartTime) > 0 {
+	if len(ds.subscription.StartTime) > 0 {
 		connectionBuilder.WriteString(";startTimeConstraint=")
-		connectionBuilder.WriteString(ds.subscriptionInfo.StartTime)
+		connectionBuilder.WriteString(ds.subscription.StartTime)
 	}
 
-	if len(ds.subscriptionInfo.StopTime) > 0 {
+	if len(ds.subscription.StopTime) > 0 {
 		connectionBuilder.WriteString(";stopTimeConstraint=")
-		connectionBuilder.WriteString(ds.subscriptionInfo.StopTime)
+		connectionBuilder.WriteString(ds.subscription.StopTime)
 	}
 
-	if len(ds.subscriptionInfo.ConstraintParameters) > 0 {
+	if len(ds.subscription.ConstraintParameters) > 0 {
 		connectionBuilder.WriteString(";timeConstraintParameters=")
-		connectionBuilder.WriteString(ds.subscriptionInfo.ConstraintParameters)
+		connectionBuilder.WriteString(ds.subscription.ConstraintParameters)
 	}
 
-	if len(ds.subscriptionInfo.ExtraConnectionStringParameters) > 0 {
+	if len(ds.subscription.ExtraConnectionStringParameters) > 0 {
 		connectionBuilder.WriteRune(';')
-		connectionBuilder.WriteString(ds.subscriptionInfo.ExtraConnectionStringParameters)
+		connectionBuilder.WriteString(ds.subscription.ExtraConnectionStringParameters)
 	}
 
 	connectionString := connectionBuilder.String()
@@ -453,7 +454,7 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 		// since they serve two different use cases and current implementation does not
 		// support multiple callback registrations
 		if ds.AutoReconnectCallback != nil && !ds.disposing {
-			ds.AutoReconnectCallback()
+			ds.AutoReconnectCallback(ds)
 		}
 	} else {
 		ds.connectActionMutex.Unlock()
@@ -584,8 +585,8 @@ func (ds *DataSubscriber) processServerResponse(buffer []byte) {
 		ds.handleConfigurationChanged()
 	case ServerResponse.BufferBlock:
 		ds.handleBufferBlock(data)
-	case ServerResponse.Notify:
-		ds.handleNotify(data)
+	case ServerResponse.Notification:
+		ds.handleNotification(data)
 	case ServerResponse.NoOP:
 		// NoOP handled
 	default:
@@ -704,8 +705,8 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 		}
 	}
 
-	var signalIndexCache SignalIndexCache
-	signalIndexCache.Decode(ds, data, &ds.subscriberID)
+	signalIndexCache := NewSignalIndexCache()
+	signalIndexCache.decode(ds, data, &ds.subscriberID)
 
 	ds.signalIndexCacheLock.Lock()
 	ds.signalIndexCache[cacheIndex] = signalIndexCache
@@ -714,6 +715,10 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 
 	if version > 1 {
 		ds.SendServerCommand(ServerCommand.ConfirmSignalIndexCache)
+	}
+
+	if ds.SubscriptionUpdatedCallback != nil {
+		go ds.SubscriptionUpdatedCallback(signalIndexCache)
 	}
 }
 
@@ -853,12 +858,12 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 	ds.totalMeasurementsReceived += uint64(count)
 }
 
-func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache SignalIndexCache, data []byte, measurements []Measurement) {
+func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCache, data []byte, measurements []Measurement) {
 }
 
-func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache SignalIndexCache, dataPacketFlags DataPacketFlagsEnum, data []byte, measurements []Measurement) {
-	useMillisecondResolution := ds.subscriptionInfo.UseMillisecondResolution
-	includeTime := ds.subscriptionInfo.IncludeTime
+func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndexCache, dataPacketFlags DataPacketFlagsEnum, data []byte, measurements []Measurement) {
+	useMillisecondResolution := ds.subscription.UseMillisecondResolution
+	includeTime := ds.subscription.IncludeTime
 	index := 0
 
 	for i := 0; i < len(measurements); i++ {
@@ -953,14 +958,14 @@ func (ds *DataSubscriber) handleBufferBlock(data []byte) {
 	}
 }
 
-func (ds *DataSubscriber) handleNotify(data []byte) {
+func (ds *DataSubscriber) handleNotification(data []byte) {
 	// Skip the 4-byte hash and decode notification message
 	message := ds.DecodeString(data[4:])
 
 	ds.dispatchStatusMessage("NOTIFICATION: " + message)
 
-	if ds.NotificationCallback != nil {
-		go ds.NotificationCallback(message)
+	if ds.NotificationReceivedCallback != nil {
+		go ds.NotificationReceivedCallback(message)
 	}
 
 	// Send confirmation of receipt of the notification with 4-byte hash
@@ -1020,7 +1025,7 @@ func (ds *DataSubscriber) sendOperationalModes() {
 	operationalModes |= OperationalModesEnum(ds.encoding)
 
 	// TSSC compression only works with stateful connections
-	if ds.CompressPayloadData && !ds.subscriptionInfo.UdpDataChannel {
+	if ds.CompressPayloadData && !ds.subscription.UdpDataChannel {
 		operationalModes |= OperationalModes.CompressPayloadData | OperationalModesEnum(CompressionModes.TSSC)
 	}
 
@@ -1038,6 +1043,30 @@ func (ds *DataSubscriber) sendOperationalModes() {
 	ds.SendServerCommandWithPayload(ServerCommand.DefineOperationalModes, buffer)
 }
 
+// GetSubscription gets the SubscriptionInfo associated with this DataSubscriber.
+func (ds *DataSubscriber) GetSubscription() *SubscriptionInfo {
+	return &ds.subscription
+}
+
+// GetConnector gets the SubscriberConnector associated with this DataSubscriber.
+func (ds *DataSubscriber) GetConnector() *SubscriberConnector {
+	return &ds.connector
+}
+
+// GetSignalIndexCache gets the active signal index cache.
+func (ds *DataSubscriber) GetActiveSignalIndexCache() *SignalIndexCache {
+	ds.signalIndexCacheLock.Lock()
+	signalIndexCache := ds.signalIndexCache[ds.cacheIndex]
+	ds.signalIndexCacheLock.Unlock()
+
+	return signalIndexCache
+}
+
+// GetSubscriberID gets the subscriber ID as assigned by the DataPublisher upon receipt of the SignalIndexCache.
+func (ds *DataSubscriber) GetSubscriberID() guid.Guid {
+	return ds.subscriberID
+}
+
 // GetTotalCommandChannelBytesReceived gets the total number of bytes received via the command channel since last connection.
 func (ds *DataSubscriber) GetTotalCommandChannelBytesReceived() uint64 {
 	return ds.totalCommandChannelBytesReceived
@@ -1045,7 +1074,7 @@ func (ds *DataSubscriber) GetTotalCommandChannelBytesReceived() uint64 {
 
 // GetTotalDataChannelBytesReceived gets the total number of bytes received via the data channel since last connection.
 func (ds *DataSubscriber) GetTotalDataChannelBytesReceived() uint64 {
-	if ds.subscriptionInfo.UdpDataChannel {
+	if ds.subscription.UdpDataChannel {
 		return ds.totalDataChannelBytesReceived
 	}
 

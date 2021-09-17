@@ -128,7 +128,7 @@ func (fullFlags StateFlagsEnum) mapToCompactFlags() compactStateFlagsEnum {
 // CompactMeasurement defines a measured value, in simple compact format, for transmission or reception in STTP.
 type CompactMeasurement struct {
 	Measurement
-	signalIndexCache         SignalIndexCache
+	signalIndexCache         *SignalIndexCache
 	baseTimeOffsets          *[2]int64
 	includeTime              bool
 	useMillisecondResolution bool
@@ -137,7 +137,7 @@ type CompactMeasurement struct {
 }
 
 // NewCompactMeasurement creates a new CompactMeasurement
-func NewCompactMeasurement(signalIndexCache SignalIndexCache, includeTime bool, useMillisecondResolution bool, baseTimeOffsets *[2]int64) CompactMeasurement {
+func NewCompactMeasurement(signalIndexCache *SignalIndexCache, includeTime bool, useMillisecondResolution bool, baseTimeOffsets *[2]int64) CompactMeasurement {
 	return CompactMeasurement{
 		Measurement:              Measurement{},
 		signalIndexCache:         signalIndexCache,

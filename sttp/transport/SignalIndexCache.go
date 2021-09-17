@@ -41,8 +41,16 @@ type SignalIndexCache struct {
 	binaryLength  uint32
 }
 
-// AddRecord adds a new record to the SignalIndexCache for provided key Measurement details.
-func (sic *SignalIndexCache) AddRecord(signalIndex int32, signalID guid.Guid, source string, id uint64, charSizeEstimate uint32 /* = 1 */) {
+// NewSignalIndexCache makes a new SignalIndexCache
+func NewSignalIndexCache() *SignalIndexCache {
+	return &SignalIndexCache{
+		reference:     make(map[int32]uint32),
+		signalIDCache: make(map[guid.Guid]int32),
+	}
+}
+
+// addRecord adds a new record to the SignalIndexCache for provided key Measurement details.
+func (sic *SignalIndexCache) addRecord(signalIndex int32, signalID guid.Guid, source string, id uint64, charSizeEstimate uint32 /* = 1 */) {
 	sic.reference[signalIndex] = uint32(len(sic.signalIDList))
 	sic.signalIDList = append(sic.signalIDList, signalID)
 	sic.sourceList = append(sic.sourceList, source)
@@ -54,14 +62,15 @@ func (sic *SignalIndexCache) AddRecord(signalIndex int32, signalID guid.Guid, so
 	sic.binaryLength += 32 + uint32(len(source))*charSizeEstimate
 }
 
-// Clear removes all records from the SignalIndexCache.
-func (sic *SignalIndexCache) Clear() {
-	sic.reference = map[int32]uint32{}
-	sic.signalIDList = nil
-	sic.sourceList = nil
-	sic.idList = nil
-	sic.signalIDCache = map[guid.Guid]int32{}
-}
+// TODO: Function for use by DataPublisher
+// clear removes all records from the SignalIndexCache.
+// func (sic *SignalIndexCache) clear() {
+// 	sic.reference = map[int32]uint32{}
+// 	sic.signalIDList = nil
+// 	sic.sourceList = nil
+// 	sic.idList = nil
+// 	sic.signalIDCache = map[guid.Guid]int32{}
+// }
 
 // Contains determines if the specified signalIndex exists with the SignalIndexCache.
 func (sic *SignalIndexCache) Contains(signalIndex int32) bool {
@@ -130,19 +139,20 @@ func (sic *SignalIndexCache) GetBinaryLength() uint32 {
 	return sic.binaryLength
 }
 
-// RecalculateBinaryLength forces a new recalculation the cached binary length of the SignalIndexCache.
-func (sic *SignalIndexCache) RecalculateBinaryLength(connection *SubscriberConnection) {
-	var binaryLength uint32 = 28
+// TODO: Function for use by DataPublisher
+// recalculateBinaryLength forces a new recalculation the cached binary length of the SignalIndexCache.
+// func (sic *SignalIndexCache) recalculateBinaryLength(connection *SubscriberConnection) {
+// 	var binaryLength uint32 = 28
 
-	for i := 0; i < len(sic.signalIDList); i++ {
-		binaryLength += 32 + uint32(len(connection.EncodeString(sic.sourceList[i])))
-	}
+// 	for i := 0; i < len(sic.signalIDList); i++ {
+// 		binaryLength += 32 + uint32(len(connection.EncodeString(sic.sourceList[i])))
+// 	}
 
-	sic.binaryLength = binaryLength
-}
+// 	sic.binaryLength = binaryLength
+// }
 
-// Decode parses a SignalIndexCache from the specified byte buffer received from a DataPublisher.
-func (sic *SignalIndexCache) Decode(subscriber *DataSubscriber, buffer []byte, subscriberID *guid.Guid) {
+// decode parses a SignalIndexCache from the specified byte buffer received from a DataPublisher.
+func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, subscriberID *guid.Guid) {
 	length := uint32(len(buffer))
 
 	if length < 4 {
@@ -193,7 +203,7 @@ func (sic *SignalIndexCache) Decode(subscriber *DataSubscriber, buffer []byte, s
 		id := binary.BigEndian.Uint64(buffer[offset:])
 		offset += 8
 
-		sic.AddRecord(signalIndex, signalID, source, id, 1)
+		sic.addRecord(signalIndex, signalID, source, id, 1)
 	}
 
 	// There is additional data here about unauthorized signal IDs
