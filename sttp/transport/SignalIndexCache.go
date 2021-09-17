@@ -78,8 +78,8 @@ func (sic *SignalIndexCache) Contains(signalIndex int32) bool {
 	return ok
 }
 
-// GetSignalID returns the signal ID Guid for the specified signalIndex in the SignalIndexCache.
-func (sic *SignalIndexCache) GetSignalID(signalIndex int32) guid.Guid {
+// SignalID returns the signal ID Guid for the specified signalIndex in the SignalIndexCache.
+func (sic *SignalIndexCache) SignalID(signalIndex int32) guid.Guid {
 	if index, ok := sic.reference[signalIndex]; ok {
 		return sic.signalIDList[index]
 	}
@@ -87,13 +87,13 @@ func (sic *SignalIndexCache) GetSignalID(signalIndex int32) guid.Guid {
 	return guid.Empty
 }
 
-// GetSignalIDs returns a HashSet for all the Guid values found in the SignalIndexCache.
-func (sic *SignalIndexCache) GetSignalIDs() guid.HashSet {
+// SignalIDs returns a HashSet for all the Guid values found in the SignalIndexCache.
+func (sic *SignalIndexCache) SignalIDs() guid.HashSet {
 	return guid.NewHashSet(sic.signalIDList)
 }
 
-// GetSource returns the Measurement source string for the specified signalIndex in the SignalIndexCache.
-func (sic *SignalIndexCache) GetSource(signalIndex int32) string {
+// Source returns the Measurement source string for the specified signalIndex in the SignalIndexCache.
+func (sic *SignalIndexCache) Source(signalIndex int32) string {
 	if index, ok := sic.reference[signalIndex]; ok {
 		return sic.sourceList[index]
 	}
@@ -101,8 +101,8 @@ func (sic *SignalIndexCache) GetSource(signalIndex int32) string {
 	return ""
 }
 
-// GetID returns the Measurement integer ID for the specified signalIndex in the SignalIndexCache.
-func (sic *SignalIndexCache) GetID(signalIndex int32) uint64 {
+// ID returns the Measurement integer ID for the specified signalIndex in the SignalIndexCache.
+func (sic *SignalIndexCache) ID(signalIndex int32) uint64 {
 	if index, ok := sic.reference[signalIndex]; ok {
 		return sic.idList[index]
 	}
@@ -110,9 +110,9 @@ func (sic *SignalIndexCache) GetID(signalIndex int32) uint64 {
 	return math.MaxUint64
 }
 
-// GetRecord returns the key Measurement values, signalID Guid, source string, and integer ID and a
+// Record returns the key Measurement values, signalID Guid, source string, and integer ID and a
 // final boolean value representing find success for the specified signalIndex in the SignalIndexCache.
-func (sic *SignalIndexCache) GetRecord(signalIndex int32) (guid.Guid, string, uint64, bool) {
+func (sic *SignalIndexCache) Record(signalIndex int32) (guid.Guid, string, uint64, bool) {
 	if index, ok := sic.reference[signalIndex]; ok {
 		return sic.signalIDList[index], sic.sourceList[index], sic.idList[index], true
 	}
@@ -120,8 +120,8 @@ func (sic *SignalIndexCache) GetRecord(signalIndex int32) (guid.Guid, string, ui
 	return guid.Empty, "", 0, false
 }
 
-// GetSignalIndex returns the signal index for the specified signalID Guid in the SignalIndexCache.
-func (sic *SignalIndexCache) GetSignalIndex(signalID guid.Guid) int32 {
+// SignalIndex returns the signal index for the specified signalID Guid in the SignalIndexCache.
+func (sic *SignalIndexCache) SignalIndex(signalID guid.Guid) int32 {
 	if index, ok := sic.signalIDCache[signalID]; ok {
 		return index
 	}
@@ -134,8 +134,8 @@ func (sic *SignalIndexCache) Count() uint32 {
 	return uint32(len(sic.signalIDCache))
 }
 
-// GetBinaryLength gets the binary length, in bytes, for the SignalIndexCache.
-func (sic *SignalIndexCache) GetBinaryLength() uint32 {
+// BinaryLength gets the binary length, in bytes, for the SignalIndexCache.
+func (sic *SignalIndexCache) BinaryLength() uint32 {
 	return sic.binaryLength
 }
 

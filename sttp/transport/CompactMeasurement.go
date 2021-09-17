@@ -237,12 +237,12 @@ func (cm *CompactMeasurement) SetCompactStateFlags(value byte) {
 
 // GetRuntimeID gets the 4-byte run-time signal index for this measurement.
 func (cm *CompactMeasurement) GetRuntimeID() int32 {
-	return cm.signalIndexCache.GetSignalIndex(cm.SignalID)
+	return cm.signalIndexCache.SignalIndex(cm.SignalID)
 }
 
 // SetRuntimeID assigns CompactMeasurement SignalID (UUID) from the specified signalIndex.
 func (cm *CompactMeasurement) SetRuntimeID(signalIndex int32) {
-	cm.SignalID = cm.signalIndexCache.GetSignalID(signalIndex)
+	cm.SignalID = cm.signalIndexCache.SignalID(signalIndex)
 }
 
 // Decode parses a CompactMeasurement from the specified byte buffer.

@@ -99,7 +99,7 @@ func (m *Measurement) TicksValue() int64 {
 	return int64(m.Timestamp & ticks.ValueMask)
 }
 
-// GetDateTime gets a Measurement Ticks based timestamp as a standard Go Time value.
-func (m *Measurement) GetDateTime() time.Time {
+// DateTime gets a Measurement Ticks based timestamp as a standard Go Time value.
+func (m *Measurement) DateTime() time.Time {
 	return ticks.ToTime(m.Timestamp)
 }

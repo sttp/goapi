@@ -36,6 +36,7 @@ import (
 	"github.com/sttp/goapi/sttp/guid"
 	"github.com/sttp/goapi/sttp/thread"
 	"github.com/sttp/goapi/sttp/ticks"
+	"github.com/sttp/goapi/sttp/version"
 )
 
 // DataSubscriber represents a client subscription for an STTP connection.
@@ -154,9 +155,9 @@ func NewDataSubscriber() *DataSubscriber {
 		CompressMetadata:         true, // Defaults to Gzip
 		CompressSignalIndexCache: true, // Defaults to Gzip
 		Version:                  2,
-		STTPSourceInfo:           Source,
-		STTPVersionInfo:          Version,
-		STTPUpdatedOnInfo:        UpdatedOn,
+		STTPSourceInfo:           version.Source,
+		STTPVersionInfo:          version.Version,
+		STTPUpdatedOnInfo:        version.UpdatedOn,
 		signalIndexCache:         [2]*SignalIndexCache{NewSignalIndexCache(), NewSignalIndexCache()},
 	}
 }
@@ -346,9 +347,7 @@ func (ds *DataSubscriber) Unsubscribe() {
 	ds.disconnecting = true
 
 	if ds.dataChannelSocket != nil {
-		err := ds.dataChannelSocket.Close()
-
-		if err != nil {
+		if err := ds.dataChannelSocket.Close(); err != nil {
 			ds.dispatchErrorMessage("Exception while disconnecting data subscriber UDP data channel: " + err.Error())
 		}
 	}
@@ -412,21 +411,15 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 		ds.connectActionMutex.Lock()
 	}
 
-	var err error
-
 	// Release queues and close sockets so that threads can shut down gracefully
 	if ds.commandChannelSocket != nil {
-		err = ds.commandChannelSocket.Close()
-
-		if err != nil {
+		if err := ds.commandChannelSocket.Close(); err != nil {
 			ds.dispatchErrorMessage("Exception while disconnecting data subscriber TCP command channel: " + err.Error())
 		}
 	}
 
 	if ds.dataChannelSocket != nil {
-		err = ds.dataChannelSocket.Close()
-
-		if err != nil {
+		if err := ds.dataChannelSocket.Close(); err != nil {
 			ds.dispatchErrorMessage("Exception while disconnecting data subscriber UDP data channel: " + err.Error())
 		}
 	}
@@ -911,7 +904,7 @@ func (ds *DataSubscriber) handleBufferBlock(data []byte) {
 		signalIndexCache := ds.signalIndexCache[signalIndexCacheIndex]
 		ds.signalIndexCacheLock.Unlock()
 
-		signalID := signalIndexCache.GetSignalID(signalIndex)
+		signalID := signalIndexCache.SignalID(signalIndex)
 		bufferBlockMeasurement := BufferBlock{SignalID: signalID}
 
 		// Determine if this is the next buffer block in the sequence
@@ -1043,18 +1036,18 @@ func (ds *DataSubscriber) sendOperationalModes() {
 	ds.SendServerCommandWithPayload(ServerCommand.DefineOperationalModes, buffer)
 }
 
-// GetSubscription gets the SubscriptionInfo associated with this DataSubscriber.
-func (ds *DataSubscriber) GetSubscription() *SubscriptionInfo {
+// Subscription gets the SubscriptionInfo associated with this DataSubscriber.
+func (ds *DataSubscriber) Subscription() *SubscriptionInfo {
 	return &ds.subscription
 }
 
-// GetConnector gets the SubscriberConnector associated with this DataSubscriber.
-func (ds *DataSubscriber) GetConnector() *SubscriberConnector {
+// Connector gets the SubscriberConnector associated with this DataSubscriber.
+func (ds *DataSubscriber) Connector() *SubscriberConnector {
 	return &ds.connector
 }
 
 // GetSignalIndexCache gets the active signal index cache.
-func (ds *DataSubscriber) GetActiveSignalIndexCache() *SignalIndexCache {
+func (ds *DataSubscriber) ActiveSignalIndexCache() *SignalIndexCache {
 	ds.signalIndexCacheLock.Lock()
 	signalIndexCache := ds.signalIndexCache[ds.cacheIndex]
 	ds.signalIndexCacheLock.Unlock()
@@ -1062,18 +1055,18 @@ func (ds *DataSubscriber) GetActiveSignalIndexCache() *SignalIndexCache {
 	return signalIndexCache
 }
 
-// GetSubscriberID gets the subscriber ID as assigned by the DataPublisher upon receipt of the SignalIndexCache.
-func (ds *DataSubscriber) GetSubscriberID() guid.Guid {
+// SubscriberID gets the subscriber ID as assigned by the DataPublisher upon receipt of the SignalIndexCache.
+func (ds *DataSubscriber) SubscriberID() guid.Guid {
 	return ds.subscriberID
 }
 
-// GetTotalCommandChannelBytesReceived gets the total number of bytes received via the command channel since last connection.
-func (ds *DataSubscriber) GetTotalCommandChannelBytesReceived() uint64 {
+// TotalCommandChannelBytesReceived gets the total number of bytes received via the command channel since last connection.
+func (ds *DataSubscriber) TotalCommandChannelBytesReceived() uint64 {
 	return ds.totalCommandChannelBytesReceived
 }
 
-// GetTotalDataChannelBytesReceived gets the total number of bytes received via the data channel since last connection.
-func (ds *DataSubscriber) GetTotalDataChannelBytesReceived() uint64 {
+// TotalDataChannelBytesReceived gets the total number of bytes received via the data channel since last connection.
+func (ds *DataSubscriber) TotalDataChannelBytesReceived() uint64 {
 	if ds.subscription.UdpDataChannel {
 		return ds.totalDataChannelBytesReceived
 	}
@@ -1081,7 +1074,7 @@ func (ds *DataSubscriber) GetTotalDataChannelBytesReceived() uint64 {
 	return ds.totalCommandChannelBytesReceived
 }
 
-// GetTotalMeasurementsReceived gets the total number of measurements received since last subscription.
-func (ds *DataSubscriber) GetTotalMeasurementsReceived() uint64 {
+// TotalMeasurementsReceived gets the total number of measurements received since last subscription.
+func (ds *DataSubscriber) TotalMeasurementsReceived() uint64 {
 	return ds.totalMeasurementsReceived
 }
