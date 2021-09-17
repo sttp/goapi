@@ -449,3 +449,21 @@ var SecurityMode = struct {
 	None: 0,
 	TLS:  1,
 }
+
+// ConnectStatusEnum defines the type for the ConnectStatus enumeration.
+type ConnectStatusEnum int
+
+// ConnectStatus is an enumeration of the possible connection status results used
+// by the SubscriberConnector.
+var ConnectStatus = struct {
+	// Success defines that a connection succeeded.
+	Success ConnectStatusEnum
+	// Failed defines that a connection failed.
+	Failed ConnectStatusEnum
+	// Canceled defines that a connection was cancelled.
+	Canceled ConnectStatusEnum
+}{
+	Success:  1,
+	Failed:   0,
+	Canceled: -1,
+}

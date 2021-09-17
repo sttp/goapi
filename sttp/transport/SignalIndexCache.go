@@ -58,6 +58,11 @@ func (sic *SignalIndexCache) addRecord(signalIndex int32, signalID guid.Guid, so
 	sic.idList = append(sic.idList, id)
 	sic.signalIDCache[signalID] = signalIndex
 
+	// Register measurement metadata
+	metadata := LookupMetadata(signalID)
+	metadata.Source = source
+	metadata.ID = id
+
 	// Char size here helps provide a rough-estimate on binary length used to reserve
 	// bytes for a vector, if exact size is needed call RecalculateBinaryLength first
 	sic.binaryLength += 32 + uint32(len(source))*charSizeEstimate
@@ -163,7 +168,8 @@ func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, s
 	var offset uint32 = 0
 
 	// Byte size of cache
-	binaryLength := binary.BigEndian.Uint32(buffer[offset:])
+	binaryLength := binary.BigEndian.Uint32(buffer)
+	offset += 4
 
 	if length < binaryLength {
 		return errors.New("not enough buffer provided to parse")
@@ -177,7 +183,7 @@ func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, s
 	var err error
 
 	// Subscriber ID
-	*subscriberID, err = guid.FromBytes(buffer[4:], false)
+	*subscriberID, err = guid.FromBytes(buffer[offset:], false)
 
 	if err != nil {
 		return errors.New("failed to parse SubscriberID: " + err.Error())
@@ -209,7 +215,7 @@ func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, s
 		sourceSize := binary.BigEndian.Uint32(buffer[offset:])
 		offset += 4
 
-		source := subscriber.DecodeString(buffer[offset:sourceSize])
+		source := subscriber.DecodeString(buffer[offset : offset+sourceSize])
 		offset += sourceSize
 
 		// ID

@@ -89,7 +89,7 @@ func FromBytes(data []byte, swapEndianness bool) (Guid, error) {
 
 		encodedBytes = swappedBytes
 	} else {
-		encodedBytes = data
+		encodedBytes = data[:16]
 	}
 
 	guid, err := uuid.FromBytes(encodedBytes)

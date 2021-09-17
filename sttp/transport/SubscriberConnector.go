@@ -70,19 +70,7 @@ type SubscriberConnector struct {
 	waitTimer         *time.Timer
 }
 
-// ConnectStatus defines the type for connection status results.
-type ConnectStatus int
-
-// ConnectSuccess defines that a connection succeeded.
-const ConnectSuccess ConnectStatus = 1
-
-// ConnectFailed defines that a connection failed.
-const ConnectFailed ConnectStatus = 0
-
-// ConnectCanceled defines that a connection was cancelled.
-const ConnectCanceled ConnectStatus = -1
-
-func autoReconnect(ds *DataSubscriber) {
+func (ds *DataSubscriber) autoReconnect() {
 	sc := ds.connector
 
 	if sc.cancel || ds.disposing {
@@ -111,7 +99,7 @@ func autoReconnect(ds *DataSubscriber) {
 			return
 		}
 
-		if sc.connect(ds, true) == ConnectCanceled {
+		if sc.connect(ds, true) == ConnectStatus.Canceled {
 			return
 		}
 
@@ -120,6 +108,8 @@ func autoReconnect(ds *DataSubscriber) {
 			sc.ReconnectCallback(ds)
 		}
 	})
+
+	sc.reconnectThread.Start()
 }
 
 func (sc *SubscriberConnector) waitForRetry(subscriber *DataSubscriber) {
@@ -160,7 +150,7 @@ func (sc *SubscriberConnector) waitForRetry(subscriber *DataSubscriber) {
 
 	if retryInterval > 0 {
 		message.WriteString("Attempting to reconnect in ")
-		message.WriteString(fmt.Sprintf("%.2f", float64(sc.RetryInterval)/1000.0))
+		message.WriteString(fmt.Sprintf("%.2f", float64(retryInterval)/1000.0))
 		message.WriteString(" seconds...")
 	} else {
 		message.WriteString("Attempting to reconnect...")
@@ -173,22 +163,22 @@ func (sc *SubscriberConnector) waitForRetry(subscriber *DataSubscriber) {
 }
 
 // Connect initiates a connection sequence for a DataSubscriber
-func (sc *SubscriberConnector) Connect(subscriber *DataSubscriber) ConnectStatus {
+func (sc *SubscriberConnector) Connect(ds *DataSubscriber) ConnectStatusEnum {
 	if sc.cancel {
-		return ConnectCanceled
+		return ConnectStatus.Canceled
 	}
 
-	return sc.connect(subscriber, false)
+	return sc.connect(ds, false)
 }
 
-func (sc *SubscriberConnector) connect(subscriber *DataSubscriber, autoReconnecting bool) ConnectStatus {
+func (sc *SubscriberConnector) connect(ds *DataSubscriber, autoReconnecting bool) ConnectStatusEnum {
 	if sc.AutoReconnect {
-		subscriber.AutoReconnectCallback = autoReconnect
+		ds.AutoReconnectCallback = ds.autoReconnect
 	}
 
 	sc.cancel = false
 
-	for !subscriber.disposing {
+	for !ds.disposing {
 		if sc.MaxRetries != -1 && sc.connectAttempt >= sc.MaxRetries {
 			sc.dispatchErrorMessage("Maximum connection retries attempted. Auto-reconnect canceled.")
 			break
@@ -196,34 +186,35 @@ func (sc *SubscriberConnector) connect(subscriber *DataSubscriber, autoReconnect
 
 		sc.connectAttempt++
 
-		if subscriber.disposing {
-			return ConnectCanceled
+		if ds.disposing {
+			return ConnectStatus.Canceled
 		}
 
-		err := subscriber.connect(sc.Hostname, sc.Port, autoReconnecting)
+		err := ds.connect(sc.Hostname, sc.Port, autoReconnecting)
 
 		if err == nil {
 			break
 		}
 
-		if !subscriber.disposing && sc.RetryInterval > 0 {
-			sc.waitForRetry(subscriber)
+		if !ds.disposing && sc.RetryInterval > 0 {
+			autoReconnecting = true
+			sc.waitForRetry(ds)
 
 			if sc.cancel {
-				return ConnectCanceled
+				return ConnectStatus.Canceled
 			}
 		}
 	}
 
-	if subscriber.disposing {
-		return ConnectCanceled
+	if ds.disposing {
+		return ConnectStatus.Canceled
 	}
 
-	if subscriber.IsConnected() {
-		return ConnectSuccess
+	if ds.IsConnected() {
+		return ConnectStatus.Success
 	}
 
-	return ConnectFailed
+	return ConnectStatus.Failed
 }
 
 // Cancel stops all current and future connection sequences.

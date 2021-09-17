@@ -79,7 +79,7 @@ type DataSubscriber struct {
 	ConnectionTerminatedCallback func()
 
 	// AutoReconnectCallback is called when DataSubscriber automatically reconnects.
-	AutoReconnectCallback func(*DataSubscriber)
+	AutoReconnectCallback func()
 
 	// MetadataReceivedCallback is called when DataSubscriber receives a metadata response.
 	MetadataReceivedCallback func([]byte)
@@ -101,18 +101,18 @@ type DataSubscriber struct {
 
 	// ProcessingCompleteCallback is called when the DataPublished sends a notification that temporal processing has completed,
 	// i.e., the end of a historical playback data stream has been reached.
-	ProcessingCompleteCallback func()
+	ProcessingCompleteCallback func(string)
 
 	// NotificationReceivedCallback is called when the DataPublisher sends a notification that requires receipt.
 	NotificationReceivedCallback func(string)
 
-	// CompressPayloadData determines whether payload data is compressed using TSSC.
+	// CompressPayloadData determines whether payload data is compressed, defaults to TSSC.
 	CompressPayloadData bool
 
-	// CompressMetadata determines whether the metadata transfer is compressed using GZip.
+	// CompressMetadata determines whether the metadata transfer is compressed, defaults to GZip.
 	CompressMetadata bool
 
-	// CompressSignalIndexCache determines whether the signal index cache is compressed using GZip.
+	// CompressSignalIndexCache determines whether the signal index cache is compressed, defaults to  GZip.
 	CompressSignalIndexCache bool
 
 	// Version defines the STTP protocol version used by this library
@@ -155,9 +155,9 @@ func NewDataSubscriber() *DataSubscriber {
 		CompressMetadata:         true, // Defaults to Gzip
 		CompressSignalIndexCache: true, // Defaults to Gzip
 		Version:                  2,
-		STTPSourceInfo:           version.Source,
-		STTPVersionInfo:          version.Version,
-		STTPUpdatedOnInfo:        version.UpdatedOn,
+		STTPSourceInfo:           version.STTPSource,
+		STTPVersionInfo:          version.STTPVersion,
+		STTPUpdatedOnInfo:        version.STTPUpdatedOn,
 		signalIndexCache:         [2]*SignalIndexCache{NewSignalIndexCache(), NewSignalIndexCache()},
 	}
 }
@@ -178,6 +178,16 @@ func (ds *DataSubscriber) IsConnected() bool {
 // IsSubscribed determines if a DataSubscriber is currently subscribed to a data stream.
 func (ds *DataSubscriber) IsSubscribed() bool {
 	return ds.subscribed
+}
+
+// EncodeString encodes an STTP string according to the defined operational modes.
+func (ds *DataSubscriber) EncodeString(data string) []byte {
+	// Latest version of STTP only encodes to UTF8, the default for Go
+	if ds.encoding != OperationalEncoding.UTF8 {
+		panic("Go implementation of STTP only supports UTF8 string encoding")
+	}
+
+	return []byte(data)
 }
 
 // DecodeString decodes an STTP string according to the defined operational modes.
@@ -230,6 +240,8 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 
 	if err == nil {
 		ds.commandChannelResponseThread = thread.NewThread(ds.runCommandChannelResponseThread)
+		ds.commandChannelResponseThread.Start()
+
 		ds.connected = true
 		ds.lastMissingCacheWarning = 0
 		ds.sendOperationalModes()
@@ -447,7 +459,7 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 		// since they serve two different use cases and current implementation does not
 		// support multiple callback registrations
 		if ds.AutoReconnectCallback != nil && !ds.disposing {
-			ds.AutoReconnectCallback(ds)
+			ds.AutoReconnectCallback()
 		}
 	} else {
 		ds.connectActionMutex.Unlock()
@@ -503,7 +515,7 @@ func (ds *DataSubscriber) readPayloadHeader(bytesTransferred int, err error) {
 	packetSize := binary.BigEndian.Uint32(ds.readBuffer)
 
 	if int(packetSize) > cap(ds.readBuffer) {
-		ds.readBuffer = ds.readBuffer[:packetSize]
+		ds.readBuffer = make([]byte, packetSize)
 	}
 
 	// Read packet (payload body)
@@ -605,6 +617,7 @@ func (ds *DataSubscriber) handleSucceeded(commandCode ServerCommandEnum, data []
 		var message strings.Builder
 		message.WriteString("Received success code in response to server command 0x")
 		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
+		message.WriteRune('\n')
 
 		if data != nil {
 			message.Write(data)
@@ -618,6 +631,7 @@ func (ds *DataSubscriber) handleSucceeded(commandCode ServerCommandEnum, data []
 		var message strings.Builder
 		message.WriteString("Received success code in response to unknown server command 0x")
 		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
+		message.WriteRune('\n')
 		ds.dispatchErrorMessage(message.String())
 	}
 }
@@ -634,6 +648,7 @@ func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byt
 	} else {
 		message.WriteString("Received failure code in response to server command 0x")
 		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
+		message.WriteRune('\n')
 	}
 
 	if data != nil {
@@ -668,7 +683,7 @@ func (ds *DataSubscriber) handleDataStartTime(data []byte) {
 
 func (ds *DataSubscriber) handleProcessingComplete(data []byte) {
 	if ds.ProcessingCompleteCallback != nil {
-		go ds.ProcessingCompleteCallback()
+		go ds.ProcessingCompleteCallback(ds.DecodeString(data))
 	}
 }
 
@@ -857,6 +872,8 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 }
 
 func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCache, data []byte, measurements []Measurement) {
+	// TODO: Implement TSSC decompression
+	panic(version.STTPSource + " has not yet implemented time-series special compression - set CompressPayloadData to false for now")
 }
 
 func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndexCache, dataPacketFlags DataPacketFlagsEnum, data []byte, measurements []Measurement) {
@@ -977,12 +994,7 @@ func (ds *DataSubscriber) SendServerCommand(commandCode ServerCommandEnum) {
 
 // SendServerCommandWithMessage sends a server command code to the DataPublisher along with the specified string message as payload.
 func (ds *DataSubscriber) SendServerCommandWithMessage(commandCode ServerCommandEnum, message string) {
-	// Latest version of STTP only encodes to UTF8, the default for Go
-	if ds.encoding != OperationalEncoding.UTF8 {
-		panic("Go implementation of STTP only supports UTF8 string encoding")
-	}
-
-	ds.SendServerCommandWithPayload(commandCode, []byte(message))
+	ds.SendServerCommandWithPayload(commandCode, ds.EncodeString(message))
 }
 
 // SendServerCommandWithPayload sends a server command code to the DataPublisher along with the specified data payload.
@@ -1010,7 +1022,7 @@ func (ds *DataSubscriber) SendServerCommandWithPayload(commandCode ServerCommand
 		}
 	}
 
-	if _, err := ds.dataChannelSocket.Write(ds.writeBuffer[:commandBufferSize]); err != nil {
+	if _, err := ds.commandChannelSocket.Write(ds.writeBuffer[:commandBufferSize]); err != nil {
 		// Write error, connection may have been closed by peer; terminate connection
 		ds.dispatchConnectionTerminated()
 	}

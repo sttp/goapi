@@ -47,7 +47,8 @@ type MeasurementMetadata struct {
 	// Source used in human-readable measurement key.
 	Source string
 
-	// Human-readable tag name to help describe the measurement.
+	// Human-readable tag name or reference value used to help describe or help identify
+	// the measurement. This value is initially empty and intended for end-user application.
 	Tag string
 }
 
@@ -67,18 +68,30 @@ type Measurement struct {
 }
 
 var (
-	measurementRegistry = make(map[guid.Guid]MeasurementMetadata)
+	measurementRegistry = make(map[guid.Guid]*MeasurementMetadata)
 )
 
-// RegisterMetadata adds a MeasurementMetadata value to the local registry.
-func RegisterMetadata(metadata MeasurementMetadata) {
-	measurementRegistry[metadata.SignalID] = metadata
+// LookupMetadata gets the MeasurementMetadata for the specified signalID from the local
+// registry. If the metadata does not exist, a new record is created and returned.
+func LookupMetadata(signalID guid.Guid) *MeasurementMetadata {
+	metadata, ok := measurementRegistry[signalID]
+
+	if !ok {
+		metadata = &MeasurementMetadata{
+			SignalID:   signalID,
+			Multiplier: 1.0,
+		}
+
+		measurementRegistry[metadata.SignalID] = metadata
+	}
+
+	return metadata
 }
 
-// LookupMetadata attempts to find MeasurementMetadata in the local registry.
-func LookupMetadata(signalID guid.Guid) (MeasurementMetadata, bool) {
-	metadata, ok := measurementRegistry[signalID]
-	return metadata, ok
+// Metadata gets the MeasurementMetadata associated with a measurement from the local
+// registry. If the metadata does not exist, a new record is created and returned.
+func (m *Measurement) Metadata() *MeasurementMetadata {
+	return LookupMetadata(m.SignalID)
 }
 
 // AdjustedValue gets the Value of a Measurement with any linear adjustments applied from the
