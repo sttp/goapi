@@ -32,6 +32,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/sttp/goapi/sttp/guid"
 	"github.com/sttp/goapi/sttp/thread"
@@ -168,6 +169,10 @@ func (ds *DataSubscriber) Dispose() {
 	ds.disposing = true
 	ds.connector.Cancel()
 	ds.disconnect(true, false)
+
+	// Allow a moment to connection terminated event to complete
+	waitTimer := time.NewTimer(time.Duration(10) * time.Millisecond)
+	<-waitTimer.C
 }
 
 // IsConnected determines if a DataSubscriber is currently connected to a DataPublisher.
@@ -419,7 +424,11 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 	// Let any pending connect operation complete before disconnect - prevents destruction disconnect before connection is completed
 	if !autoReconnecting {
 		ds.connector.Cancel()
-		ds.connectionTerminationThread.Join()
+
+		if ds.connectionTerminationThread != nil {
+			ds.connectionTerminationThread.Join()
+		}
+
 		ds.connectActionMutex.Lock()
 	}
 

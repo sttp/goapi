@@ -42,9 +42,9 @@ type SimpleSubscriber struct {
 }
 
 // NewSimpleSubscriber creates a new SimpleSubscriber.
-func NewSimpleSubscriber() SimpleSubscriber {
-	subscriber := SimpleSubscriber{}
-	subscriber.SubscriberBase = sttp.NewSubscriberBase(&subscriber)
+func NewSimpleSubscriber() *SimpleSubscriber {
+	subscriber := &SimpleSubscriber{}
+	subscriber.SubscriberBase = sttp.NewSubscriberBase(subscriber)
 	return subscriber
 }
 
@@ -56,9 +56,9 @@ func main() {
 	subscriber.Hostname = hostname
 	subscriber.Port = port
 	subscriber.CompressPayloadData = false
-	//subscriber.Version = 1
+	subscriber.Version = 1
 
-	subscription.FilterExpression = "FILTER TOP 5 ActiveMeasurements WHERE SignalType = 'FREQ'"
+	subscription.FilterExpression = "FILTER TOP 5 ActiveMeasurements WHERE True"
 
 	subscriber.Connect()
 	defer subscriber.Dispose()

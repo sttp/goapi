@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/sttp/goapi/sttp/guid"
@@ -123,8 +124,9 @@ type SubscriberBase struct {
 	// Version defines the target STTP protocol version. This currently defaults to 2.
 	Version byte
 
-	sub Subscriber      // Reference to consumer Subscriber implementation
-	ds  *DataSubscriber // Reference to internal DataSubscriber instance
+	sub         Subscriber      // Reference to consumer Subscriber implementation
+	ds          *DataSubscriber // Reference to internal DataSubscriber instance
+	consoleLock sync.Mutex      // Simple lock to synchronize console writes
 }
 
 // NewSubscriberBase creates a new SubscriberBase with specified Subscriber.
@@ -164,48 +166,42 @@ func (sb *SubscriberBase) dataSubscriber() *DataSubscriber {
 
 // IsConnected determines if Subscriber is currently connected to a data publisher.
 func (sb *SubscriberBase) IsConnected() bool {
-	return sb.ds.IsConnected()
+	return sb.dataSubscriber().IsConnected()
 }
 
 // IsSubscribed determines if Subscriber is currently subscribed to a data stream.
 func (sb *SubscriberBase) IsSubscribed() bool {
-	return sb.ds.IsSubscribed()
+	return sb.dataSubscriber().IsSubscribed()
 }
 
 // Subscription gets subscription related settings for Subscriber.
 func (sb *SubscriberBase) Subscription() *SubscriptionInfo {
-	ds := sb.dataSubscriber()
-	return ds.Subscription()
+	return sb.dataSubscriber().Subscription()
 }
 
 // GetSignalIndexCache gets the active signal index cache.
 func (sb *SubscriberBase) ActiveSignalIndexCache() *SignalIndexCache {
-	ds := sb.dataSubscriber()
-	return ds.ActiveSignalIndexCache()
+	return sb.dataSubscriber().ActiveSignalIndexCache()
 }
 
 // SubscriberID gets the subscriber ID as assigned by the data publisher upon receipt of the SignalIndexCache.
 func (sb *SubscriberBase) SubscriberID() guid.Guid {
-	ds := sb.dataSubscriber()
-	return ds.SubscriberID()
+	return sb.dataSubscriber().SubscriberID()
 }
 
 // TotalCommandChannelBytesReceived gets the total number of bytes received via the command channel since last connection.
 func (sb *SubscriberBase) TotalCommandChannelBytesReceived() uint64 {
-	ds := sb.dataSubscriber()
-	return ds.TotalCommandChannelBytesReceived()
+	return sb.dataSubscriber().TotalCommandChannelBytesReceived()
 }
 
 // TotalDataChannelBytesReceived gets the total number of bytes received via the data channel since last connection.
 func (sb *SubscriberBase) TotalDataChannelBytesReceived() uint64 {
-	ds := sb.dataSubscriber()
-	return ds.TotalDataChannelBytesReceived()
+	return sb.dataSubscriber().TotalDataChannelBytesReceived()
 }
 
 // TotalMeasurementsReceived gets the total number of measurements received since last subscription.
 func (sb *SubscriberBase) TotalMeasurementsReceived() uint64 {
-	ds := sb.dataSubscriber()
-	return ds.TotalMeasurementsReceived()
+	return sb.dataSubscriber().TotalMeasurementsReceived()
 }
 
 // RequestMetadata sends a request to the data publisher indicating that the Subscriber would
@@ -352,14 +348,18 @@ func (sb *SubscriberBase) handleProcessingComplete(message string) {
 // SubscriberBase default implementation of Subscriber interface:
 
 // StatusMessage implements the default handler for informational message logging.
-// Default implementation simply writes to stdio. Logging is recommended.
+// Default implementation simply writes synchronous output to stdio. Logging is recommended.
 func (sb *SubscriberBase) StatusMessage(message string) {
+	sb.consoleLock.Lock()
+	defer sb.consoleLock.Unlock()
 	fmt.Println(message)
 }
 
 // ErrorMessage implements the default handler for error message logging.
-// Default implementation simply writes to stderr. Logging is recommended.
+// Default implementation simply writes synchronous output to to stderr. Logging is recommended.
 func (sb *SubscriberBase) ErrorMessage(message string) {
+	sb.consoleLock.Lock()
+	defer sb.consoleLock.Unlock()
 	fmt.Fprintln(os.Stderr, message)
 }
 
@@ -401,13 +401,13 @@ func (sb *SubscriberBase) HistoricalReadComplete() {
 // ConnectionEstablished implements the default handler for notification that a connection has been established.
 // Default implementation simply writes connection feedback to StatusMessage handler.
 func (sb *SubscriberBase) ConnectionEstablished() {
-	con := sb.ds.Connector()
+	con := sb.dataSubscriber().Connector()
 	sb.sub.StatusMessage("Connection to " + con.Hostname + ":" + strconv.Itoa(int(con.Port)) + " established.")
 }
 
 // ConnectionTerminated implements the default handler for notification that a connection has been terminated.
 // Default implementation simply writes connection terminated feedback to ErrorMessage handler.
 func (sb *SubscriberBase) ConnectionTerminated() {
-	con := sb.ds.Connector()
+	con := sb.dataSubscriber().Connector()
 	sb.sub.ErrorMessage("Connection to " + con.Hostname + ":" + strconv.Itoa(int(con.Port)) + " terminated.")
 }
