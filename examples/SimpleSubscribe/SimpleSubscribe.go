@@ -56,6 +56,7 @@ func main() {
 	subscriber.Hostname = hostname
 	subscriber.Port = port
 	subscriber.CompressPayloadData = false
+	//subscriber.Version = 1
 
 	subscription.FilterExpression = "FILTER TOP 5 ActiveMeasurements WHERE SignalType = 'FREQ'"
 

@@ -120,6 +120,9 @@ type SubscriberBase struct {
 	// received metadata. Each filter expression should be separated by semi-colons.
 	MetadataFilters string
 
+	// Version defines the target STTP protocol version. This currently defaults to 2.
+	Version byte
+
 	sub Subscriber      // Reference to consumer Subscriber implementation
 	ds  *DataSubscriber // Reference to internal DataSubscriber instance
 }
@@ -138,6 +141,7 @@ func NewSubscriberBase(subscriber Subscriber) SubscriberBase {
 		CompressPayloadData:      true,
 		CompressMetadata:         true,
 		CompressSignalIndexCache: true,
+		Version:                  2,
 	}
 }
 
@@ -257,6 +261,7 @@ func (sb *SubscriberBase) Connect() {
 	ds.CompressPayloadData = sb.CompressPayloadData
 	ds.CompressMetadata = sb.CompressMetadata
 	ds.CompressSignalIndexCache = sb.CompressSignalIndexCache
+	ds.Version = sb.Version
 
 	// Register direct Subscriber interface callbacks
 	con.ErrorMessageCallback = sub.ErrorMessage
