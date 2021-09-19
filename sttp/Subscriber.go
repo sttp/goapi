@@ -283,8 +283,8 @@ func (sb *SubscriberBase) Connect() {
 		sub.ConnectionEstablished()
 
 		// If automatically parsing metadata, request metadata upon successful connection,
-		// after metadata is handled the SubscriberInstance will then initiate subscribe;
-		// otherwise, initiate subscribe immediately (when option requested)
+		// after metadata is received the SubscriberInstance will then initiate subscribe;
+		// otherwise, subscribe is initiated immediately (when auto subscribe requested)
 		if sb.AutoRequestMetadata {
 			sb.RequestMetadata()
 		} else if sb.AutoSubscribe {
@@ -307,8 +307,8 @@ func (sb *SubscriberBase) handleReconnect(ds *DataSubscriber) {
 		sb.sub.ConnectionEstablished()
 
 		// If automatically parsing metadata, request metadata upon successful connection,
-		// after metadata is handled the SubscriberInstance will then initiate subscribe;
-		// otherwise, initiate subscribe immediately (when option requested)
+		// after metadata is received the SubscriberInstance will then initiate subscribe;
+		// otherwise, subscribe is initiated immediately (when auto subscribe requested)
 		if sb.AutoRequestMetadata {
 			sb.RequestMetadata()
 		} else if sb.AutoSubscribe {
@@ -345,10 +345,11 @@ func (sb *SubscriberBase) handleProcessingComplete(message string) {
 	sb.sub.HistoricalReadComplete()
 }
 
-// SubscriberBase default implementation of Subscriber interface:
+// SubscriberBase default implementation of Subscriber interface. Note that an OOP language
+// would consider the following "overridable" methods - effect here is the same.
 
 // StatusMessage implements the default handler for informational message logging.
-// Default implementation simply writes synchronous output to stdio. Logging is recommended.
+// Default implementation synchronously writes output to stdio. Logging is recommended.
 func (sb *SubscriberBase) StatusMessage(message string) {
 	sb.consoleLock.Lock()
 	defer sb.consoleLock.Unlock()
@@ -356,7 +357,7 @@ func (sb *SubscriberBase) StatusMessage(message string) {
 }
 
 // ErrorMessage implements the default handler for error message logging.
-// Default implementation simply writes synchronous output to to stderr. Logging is recommended.
+// Default implementation synchronously writes output to to stderr. Logging is recommended.
 func (sb *SubscriberBase) ErrorMessage(message string) {
 	sb.consoleLock.Lock()
 	defer sb.consoleLock.Unlock()
