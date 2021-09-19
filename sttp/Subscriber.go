@@ -38,6 +38,9 @@ import (
 )
 
 // Subscriber defines the primary functionality of an STTP data subscription.
+// Struct implementations of this interface that embed the SubscriberBase as a
+// composite field will inherit a default implementation all required interface
+// methods. This allows implementations to focus only on needed functionality.
 type Subscriber interface {
 	// StatusMessage handles informational message logging.
 	StatusMessage(message string)
@@ -47,7 +50,8 @@ type Subscriber interface {
 	ReceivedMetadata(metadata []byte)
 	// SubscriptionUpdated handles notifications that a new SignalIndexCache has been received.
 	SubscriptionUpdated(signalIndexCache *SignalIndexCache)
-	// DataStartTime handles notifications of first received measurement.
+	// DataStartTime handles notifications of first received measurement. This can be useful in
+	// cases where SubscriptionInfo.IncludeTime has been set to false.
 	DataStartTime(startTime time.Time)
 	// ConfigurationChanged handles notifications that the publisher configuration has changed.
 	ConfigurationChanged()
@@ -89,11 +93,19 @@ type SubscriberBase struct {
 	// automatically reattempted.
 	AutoReconnect bool
 
-	// AutoParseMetadata defines the flag that determines if metadata should be
-	// automatically parsed. When true, metadata will be requested upon connection
-	// before subscription; otherwise, metadata will not be manually requested and
-	// subscribe will happen upon connection.
-	AutoParseMetadata bool
+	// AutoRequestMetadata defines the flag that determines if metadata should be
+	// automatically requested upon successful connection. When true, metadata will
+	// be requested upon connection before subscription; otherwise, any metadata
+	// operations must be handled manually.
+	AutoRequestMetadata bool
+
+	// AutoSubscribe defines the flag that determines if subscription should be
+	// handled automatically upon successful connection. When AutoRequestMetadata
+	// is true and AutoSubscribe is true, subscription will occur after reception
+	// of metadata. When AutoRequestMetadata is false and AutoSubscribe is true,
+	// subscription will occur at successful connection. When AutoSubscribe is
+	// false, any subscribe operations must be handled manually.
+	AutoSubscribe bool
 
 	// CompressPayloadData determines whether payload data is compressed.
 	CompressPayloadData bool
@@ -121,7 +133,8 @@ func NewSubscriberBase(subscriber Subscriber) SubscriberBase {
 		RetryInterval:            1000,
 		MaxRetryInterval:         30000,
 		AutoReconnect:            true,
-		AutoParseMetadata:        true,
+		AutoRequestMetadata:      true,
+		AutoSubscribe:            true,
 		CompressPayloadData:      true,
 		CompressMetadata:         true,
 		CompressSignalIndexCache: true,
@@ -145,7 +158,17 @@ func (sb *SubscriberBase) dataSubscriber() *DataSubscriber {
 	return sb.ds
 }
 
-// Subscription gets subscription related settings.
+// IsConnected determines if Subscriber is currently connected to a data publisher.
+func (sb *SubscriberBase) IsConnected() bool {
+	return sb.ds.IsConnected()
+}
+
+// IsSubscribed determines if Subscriber is currently subscribed to a data stream.
+func (sb *SubscriberBase) IsSubscribed() bool {
+	return sb.ds.IsSubscribed()
+}
+
+// Subscription gets subscription related settings for Subscriber.
 func (sb *SubscriberBase) Subscription() *SubscriptionInfo {
 	ds := sb.dataSubscriber()
 	return ds.Subscription()
@@ -157,7 +180,7 @@ func (sb *SubscriberBase) ActiveSignalIndexCache() *SignalIndexCache {
 	return ds.ActiveSignalIndexCache()
 }
 
-// SubscriberID gets the subscriber ID as assigned by the DataPublisher upon receipt of the SignalIndexCache.
+// SubscriberID gets the subscriber ID as assigned by the data publisher upon receipt of the SignalIndexCache.
 func (sb *SubscriberBase) SubscriberID() guid.Guid {
 	ds := sb.dataSubscriber()
 	return ds.SubscriberID()
@@ -181,8 +204,43 @@ func (sb *SubscriberBase) TotalMeasurementsReceived() uint64 {
 	return ds.TotalMeasurementsReceived()
 }
 
-// Connect starts the connection cycle to an STTP publisher. Upon connection, meta-data will be requested,
-// when received, a subscription will be established.
+// RequestMetadata sends a request to the data publisher indicating that the Subscriber would
+// like new metadata. Any defined MetadataFilters will be included in request.
+func (sb *SubscriberBase) RequestMetadata() {
+	ds := sb.dataSubscriber()
+
+	if len(sb.MetadataFilters) == 0 {
+		ds.SendServerCommand(ServerCommand.MetadataRefresh)
+		return
+	}
+
+	filters := ds.EncodeString(sb.MetadataFilters)
+	buffer := make([]byte, 4+len(filters))
+
+	binary.BigEndian.PutUint32(buffer, uint32(len(filters)))
+	copy(buffer[4:], filters)
+
+	ds.SendServerCommandWithPayload(ServerCommand.MetadataRefresh, buffer)
+}
+
+// Subscribe sends a request to the data publisher indicating that the Subscriber would
+// like to start receiving streaming data. Subscribe parameters are controlled by the
+// SubscriptionInfo fields available through the Subscription receiver method.
+func (sb *SubscriberBase) Subscribe() {
+	sb.dataSubscriber().Subscribe()
+}
+
+// Unsubscribe sends a request to the data publisher indicating that the Subscriber would
+// like to stop receiving streaming data.
+func (sb *SubscriberBase) Unsubscribe() {
+	sb.dataSubscriber().Unsubscribe()
+}
+
+// Connect starts the connection cycle to an STTP publisher. When AutoReconnect is true, the connection
+// will automatically be retried when the connection drops. If AutoRequestMetadata is true, then upon
+// successful connection, meta-data will be requested. When AutoRequestMetadata is true and AutoSubscribe
+// is true, subscription will occur after reception of metadata. When AutoRequestMetadata is false and
+// AutoSubscribe is true, subscription will occur at successful connection.
 func (sb *SubscriberBase) Connect() {
 	ds := sb.dataSubscriber()
 	con := ds.Connector()
@@ -225,10 +283,10 @@ func (sb *SubscriberBase) Connect() {
 
 		// If automatically parsing metadata, request metadata upon successful connection,
 		// after metadata is handled the SubscriberInstance will then initiate subscribe;
-		// otherwise, initiate subscribe immediately
-		if sb.AutoParseMetadata {
-			sb.sendMetadataRefreshCommand()
-		} else {
+		// otherwise, initiate subscribe immediately (when option requested)
+		if sb.AutoRequestMetadata {
+			sb.RequestMetadata()
+		} else if sb.AutoSubscribe {
 			ds.Subscribe()
 		}
 	} else if status == ConnectStatus.Failed {
@@ -249,10 +307,10 @@ func (sb *SubscriberBase) handleReconnect(ds *DataSubscriber) {
 
 		// If automatically parsing metadata, request metadata upon successful connection,
 		// after metadata is handled the SubscriberInstance will then initiate subscribe;
-		// otherwise, initiate subscribe immediately
-		if sb.AutoParseMetadata {
-			sb.sendMetadataRefreshCommand()
-		} else {
+		// otherwise, initiate subscribe immediately (when option requested)
+		if sb.AutoRequestMetadata {
+			sb.RequestMetadata()
+		} else if sb.AutoSubscribe {
 			ds.Subscribe()
 		}
 	} else {
@@ -264,7 +322,7 @@ func (sb *SubscriberBase) handleReconnect(ds *DataSubscriber) {
 func (sb *SubscriberBase) handleMetadataReceived(metadata []byte) {
 	sb.sub.ReceivedMetadata(metadata)
 
-	if sb.AutoParseMetadata {
+	if sb.AutoRequestMetadata && sb.AutoSubscribe {
 		sb.dataSubscriber().Subscribe()
 	}
 }
@@ -276,31 +334,14 @@ func (sb *SubscriberBase) handleDataStartTime(startTime ticks.Ticks) {
 func (sb *SubscriberBase) handleConfigurationChanged() {
 	sb.sub.ConfigurationChanged()
 
-	if sb.AutoParseMetadata {
-		sb.sendMetadataRefreshCommand()
+	if sb.AutoRequestMetadata {
+		sb.RequestMetadata()
 	}
 }
 
 func (sb *SubscriberBase) handleProcessingComplete(message string) {
 	sb.sub.StatusMessage(message)
 	sb.sub.HistoricalReadComplete()
-}
-
-func (sb *SubscriberBase) sendMetadataRefreshCommand() {
-	ds := sb.dataSubscriber()
-
-	if len(sb.MetadataFilters) == 0 {
-		ds.SendServerCommand(ServerCommand.MetadataRefresh)
-		return
-	}
-
-	filters := ds.EncodeString(sb.MetadataFilters)
-	buffer := make([]byte, 4+len(filters))
-
-	binary.BigEndian.PutUint32(buffer, uint32(len(filters)))
-	copy(buffer[4:], filters)
-
-	ds.SendServerCommandWithPayload(ServerCommand.MetadataRefresh, buffer)
 }
 
 // SubscriberBase default implementation of Subscriber interface:
@@ -321,7 +362,8 @@ func (sb *SubscriberBase) ErrorMessage(message string) {
 func (sb *SubscriberBase) ReceivedMetadata(metadata []byte) {
 }
 
-// SubscriptionUpdated implements the default handler for notifications that a new SignalIndexCache has been received.
+// SubscriptionUpdated implements the default handler for notifications that a new
+// SignalIndexCache has been received.
 func (sb *SubscriberBase) SubscriptionUpdated(signalIndexCache *SignalIndexCache) {
 }
 
@@ -329,7 +371,8 @@ func (sb *SubscriberBase) SubscriptionUpdated(signalIndexCache *SignalIndexCache
 func (sb *SubscriberBase) DataStartTime(startTime time.Time) {
 }
 
-// ConfigurationChanged implements the default handler for notifications that the publisher configuration has changed.
+// ConfigurationChanged implements the default handler for notifications that the
+// data publisher configuration has changed.
 func (sb *SubscriberBase) ConfigurationChanged() {
 }
 
@@ -345,18 +388,20 @@ func (sb *SubscriberBase) ReceivedNewBufferBlocks(bufferBlocks []BufferBlock) {
 func (sb *SubscriberBase) ReceivedNotification(notification string) {
 }
 
-// HistoricalReadComplete implements the default handler for notification that temporal processing has completed,
-// i.e., the end of a historical playback data stream has been reached.
+// HistoricalReadComplete implements the default handler for notification that temporal processing
+// has completed, i.e., the end of a historical playback data stream has been reached.
 func (sb *SubscriberBase) HistoricalReadComplete() {
 }
 
 // ConnectionEstablished implements the default handler for notification that a connection has been established.
+// Default implementation simply writes connection feedback to StatusMessage handler.
 func (sb *SubscriberBase) ConnectionEstablished() {
 	con := sb.ds.Connector()
 	sb.sub.StatusMessage("Connection to " + con.Hostname + ":" + strconv.Itoa(int(con.Port)) + " established.")
 }
 
 // ConnectionTerminated implements the default handler for notification that a connection has been terminated.
+// Default implementation simply writes connection terminated feedback to ErrorMessage handler.
 func (sb *SubscriberBase) ConnectionTerminated() {
 	con := sb.ds.Connector()
 	sb.sub.ErrorMessage("Connection to " + con.Hostname + ":" + strconv.Itoa(int(con.Port)) + " terminated.")
