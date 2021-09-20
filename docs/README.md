@@ -11,14 +11,91 @@
 package main
 
 import (
-    "fmt"
-    "https://github.com/sttp/goapi/sttp/transport"
+	"bufio"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+	
+	"github.com/sttp/goapi/sttp"
+	"github.com/sttp/goapi/sttp/transport"
 )
 
-func main() {
-    subscriber := make(DataSubscriber)
+// TestSubscriber is a simple STTP data subscriber implementation.
+type TestSubscriber struct {
+	sttp.SubscriberBase // Provides default implementation
+}
 
-    // TODO: Add sample code...
+// NewTestSubscriber creates a new TestSubscriber.
+func NewTestSubscriber() *TestSubscriber {
+	subscriber := &TestSubscriber{}
+	subscriber.SubscriberBase = sttp.NewSubscriberBase(subscriber)
+	return subscriber
+}
+
+func main() {
+	subscriber := NewTestSubscriber()
+	subscription := subscriber.Subscription()
+
+	subscriber.Hostname = "localhost"
+	subscriber.Port = 7165
+
+	subscription.FilterExpression = "FILTER TOP 5 ActiveMeasurements WHERE SignalType = 'FREQ'"
+
+	subscriber.Connect()
+	defer subscriber.Dispose()
+
+	reader := bufio.NewReader(os.Stdin)
+	reader.ReadRune()
+}
+
+var lastMessageDisplay time.Time
+
+// ReceivedNewMeasurements handles reception of new measurements.
+func (ss *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measurement) {
+
+	if time.Since(lastMessageDisplay).Seconds() < 5.0 {
+		return
+	}
+
+	defer func() { lastMessageDisplay = time.Now() }()
+
+	if lastMessageDisplay.IsZero() {
+		ss.StatusMessage("Receiving measurements...")
+		return
+	}
+
+	var message strings.Builder
+
+	message.WriteString(strconv.FormatUint(ss.TotalMeasurementsReceived(), 10))
+	message.WriteString(" measurements received so far...\n")
+	message.WriteString("Timestamp: ")
+	message.WriteString(measurements[0].DateTime().Format("2006-01-02 15:04:05.999999999"))
+	message.WriteRune('\n')
+	message.WriteString("\tID\tSignal ID\t\t\t\tValue\n")
+
+	for i := 0; i < len(measurements); i++ {
+		measurement := measurements[i]
+
+		message.WriteRune('\t')
+		message.WriteString(strconv.FormatUint(measurement.Metadata().ID, 10))
+		message.WriteRune('\t')
+		message.WriteString(measurement.SignalID.String())
+		message.WriteRune('\t')
+		message.WriteString(strconv.FormatFloat(measurement.Value, 'f', 6, 64))
+		message.WriteRune('\n')
+	}
+
+	ss.StatusMessage(message.String())
+}
+
+// ConnectionTerminated handles notification that a connection has been terminated.
+func (ss *TestSubscriber) ConnectionTerminated() {
+	// Call base implementation method which will display a connection terminated message to stderr
+	ss.SubscriberBase.ConnectionTerminated()
+
+	// Reset last message display time on disconnect
+	lastMessageDisplay = time.Time{}
 }
 ```
 
