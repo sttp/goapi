@@ -39,6 +39,7 @@ func main() {
 
 	subscriber.Hostname = "localhost"
 	subscriber.Port = 7165
+    subscriber.Version = 1
 
 	subscription.FilterExpression = "FILTER TOP 5 ActiveMeasurements WHERE SignalType = 'FREQ'"
 
