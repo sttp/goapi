@@ -52,7 +52,7 @@ func main() {
 var lastMessageDisplay time.Time
 
 // ReceivedNewMeasurements handles reception of new measurements.
-func (ss *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measurement) {
+func (ts *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measurement) {
 
 	if time.Since(lastMessageDisplay).Seconds() < 5.0 {
 		return
@@ -61,13 +61,13 @@ func (ss *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measu
 	defer func() { lastMessageDisplay = time.Now() }()
 
 	if lastMessageDisplay.IsZero() {
-		ss.StatusMessage("Receiving measurements...")
+		ts.StatusMessage("Receiving measurements...")
 		return
 	}
 
 	var message strings.Builder
 
-	message.WriteString(strconv.FormatUint(ss.TotalMeasurementsReceived(), 10))
+	message.WriteString(strconv.FormatUint(ts.TotalMeasurementsReceived(), 10))
 	message.WriteString(" measurements received so far...\n")
 	message.WriteString("Timestamp: ")
 	message.WriteString(measurements[0].DateTime().Format("2006-01-02 15:04:05.999999999"))
@@ -86,13 +86,13 @@ func (ss *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measu
 		message.WriteRune('\n')
 	}
 
-	ss.StatusMessage(message.String())
+	ts.StatusMessage(message.String())
 }
 
 // ConnectionTerminated handles notification that a connection has been terminated.
-func (ss *TestSubscriber) ConnectionTerminated() {
+func (ts *TestSubscriber) ConnectionTerminated() {
 	// Call base implementation method which will display a connection terminated message to stderr
-	ss.SubscriberBase.ConnectionTerminated()
+	ts.SubscriberBase.ConnectionTerminated()
 
 	// Reset last message display time on disconnect
 	lastMessageDisplay = time.Time{}
