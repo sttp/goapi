@@ -38,7 +38,7 @@ import (
 
 // SimpleSubscriber is a simple STTP data subscriber implementation.
 type SimpleSubscriber struct {
-	sttp.SubscriberBase
+	sttp.SubscriberBase // Provides default implementation
 }
 
 // NewSimpleSubscriber creates a new SimpleSubscriber.
@@ -119,7 +119,7 @@ func (ss *SimpleSubscriber) ReceivedNewMeasurements(measurements []transport.Mea
 
 // ConnectionTerminated handles notification that a connection has been terminated.
 func (ss *SimpleSubscriber) ConnectionTerminated() {
-	// Call base class method which will display connection terminated to os.Stderr
+	// Call base implementation which will display a connection terminated message to stderr
 	ss.SubscriberBase.ConnectionTerminated()
 
 	// Reset last message display time on disconnect
