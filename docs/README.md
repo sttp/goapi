@@ -1,4 +1,4 @@
-## goapi - Go STTP ([IEEE 2664](https://standards.ieee.org/project/2664.html)) Documentation
+## Go STTP ([IEEE 2664](https://standards.ieee.org/project/2664.html)) Documentation
 
 <img align="right" src="img/sttp.png">
 

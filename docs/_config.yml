@@ -1,6 +1,6 @@
 theme: jekyll-theme-cayman
 title: sttp.goapi
-description: Streaming Telemetry Transport Protocol GO API
+description: Streaming Telemetry Transport Protocol Go API Docs
 github:
   repository_name: sttp.goapi
   owner_url: https://www.gridprotectionalliance.org
