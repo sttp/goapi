@@ -210,7 +210,7 @@ func (sb *SubscriberBase) LookupMetadata(signalID guid.Guid) *MeasurementMetadat
 	return sb.dataSubscriber().LookupMetadata(signalID)
 }
 
-// Metadata gets the Metadata associated with a measurement from the local
+// Metadata gets the MeasurementMetadata associated with a measurement from the local
 // registry. If the metadata does not exist, a new record is created and returned.
 func (sb *SubscriberBase) Metadata(measurement *Measurement) *MeasurementMetadata {
 	return sb.dataSubscriber().Metadata(measurement)

@@ -224,7 +224,7 @@ func (ds *DataSubscriber) LookupMetadata(signalID guid.Guid) *MeasurementMetadat
 	return metadata
 }
 
-// Metadata gets the Metadata associated with a measurement from the local
+// Metadata gets the MeasurementMetadata associated with a measurement from the local
 // registry. If the metadata does not exist, a new record is created and returned.
 func (ds *DataSubscriber) Metadata(measurement *Measurement) *MeasurementMetadata {
 	return ds.LookupMetadata(measurement.SignalID)
