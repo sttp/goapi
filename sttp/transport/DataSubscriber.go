@@ -129,6 +129,7 @@ type DataSubscriber struct {
 	STTPUpdatedOnInfo string
 
 	// Measurement parsing
+	measurementRegistry     map[guid.Guid]*MeasurementMetadata
 	signalIndexCache        [2]*SignalIndexCache
 	signalIndexCacheLock    sync.Mutex
 	cacheIndex              int32
@@ -159,6 +160,7 @@ func NewDataSubscriber() *DataSubscriber {
 		STTPSourceInfo:           version.STTPSource,
 		STTPVersionInfo:          version.STTPVersion,
 		STTPUpdatedOnInfo:        version.STTPUpdatedOn,
+		measurementRegistry:      make(map[guid.Guid]*MeasurementMetadata),
 		signalIndexCache:         [2]*SignalIndexCache{NewSignalIndexCache(), NewSignalIndexCache()},
 	}
 }
@@ -205,6 +207,41 @@ func (ds *DataSubscriber) DecodeString(data []byte) string {
 	return string(data)
 }
 
+// LookupMetadata gets the MeasurementMetadata for the specified signalID from the local
+// registry. If the metadata does not exist, a new record is created and returned.
+func (ds *DataSubscriber) LookupMetadata(signalID guid.Guid) *MeasurementMetadata {
+	metadata, ok := ds.measurementRegistry[signalID]
+
+	if !ok {
+		metadata = &MeasurementMetadata{
+			SignalID:   signalID,
+			Multiplier: 1.0,
+		}
+
+		ds.measurementRegistry[metadata.SignalID] = metadata
+	}
+
+	return metadata
+}
+
+// Metadata gets the Metadata associated with a measurement from the local
+// registry. If the metadata does not exist, a new record is created and returned.
+func (ds *DataSubscriber) Metadata(measurement *Measurement) *MeasurementMetadata {
+	return ds.LookupMetadata(measurement.SignalID)
+}
+
+// AdjustedValue gets the Value of a Measurement with any linear adjustments applied from the
+// measurement's Adder and Multiplier metadata, if found.
+func (ds *DataSubscriber) AdjustedValue(measurement *Measurement) float64 {
+	metadata, ok := ds.measurementRegistry[measurement.SignalID]
+
+	if ok {
+		return measurement.Value*metadata.Multiplier + metadata.Adder
+	}
+
+	return measurement.Value
+}
+
 // Connect requests the the DataSubscriber initiate a connection to the DataPublisher.
 func (ds *DataSubscriber) Connect(hostName string, port uint16) error {
 	// User requests to connection are not an auto-reconnect attempt
@@ -230,6 +267,7 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 	ds.totalMeasurementsReceived = 0
 	ds.keyIVs = nil
 	ds.bufferBlockExpectedSequenceNumber = 0
+	ds.measurementRegistry = make(map[guid.Guid]*MeasurementMetadata)
 
 	if !autoReconnecting {
 		ds.connector.ResetConnection()

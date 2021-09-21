@@ -104,9 +104,10 @@ func (ss *SimpleSubscriber) ReceivedNewMeasurements(measurements []transport.Mea
 
 	for i := 0; i < len(measurements); i++ {
 		measurement := measurements[i]
+		metadata := ss.Metadata(&measurement)
 
 		message.WriteRune('\t')
-		message.WriteString(strconv.FormatUint(measurement.Metadata().ID, 10))
+		message.WriteString(strconv.FormatUint(metadata.ID, 10))
 		message.WriteRune('\t')
 		message.WriteString(measurement.SignalID.String())
 		message.WriteRune('\t')

@@ -40,7 +40,7 @@ import (
 
 // Subscriber defines the primary functionality of an STTP data subscription.
 // Struct implementations of this interface that embed the SubscriberBase as a
-// composite field will inherit a default implementation all required interface
+// composite field will inherit a default implementation of all required interface
 // methods. This allows implementations to focus only on needed functionality.
 type Subscriber interface {
 	// StatusMessage handles informational message logging.
@@ -202,6 +202,24 @@ func (sb *SubscriberBase) TotalDataChannelBytesReceived() uint64 {
 // TotalMeasurementsReceived gets the total number of measurements received since last subscription.
 func (sb *SubscriberBase) TotalMeasurementsReceived() uint64 {
 	return sb.dataSubscriber().TotalMeasurementsReceived()
+}
+
+// LookupMetadata gets the MeasurementMetadata for the specified signalID from the local
+// registry. If the metadata does not exist, a new record is created and returned.
+func (sb *SubscriberBase) LookupMetadata(signalID guid.Guid) *MeasurementMetadata {
+	return sb.dataSubscriber().LookupMetadata(signalID)
+}
+
+// Metadata gets the Metadata associated with a measurement from the local
+// registry. If the metadata does not exist, a new record is created and returned.
+func (sb *SubscriberBase) Metadata(measurement *Measurement) *MeasurementMetadata {
+	return sb.dataSubscriber().Metadata(measurement)
+}
+
+// AdjustedValue gets the Value of a Measurement with any linear adjustments applied from the
+// measurement's Adder and Multiplier metadata, if found.
+func (sb *SubscriberBase) AdjustedValue(measurement *Measurement) float64 {
+	return sb.dataSubscriber().AdjustedValue(measurement)
 }
 
 // RequestMetadata sends a request to the data publisher indicating that the Subscriber would

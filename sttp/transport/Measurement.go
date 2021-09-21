@@ -31,6 +31,7 @@ import (
 )
 
 // MeasurementMetadata defines the ancillary information associated with a Measurement.
+// Metadata gets cached in a registry associated with a DataSubscriber.
 type MeasurementMetadata struct {
 	// Measurement's globally unique identifier.
 	SignalID guid.Guid
@@ -65,45 +66,6 @@ type Measurement struct {
 
 	// Flags indicating the state of the measurement as reported by the device that took it.
 	Flags StateFlagsEnum
-}
-
-var (
-	measurementRegistry = make(map[guid.Guid]*MeasurementMetadata)
-)
-
-// LookupMetadata gets the MeasurementMetadata for the specified signalID from the local
-// registry. If the metadata does not exist, a new record is created and returned.
-func LookupMetadata(signalID guid.Guid) *MeasurementMetadata {
-	metadata, ok := measurementRegistry[signalID]
-
-	if !ok {
-		metadata = &MeasurementMetadata{
-			SignalID:   signalID,
-			Multiplier: 1.0,
-		}
-
-		measurementRegistry[metadata.SignalID] = metadata
-	}
-
-	return metadata
-}
-
-// Metadata gets the MeasurementMetadata associated with a measurement from the local
-// registry. If the metadata does not exist, a new record is created and returned.
-func (m *Measurement) Metadata() *MeasurementMetadata {
-	return LookupMetadata(m.SignalID)
-}
-
-// AdjustedValue gets the Value of a Measurement with any linear adjustments applied from the
-// measurement's Adder and Multiplier metadata.
-func (m *Measurement) AdjustedValue() float64 {
-	metadata, ok := measurementRegistry[m.SignalID]
-
-	if ok {
-		return m.Value*metadata.Multiplier + metadata.Adder
-	}
-
-	return m.Value
 }
 
 // TicksValue gets the integer-based time from a Measurement Ticks based timestamp, i.e.,

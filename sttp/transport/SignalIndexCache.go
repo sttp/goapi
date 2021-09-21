@@ -51,7 +51,7 @@ func NewSignalIndexCache() *SignalIndexCache {
 }
 
 // addRecord adds a new record to the SignalIndexCache for provided key Measurement details.
-func (sic *SignalIndexCache) addRecord(signalIndex int32, signalID guid.Guid, source string, id uint64, charSizeEstimate uint32 /* = 1 */) {
+func (sic *SignalIndexCache) addRecord(ds *DataSubscriber, signalIndex int32, signalID guid.Guid, source string, id uint64, charSizeEstimate uint32 /* = 1 */) {
 	sic.reference[signalIndex] = uint32(len(sic.signalIDList))
 	sic.signalIDList = append(sic.signalIDList, signalID)
 	sic.sourceList = append(sic.sourceList, source)
@@ -59,7 +59,7 @@ func (sic *SignalIndexCache) addRecord(signalIndex int32, signalID guid.Guid, so
 	sic.signalIDCache[signalID] = signalIndex
 
 	// Register measurement metadata
-	metadata := LookupMetadata(signalID)
+	metadata := ds.LookupMetadata(signalID)
 	metadata.Source = source
 	metadata.ID = id
 
@@ -158,7 +158,7 @@ func (sic *SignalIndexCache) BinaryLength() uint32 {
 // }
 
 // decode parses a SignalIndexCache from the specified byte buffer received from a DataPublisher.
-func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, subscriberID *guid.Guid) error {
+func (sic *SignalIndexCache) decode(ds *DataSubscriber, buffer []byte, subscriberID *guid.Guid) error {
 	length := uint32(len(buffer))
 
 	if length < 4 {
@@ -173,11 +173,6 @@ func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, s
 
 	if length < binaryLength {
 		return errors.New("not enough buffer provided to parse")
-	}
-
-	// We know we have enough data so we can empty the reference cache
-	for k := range sic.reference {
-		delete(sic.reference, k)
 	}
 
 	var err error
@@ -215,14 +210,14 @@ func (sic *SignalIndexCache) decode(subscriber *DataSubscriber, buffer []byte, s
 		sourceSize := binary.BigEndian.Uint32(buffer[offset:])
 		offset += 4
 
-		source := subscriber.DecodeString(buffer[offset : offset+sourceSize])
+		source := ds.DecodeString(buffer[offset : offset+sourceSize])
 		offset += sourceSize
 
 		// ID
 		id := binary.BigEndian.Uint64(buffer[offset:])
 		offset += 8
 
-		sic.addRecord(signalIndex, signalID, source, id, 1)
+		sic.addRecord(ds, signalIndex, signalID, source, id, 1)
 	}
 
 	// There is additional data here about unauthorized signal IDs
