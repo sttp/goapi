@@ -35,13 +35,14 @@ import (
 // SignalIndexCache maps 32-bit runtime IDs to 128-bit globally unique Measurement IDs. The structure
 // additionally provides reverse lookup and an extra mapping  to human-readable measurement keys.
 type SignalIndexCache struct {
-	reference     map[int32]uint32
-	signalIDList  []guid.Guid
-	sourceList    []string
-	idList        []uint64
-	signalIDCache map[guid.Guid]int32
-	binaryLength  uint32
-	tsscDecoder   *tssc.TsscDecoder
+	reference      map[int32]uint32
+	signalIDList   []guid.Guid
+	sourceList     []string
+	idList         []uint64
+	signalIDCache  map[guid.Guid]int32
+	binaryLength   uint32
+	maxSignalIndex uint32
+	tsscDecoder    *tssc.Decoder
 }
 
 // NewSignalIndexCache makes a new SignalIndexCache
@@ -54,11 +55,16 @@ func NewSignalIndexCache() *SignalIndexCache {
 
 // addRecord adds a new record to the SignalIndexCache for provided key Measurement details.
 func (sic *SignalIndexCache) addRecord(ds *DataSubscriber, signalIndex int32, signalID guid.Guid, source string, id uint64, charSizeEstimate uint32 /* = 1 */) {
-	sic.reference[signalIndex] = uint32(len(sic.signalIDList))
+	index := uint32(len(sic.signalIDList))
+	sic.reference[signalIndex] = index
 	sic.signalIDList = append(sic.signalIDList, signalID)
 	sic.sourceList = append(sic.sourceList, source)
 	sic.idList = append(sic.idList, id)
 	sic.signalIDCache[signalID] = signalIndex
+
+	if index > sic.maxSignalIndex {
+		sic.maxSignalIndex = index
+	}
 
 	// Register measurement metadata
 	metadata := ds.LookupMetadata(signalID)
@@ -135,6 +141,11 @@ func (sic *SignalIndexCache) SignalIndex(signalID guid.Guid) int32 {
 	}
 
 	return -1
+}
+
+// MaxSignalIndex gets the largest signal index in the SignalIndexCache.
+func (sic *SignalIndexCache) MaxSignalIndex() uint32 {
+	return sic.maxSignalIndex
 }
 
 // Count returns the number of Measurement records that can be found in the SignalIndexCache.

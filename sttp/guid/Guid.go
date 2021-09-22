@@ -36,6 +36,11 @@ func New() Guid {
 	return Guid(uuid.New())
 }
 
+// IsZero determines if the Guid value is its zero value, i.e., empty.
+func (value *Guid) IsZero() bool {
+	return *value == Empty
+}
+
 // Parse decodes a Guid value from a string.
 func Parse(value string) Guid {
 	guid, err := uuid.Parse(value)

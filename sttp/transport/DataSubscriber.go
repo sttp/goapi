@@ -925,7 +925,7 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCac
 
 	// Use TSSC to decompress measurements
 	if decoder == nil {
-		signalIndexCache.tsscDecoder = tssc.NewDecoder()
+		signalIndexCache.tsscDecoder = tssc.NewDecoder(signalIndexCache.MaxSignalIndex())
 		decoder = signalIndexCache.tsscDecoder
 		decoder.SequenceNumber = 0
 		newDecoder = true
@@ -943,7 +943,7 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCac
 				ds.dispatchStatusMessage("TSSC algorithm reset before sequence number: " + strconv.Itoa(int(decoder.SequenceNumber)))
 			}
 
-			signalIndexCache.tsscDecoder = tssc.NewDecoder()
+			signalIndexCache.tsscDecoder = tssc.NewDecoder(signalIndexCache.MaxSignalIndex())
 			decoder = signalIndexCache.tsscDecoder
 			decoder.SequenceNumber = 0
 		}
@@ -968,22 +968,17 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCac
 	var timestamp int64
 	var stateFlags uint32
 	var value float32
-	var signalID guid.Guid
-	index := -1
+	index := 0
 
 	for decoder.TryGetMeasurement(&id, &timestamp, &stateFlags, &value) {
-		index++
-
-		if signalID = signalIndexCache.SignalID(id); signalID == guid.Empty {
-			continue
-		}
-
 		measurements[index] = Measurement{
-			SignalID:  signalID,
+			SignalID:  signalIndexCache.SignalID(id),
 			Value:     float64(value),
 			Timestamp: ticks.Ticks(timestamp),
 			Flags:     StateFlagsEnum(stateFlags),
 		}
+
+		index++
 	}
 
 	decoder.SequenceNumber++

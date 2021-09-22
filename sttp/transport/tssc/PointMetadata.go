@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  TsscPointMetadata.go - Gbtc
+//  PointMetadata.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //

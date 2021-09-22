@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  TsscDecoder.go - Gbtc
+//  Decoder.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -31,8 +31,8 @@ import (
 	"strings"
 )
 
-// TsscDecoder is the decoder for the Time-Series Special Compression algorithm of STTP.
-type TsscDecoder struct {
+// Decoder is the decoder for the Time-Series Special Compression (TSSC) algorithm of STTP.
+type Decoder struct {
 	data         []byte
 	position     int
 	lastPosition int
@@ -58,12 +58,13 @@ type TsscDecoder struct {
 	SequenceNumber uint16
 }
 
-func NewDecoder() *TsscDecoder {
-	td := &TsscDecoder{
+func NewDecoder(maxSignalIndex uint32) *Decoder {
+	td := &Decoder{
 		prevTimeDelta1: math.MaxInt64,
 		prevTimeDelta2: math.MaxInt64,
 		prevTimeDelta3: math.MaxInt64,
 		prevTimeDelta4: math.MaxInt64,
+		points:         make([]*pointMetadata, maxSignalIndex+1),
 	}
 
 	td.lastPoint = td.newPointMetadata()
@@ -71,11 +72,11 @@ func NewDecoder() *TsscDecoder {
 	return td
 }
 
-func (td *TsscDecoder) newPointMetadata() *pointMetadata {
+func (td *Decoder) newPointMetadata() *pointMetadata {
 	return newPointMetadata(nil, td.readBit, td.readBits5)
 }
 
-// func (td *TsscDecoder) Reset() {
+// func (td *Decoder) Reset() {
 // 	td.data = make([]byte, 0)
 // 	td.position = 0
 // 	td.lastPosition = 0
@@ -90,23 +91,25 @@ func (td *TsscDecoder) newPointMetadata() *pointMetadata {
 // 	td.clearBitStream()
 // }
 
-func (td *TsscDecoder) bitStreamIsEmpty() bool {
+func (td *Decoder) bitStreamIsEmpty() bool {
 	return td.bitStreamCount == 0
 }
 
-func (td *TsscDecoder) clearBitStream() {
+func (td *Decoder) clearBitStream() {
 	td.bitStreamCount = 0
 	td.bitStreamCache = 0
 }
 
-func (td *TsscDecoder) SetBuffer(data []byte) {
+// SetBuffer assigns the working buffer to use for decoding measurements.
+func (td *Decoder) SetBuffer(data []byte) {
 	td.clearBitStream()
 	td.data = data
 	td.position = 0
-	td.lastPosition = len(data)
+	td.lastPosition = len(data) - 1
 }
 
-func (td *TsscDecoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *uint32, value *float32) bool {
+// TryGetMeasurement attempts to get the next decoded measurement from the working buffer.
+func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *uint32, value *float32) bool {
 	if td.position == td.lastPosition && td.bitStreamIsEmpty() {
 		td.clearBitStream()
 		*id = 0
@@ -299,7 +302,7 @@ func (td *TsscDecoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags
 	return true
 }
 
-func (td *TsscDecoder) decodePointID(code byte) {
+func (td *Decoder) decodePointID(code byte) {
 	switch code {
 	case codeWords.PointIDXOR4:
 		td.lastPoint.PrevNextPointID1 = td.readBits4() ^ td.lastPoint.PrevNextPointID1
@@ -335,7 +338,7 @@ func (td *TsscDecoder) decodePointID(code byte) {
 	}
 }
 
-func (td *TsscDecoder) decodeTimestamp(code byte) int64 {
+func (td *Decoder) decodeTimestamp(code byte) int64 {
 	var timestamp int64
 
 	switch code {
@@ -388,7 +391,7 @@ func (td *TsscDecoder) decodeTimestamp(code byte) int64 {
 	return timestamp
 }
 
-func (td *TsscDecoder) decodeStateFlags(code byte, nextPoint *pointMetadata) uint32 {
+func (td *Decoder) decodeStateFlags(code byte, nextPoint *pointMetadata) uint32 {
 	var stateFlags uint32
 
 	if code == codeWords.StateFlags2 {
@@ -403,7 +406,7 @@ func (td *TsscDecoder) decodeStateFlags(code byte, nextPoint *pointMetadata) uin
 	return stateFlags
 }
 
-func (td *TsscDecoder) readBit() int32 {
+func (td *Decoder) readBit() int32 {
 	if td.bitStreamCount == 0 {
 		td.bitStreamCount = 8
 		td.bitStreamCache = int32(td.data[td.position])
@@ -415,11 +418,11 @@ func (td *TsscDecoder) readBit() int32 {
 	return td.bitStreamCache >> td.bitStreamCount & 1
 }
 
-func (td *TsscDecoder) readBits4() int32 {
+func (td *Decoder) readBits4() int32 {
 	return td.readBit()<<3 | td.readBit()<<2 | td.readBit()<<1 | td.readBit()
 }
 
-func (td *TsscDecoder) readBits5() int32 {
+func (td *Decoder) readBits5() int32 {
 	return td.readBit()<<4 | td.readBit()<<3 | td.readBit()<<2 | td.readBit()<<1 | td.readBit()
 }
 
