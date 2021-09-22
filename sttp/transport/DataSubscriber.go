@@ -37,6 +37,7 @@ import (
 	"github.com/sttp/goapi/sttp/guid"
 	"github.com/sttp/goapi/sttp/thread"
 	"github.com/sttp/goapi/sttp/ticks"
+	"github.com/sttp/goapi/sttp/transport/tssc"
 	"github.com/sttp/goapi/sttp/version"
 )
 
@@ -138,8 +139,7 @@ type DataSubscriber struct {
 	keyIVs                  [][][]byte
 	lastMissingCacheWarning ticks.Ticks
 	tsscResetRequested      bool
-	tsscSequenceNumber      uint16
-	//tsscDecoder      tssc.TSSCDecoder
+	tsscLastOOSReport       time.Time
 
 	bufferBlockExpectedSequenceNumber uint32
 	bufferBlockCache                  []BufferBlock
@@ -389,6 +389,7 @@ func (ds *DataSubscriber) Subscribe() error {
 
 	// Reset TSSC decompressor on successful (re)subscription
 	ds.tsscResetRequested = true
+	ds.tsscLastOOSReport = time.Time{}
 
 	return nil
 }
@@ -919,8 +920,78 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 }
 
 func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCache, data []byte, measurements []Measurement) {
-	// TODO: Implement TSSC decompression
-	panic(version.STTPSource + " has not yet implemented time-series special compression - set CompressPayloadData to false for now")
+	decoder := signalIndexCache.tsscDecoder
+	var newDecoder bool
+
+	// Use TSSC to decompress measurements
+	if decoder == nil {
+		signalIndexCache.tsscDecoder = tssc.NewDecoder()
+		decoder = signalIndexCache.tsscDecoder
+		decoder.SequenceNumber = 0
+		newDecoder = true
+	}
+
+	if data[0] != 85 {
+		panic("TSSC version not recognized: " + strconv.Itoa(int(data[0])))
+	}
+
+	sequenceNumber := binary.BigEndian.Uint16(data[1:])
+
+	if sequenceNumber == 0 {
+		if !newDecoder {
+			if decoder.SequenceNumber > 0 {
+				ds.dispatchStatusMessage("TSSC algorithm reset before sequence number: " + strconv.Itoa(int(decoder.SequenceNumber)))
+			}
+
+			signalIndexCache.tsscDecoder = tssc.NewDecoder()
+			decoder = signalIndexCache.tsscDecoder
+			decoder.SequenceNumber = 0
+		}
+
+		ds.tsscResetRequested = false
+		ds.tsscLastOOSReport = time.Time{}
+	}
+
+	if decoder.SequenceNumber != sequenceNumber {
+		if !ds.tsscResetRequested && time.Since(ds.tsscLastOOSReport).Seconds() > 2.0 {
+			ds.dispatchErrorMessage("TSSC is out of sequence. Expecting: " + strconv.Itoa(int(decoder.SequenceNumber)) + ", Received: " + strconv.Itoa(int(sequenceNumber)))
+			ds.tsscLastOOSReport = time.Now()
+		}
+
+		// Ignore packets until the reset has occurred
+		return
+	}
+
+	decoder.SetBuffer(data[3:])
+
+	var id int32
+	var timestamp int64
+	var stateFlags uint32
+	var value float32
+	var signalID guid.Guid
+	index := -1
+
+	for decoder.TryGetMeasurement(&id, &timestamp, &stateFlags, &value) {
+		index++
+
+		if signalID = signalIndexCache.SignalID(id); signalID == guid.Empty {
+			continue
+		}
+
+		measurements[index] = Measurement{
+			SignalID:  signalID,
+			Value:     float64(value),
+			Timestamp: ticks.Ticks(timestamp),
+			Flags:     StateFlagsEnum(stateFlags),
+		}
+	}
+
+	decoder.SequenceNumber++
+
+	// Do not increment to 0 on roll-over
+	if decoder.SequenceNumber == 0 {
+		decoder.SequenceNumber = 1
+	}
 }
 
 func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndexCache, dataPacketFlags DataPacketFlagsEnum, data []byte, measurements []Measurement) {

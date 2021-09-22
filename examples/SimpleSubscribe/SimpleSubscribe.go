@@ -55,7 +55,7 @@ func main() {
 
 	subscriber.Hostname = hostname
 	subscriber.Port = port
-	subscriber.CompressPayloadData = false
+	subscriber.CompressPayloadData = true
 	subscriber.Version = 1
 
 	subscription.FilterExpression = "FILTER TOP 5 ActiveMeasurements WHERE True"

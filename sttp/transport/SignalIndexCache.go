@@ -29,6 +29,7 @@ import (
 	"math"
 
 	"github.com/sttp/goapi/sttp/guid"
+	"github.com/sttp/goapi/sttp/transport/tssc"
 )
 
 // SignalIndexCache maps 32-bit runtime IDs to 128-bit globally unique Measurement IDs. The structure
@@ -40,6 +41,7 @@ type SignalIndexCache struct {
 	idList        []uint64
 	signalIDCache map[guid.Guid]int32
 	binaryLength  uint32
+	tsscDecoder   *tssc.TsscDecoder
 }
 
 // NewSignalIndexCache makes a new SignalIndexCache
