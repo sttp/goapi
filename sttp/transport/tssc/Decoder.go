@@ -105,7 +105,7 @@ func (td *Decoder) SetBuffer(data []byte) {
 	td.clearBitStream()
 	td.data = data
 	td.position = 0
-	td.lastPosition = len(data) - 1
+	td.lastPosition = len(data)
 }
 
 // TryGetMeasurement attempts to get the next decoded measurement from the working buffer.
@@ -142,7 +142,7 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 	}
 
 	// Decode measurement ID and read next code for timestamp decoding
-	if code <= int32(codeWords.PointIDXOR32) {
+	if code <= int32(codeWords.PointIDXor32) {
 		td.decodePointID(byte(code))
 		code = td.lastPoint.ReadCode()
 
@@ -191,7 +191,7 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 	}
 
 	// Decode measurement timestamp and read next code for quality flags decoding
-	if code <= int32(codeWords.TimeXOR7Bit) {
+	if code <= int32(codeWords.TimeXor7Bit) {
 		*timestamp = td.decodeTimestamp(byte(code))
 		code = td.lastPoint.ReadCode()
 
@@ -254,27 +254,27 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 		nextPoint.PrevValue1 = valueRaw
 	} else {
 		switch byte(code) {
-		case codeWords.ValueXOR4:
+		case codeWords.ValueXor4:
 			valueRaw = uint32(td.readBits4()) ^ nextPoint.PrevValue1
-		case codeWords.ValueXOR8:
+		case codeWords.ValueXor8:
 			valueRaw = uint32(td.data[td.position]) ^ nextPoint.PrevValue1
 			td.position++
-		case codeWords.ValueXOR12:
+		case codeWords.ValueXor12:
 			valueRaw = uint32(td.readBits4()) ^ uint32(td.data[td.position])<<4 ^ nextPoint.PrevValue1
 			td.position++
-		case codeWords.ValueXOR16:
+		case codeWords.ValueXor16:
 			valueRaw = uint32(td.data[td.position]) ^ uint32(td.data[td.position+1])<<8 ^ nextPoint.PrevValue1
 			td.position += 2
-		case codeWords.ValueXOR20:
+		case codeWords.ValueXor20:
 			valueRaw = uint32(td.readBits4()) ^ uint32(td.data[td.position])<<4 ^ uint32(td.data[td.position+1])<<12 ^ nextPoint.PrevValue1
 			td.position += 2
-		case codeWords.ValueXOR24:
+		case codeWords.ValueXor24:
 			valueRaw = uint32(td.data[td.position]) ^ uint32(td.data[td.position+1])<<8 ^ uint32(td.data[td.position+2])<<16 ^ nextPoint.PrevValue1
 			td.position += 3
-		case codeWords.ValueXOR28:
+		case codeWords.ValueXor28:
 			valueRaw = uint32(td.readBits4()) ^ uint32(td.data[td.position])<<4 ^ uint32(td.data[td.position+1])<<12 ^ uint32(td.data[td.position+2])<<20 ^ nextPoint.PrevValue1
 			td.position += 3
-		case codeWords.ValueXOR32:
+		case codeWords.ValueXor32:
 			valueRaw = uint32(td.data[td.position]) ^ uint32(td.data[td.position+1])<<8 ^ uint32(td.data[td.position+2])<<16 ^ uint32(td.data[td.position+3])<<24 ^ nextPoint.PrevValue1
 			td.position += 4
 		default:
@@ -304,24 +304,24 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 
 func (td *Decoder) decodePointID(code byte) {
 	switch code {
-	case codeWords.PointIDXOR4:
+	case codeWords.PointIDXor4:
 		td.lastPoint.PrevNextPointID1 = td.readBits4() ^ td.lastPoint.PrevNextPointID1
-	case codeWords.PointIDXOR8:
+	case codeWords.PointIDXor8:
 		td.lastPoint.PrevNextPointID1 = int32(td.data[td.position]) ^ td.lastPoint.PrevNextPointID1
 		td.position += 1
-	case codeWords.PointIDXOR12:
+	case codeWords.PointIDXor12:
 		td.lastPoint.PrevNextPointID1 = td.readBits4() ^ int32(td.data[td.position])<<4 ^ td.lastPoint.PrevNextPointID1
 		td.position += 1
-	case codeWords.PointIDXOR16:
+	case codeWords.PointIDXor16:
 		td.lastPoint.PrevNextPointID1 = int32(td.data[td.position]) ^ int32(td.data[td.position+1])<<8 ^ td.lastPoint.PrevNextPointID1
 		td.position += 2
-	case codeWords.PointIDXOR20:
+	case codeWords.PointIDXor20:
 		td.lastPoint.PrevNextPointID1 = td.readBits4() ^ int32(td.data[td.position])<<4 ^ int32(td.data[td.position+1])<<12 ^ td.lastPoint.PrevNextPointID1
 		td.position += 2
-	case codeWords.PointIDXOR24:
+	case codeWords.PointIDXor24:
 		td.lastPoint.PrevNextPointID1 = int32(td.data[td.position]) ^ int32(td.data[td.position+1])<<8 ^ int32(td.data[td.position+2])<<16 ^ td.lastPoint.PrevNextPointID1
 		td.position += 3
-	case codeWords.PointIDXOR32:
+	case codeWords.PointIDXor32:
 		td.lastPoint.PrevNextPointID1 = int32(td.data[td.position]) ^ int32(td.data[td.position+1])<<8 ^ int32(td.data[td.position+2])<<16 ^ int32(td.data[td.position+3])<<24 ^ td.lastPoint.PrevNextPointID1
 		td.position += 4
 	default:
@@ -361,7 +361,7 @@ func (td *Decoder) decodeTimestamp(code byte) int64 {
 	case codeWords.Timestamp2:
 		timestamp = td.prevTimestamp2
 	default:
-		timestamp = td.prevTimestamp1 ^ int64(decode7BitUInt32(td.data, &td.position))
+		timestamp = td.prevTimestamp1 ^ int64(decode7BitUInt64(td.data, &td.position))
 	}
 
 	// Save the smallest delta time
@@ -460,6 +460,71 @@ func decode7BitUInt32(stream []byte, position *int) uint32 {
 	*position += 5
 
 	return value ^ 0x10204080
+}
+
+func decode7BitUInt64(stream []byte, position *int) uint64 {
+	stream = stream[*position:]
+	value := uint64(stream[0])
+
+	if value < 128 {
+		*position++
+		return value
+	}
+
+	value ^= uint64(stream[1]) << 7
+
+	if value < 16384 {
+		*position += 2
+		return value ^ 0x80
+	}
+
+	value ^= uint64(stream[2]) << 14
+
+	if value < 2097152 {
+		*position += 3
+		return value ^ 0x4080
+	}
+
+	value ^= uint64(stream[3]) << 21
+
+	if value < 268435456 {
+		*position += 4
+		return value ^ 0x204080
+	}
+
+	value ^= uint64(stream[4]) << 28
+
+	if value < 34359738368 {
+		*position += 5
+		return value ^ 0x10204080
+	}
+
+	value ^= uint64(stream[5]) << 35
+
+	if value < 4398046511104 {
+		*position += 6
+		return value ^ 0x810204080
+	}
+
+	value ^= uint64(stream[6]) << 42
+
+	if value < 562949953421312 {
+		*position += 7
+		return value ^ 0x40810204080
+	}
+
+	value ^= uint64(stream[7]) << 49
+
+	if value < 72057594037927936 {
+		*position += 8
+		return value ^ 0x2040810204080
+	}
+
+	value ^= uint64(stream[8]) << 56
+	*position += 9
+
+	return value ^ 0x102040810204080
+
 }
 
 func abs(value int64) int64 {

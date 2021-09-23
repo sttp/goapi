@@ -29,13 +29,13 @@ import "math"
 
 var codeWords = struct {
 	EndOfStream       byte
-	PointIDXOR4       byte
-	PointIDXOR8       byte
-	PointIDXOR12      byte
-	PointIDXOR16      byte
-	PointIDXOR20      byte
-	PointIDXOR24      byte
-	PointIDXOR32      byte
+	PointIDXor4       byte
+	PointIDXor8       byte
+	PointIDXor12      byte
+	PointIDXor16      byte
+	PointIDXor20      byte
+	PointIDXor24      byte
+	PointIDXor32      byte
 	TimeDelta1Forward byte
 	TimeDelta2Forward byte
 	TimeDelta3Forward byte
@@ -45,30 +45,30 @@ var codeWords = struct {
 	TimeDelta3Reverse byte
 	TimeDelta4Reverse byte
 	Timestamp2        byte
-	TimeXOR7Bit       byte
+	TimeXor7Bit       byte
 	StateFlags2       byte
 	StateFlags7Bit32  byte
 	Value1            byte
 	Value2            byte
 	Value3            byte
 	ValueZero         byte
-	ValueXOR4         byte
-	ValueXOR8         byte
-	ValueXOR12        byte
-	ValueXOR16        byte
-	ValueXOR20        byte
-	ValueXOR24        byte
-	ValueXOR28        byte
-	ValueXOR32        byte
+	ValueXor4         byte
+	ValueXor8         byte
+	ValueXor12        byte
+	ValueXor16        byte
+	ValueXor20        byte
+	ValueXor24        byte
+	ValueXor28        byte
+	ValueXor32        byte
 }{
 	EndOfStream:       0,
-	PointIDXOR4:       1,
-	PointIDXOR8:       2,
-	PointIDXOR12:      3,
-	PointIDXOR16:      4,
-	PointIDXOR20:      5,
-	PointIDXOR24:      6,
-	PointIDXOR32:      7,
+	PointIDXor4:       1,
+	PointIDXor8:       2,
+	PointIDXor12:      3,
+	PointIDXor16:      4,
+	PointIDXor20:      5,
+	PointIDXor24:      6,
+	PointIDXor32:      7,
 	TimeDelta1Forward: 8,
 	TimeDelta2Forward: 9,
 	TimeDelta3Forward: 10,
@@ -78,21 +78,21 @@ var codeWords = struct {
 	TimeDelta3Reverse: 14,
 	TimeDelta4Reverse: 15,
 	Timestamp2:        16,
-	TimeXOR7Bit:       17,
+	TimeXor7Bit:       17,
 	StateFlags2:       18,
 	StateFlags7Bit32:  19,
 	Value1:            20,
 	Value2:            21,
 	Value3:            22,
 	ValueZero:         23,
-	ValueXOR4:         24,
-	ValueXOR8:         25,
-	ValueXOR12:        26,
-	ValueXOR16:        27,
-	ValueXOR20:        28,
-	ValueXOR24:        29,
-	ValueXOR28:        30,
-	ValueXOR32:        31,
+	ValueXor4:         24,
+	ValueXor8:         25,
+	ValueXor12:        26,
+	ValueXor16:        27,
+	ValueXor20:        28,
+	ValueXor24:        29,
+	ValueXor28:        30,
+	ValueXor32:        31,
 }
 
 type pointMetadata struct {
@@ -224,16 +224,16 @@ func (pm *pointMetadata) updatedCodeStatistics(code int32) {
 }
 
 func (pm *pointMetadata) adaptCommands() {
-	var code1 byte = 0
-	var count1 int32 = 0
+	var code1 byte
+	var count1 int32
 
 	var code2 byte = 1
-	var count2 int32 = 0
+	var count2 int32
 
 	var code3 byte = 2
-	var count3 int32 = 0
+	var count3 int32
 
-	var total int32 = 0
+	var total int32
 
 	for i := 0; i < len(pm.commandStats); i++ {
 		var count int32 = int32(pm.commandStats[i])
@@ -265,9 +265,9 @@ func (pm *pointMetadata) adaptCommands() {
 	}
 
 	var mode1Size int32 = total * 5
-	var mode2Size int32 = count1*1 + (total-count1)*6
-	var mode3Size int32 = count1*1 + count2*2 + (total-count1-count2)*7
-	var mode4Size int32 = count1*1 + count2*2 + count3*3 + (total-count1-count2-count3)*8
+	var mode2Size int32 = count1 + (total-count1)*6
+	var mode3Size int32 = count1 + count2*2 + (total-count1-count2)*7
+	var mode4Size int32 = count1 + count2*2 + count3*3 + (total-count1-count2-count3)*8
 
 	var minSize int32 = math.MaxInt32
 
