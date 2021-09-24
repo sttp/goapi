@@ -42,7 +42,7 @@ var member void
 // TODO: Code can be changed from template to type "T" when generics are available:
 //type HashSet[T any] map[T]void
 
-// HashSet represents a distinct collection of values, i.e., a set.
+// HashSet represents a distinct collection of Guid values, i.e., a set.
 // A HashSet is not sorted and will not contain duplicate elements.
 // The methods of the HashSet are not intrinsically thread-safe procedures,
 // to guarantee thread safety, you should initiate a lock before calling a method.

@@ -72,44 +72,72 @@ var SignalKind = struct {
 	Unknown:     11,
 }
 
-var (
-	// SignalKindDescription defines the string representations of the SignalKind enumeration values.
-	SignalKindDescription = [...]string{
-		"Angle",
-		"Magnitude",
-		"Frequency",
-		"DfDt",
-		"Status",
-		"Digital",
-		"Analog",
-		"Calculation",
-		"Statistic",
-		"Alarm",
-		"Quality",
-		"Unknown"}
+// Name gets the SignalKind enumeration name as a string.
+func (ske SignalKindEnum) Name() string {
+	switch ske {
+	case SignalKind.Angle:
+		return "Angle"
+	case SignalKind.Magnitude:
+		return "Magnitude"
+	case SignalKind.Frequency:
+		return "Frequency"
+	case SignalKind.DfDt:
+		return "DfDt"
+	case SignalKind.Status:
+		return "Status"
+	case SignalKind.Digital:
+		return "Digital"
+	case SignalKind.Analog:
+		return "Analog"
+	case SignalKind.Calculation:
+		return "Calculation"
+	case SignalKind.Statistic:
+		return "Statistic"
+	case SignalKind.Alarm:
+		return "Alarm"
+	case SignalKind.Quality:
+		return "Quality"
+	default:
+		return "Unknown"
+	}
+}
 
-	// SignalKindAcronym defines the abbreviated string representations of the SignalKind enumeration values.
-	SignalKindAcronym = [...]string{
-		"PA",
-		"PM",
-		"FQ",
-		"DF",
-		"SF",
-		"DV",
-		"AV",
-		"CV",
-		"ST",
-		"AL",
-		"QF",
-		"??"}
-)
+// Acronym gets the SignalKind enumeration value as its two-character acronym string.
+func (ske SignalKindEnum) Acronym() string {
+	switch ske {
+	case SignalKind.Angle:
+		return "PA"
+	case SignalKind.Magnitude:
+		return "PM"
+	case SignalKind.Frequency:
+		return "FQ"
+	case SignalKind.DfDt:
+		return "DF"
+	case SignalKind.Status:
+		return "SF"
+	case SignalKind.Digital:
+		return "DV"
+	case SignalKind.Analog:
+		return "AV"
+	case SignalKind.Calculation:
+		return "CV"
+	case SignalKind.Statistic:
+		return "ST"
+	case SignalKind.Alarm:
+		return "AL"
+	case SignalKind.Quality:
+		return "QF"
+	default:
+		return "??"
+	}
+}
 
 // SignalTypeAcronym gets the specific four-character signal type acronym for a SignalKind
 // enumeration value and phasor type, i.e., "V" voltage or "I" current.
-func SignalTypeAcronym(kind SignalKindEnum, phasorType rune) string {
+func (ske SignalKindEnum) SignalTypeAcronym(phasorType rune) string {
 	// A SignalType represents a more specific measurement type than SignalKind, i.e.,
 	// a phasor type (voltage or current) can also be determined by the type.
-	switch kind {
+	switch ske {
 	case SignalKind.Angle:
 		if unicode.ToUpper(phasorType) == 'V' {
 			return "VPHA"
@@ -143,7 +171,7 @@ func SignalTypeAcronym(kind SignalKindEnum, phasorType rune) string {
 	return "NULL"
 }
 
-// ParseSignalKindAcronym gets the SignalKind enumeration value for the specified acronym.
+// ParseSignalKindAcronym gets the SignalKind enumeration value for the specified two-character acronym.
 func ParseSignalKindAcronym(acronym string) SignalKindEnum {
 	acronym = strings.TrimSpace(strings.ToUpper(acronym))
 
