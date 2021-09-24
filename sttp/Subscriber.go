@@ -33,9 +33,7 @@ import (
 
 	"github.com/sttp/goapi/sttp/guid"
 	"github.com/sttp/goapi/sttp/ticks"
-
-	//lint:ignore ST1001 -- static access to transport namespace desirable here
-	. "github.com/sttp/goapi/sttp/transport"
+	"github.com/sttp/goapi/sttp/transport"
 )
 
 // Subscriber defines the primary functionality of an STTP data subscription.
@@ -50,16 +48,16 @@ type Subscriber interface {
 	// ReceivedMetadata handles reception of the metadata response.
 	ReceivedMetadata(metadata []byte)
 	// SubscriptionUpdated handles notifications that a new SignalIndexCache has been received.
-	SubscriptionUpdated(signalIndexCache *SignalIndexCache)
+	SubscriptionUpdated(signalIndexCache *transport.SignalIndexCache)
 	// DataStartTime handles notifications of first received measurement. This can be useful in
 	// cases where SubscriptionInfo.IncludeTime has been set to false.
 	DataStartTime(startTime time.Time)
 	// ConfigurationChanged handles notifications that the publisher configuration has changed.
 	ConfigurationChanged()
 	// ReceivedNewMeasurements handles reception of new measurements.
-	ReceivedNewMeasurements(measurements []Measurement)
+	ReceivedNewMeasurements(measurements []transport.Measurement)
 	// ReceivedNewBufferBlocks handles reception of new buffer blocks.
-	ReceivedNewBufferBlocks(bufferBlocks []BufferBlock)
+	ReceivedNewBufferBlocks(bufferBlocks []transport.BufferBlock)
 	// ReceivedNotification handles reception of a notification.
 	ReceivedNotification(notification string)
 	// HistoricalReadComplete handles notification that temporal processing has completed,
@@ -124,16 +122,16 @@ type SubscriberBase struct {
 	// Version defines the target STTP protocol version. This currently defaults to 2.
 	Version byte
 
-	sub         Subscriber      // Reference to consumer Subscriber implementation
-	ds          *DataSubscriber // Reference to internal DataSubscriber instance
-	consoleLock sync.Mutex      // Simple lock to synchronize console writes
+	sub         Subscriber                // Reference to consumer Subscriber implementation
+	ds          *transport.DataSubscriber // Reference to internal DataSubscriber instance
+	consoleLock sync.Mutex                // Simple lock to synchronize console writes
 }
 
 // NewSubscriberBase creates a new SubscriberBase with specified Subscriber.
 func NewSubscriberBase(subscriber Subscriber) SubscriberBase {
 	return SubscriberBase{
 		sub:                      subscriber,
-		ds:                       NewDataSubscriber(),
+		ds:                       transport.NewDataSubscriber(),
 		MaxRetries:               -1,
 		RetryInterval:            1000,
 		MaxRetryInterval:         30000,
@@ -156,7 +154,7 @@ func (sb *SubscriberBase) Dispose() {
 }
 
 // dataSubscriber gets a reference to the internal DataSubscriber instance.
-func (sb *SubscriberBase) dataSubscriber() *DataSubscriber {
+func (sb *SubscriberBase) dataSubscriber() *transport.DataSubscriber {
 	if sb.ds == nil {
 		panic("Internal DataSubscriber instance has not been initialized. Make sure to use NewSubscriberBase.")
 	}
@@ -175,12 +173,12 @@ func (sb *SubscriberBase) IsSubscribed() bool {
 }
 
 // Subscription gets subscription related settings for Subscriber.
-func (sb *SubscriberBase) Subscription() *SubscriptionInfo {
+func (sb *SubscriberBase) Subscription() *transport.SubscriptionInfo {
 	return sb.dataSubscriber().Subscription()
 }
 
-// GetSignalIndexCache gets the active signal index cache.
-func (sb *SubscriberBase) ActiveSignalIndexCache() *SignalIndexCache {
+// ActiveSignalIndexCache gets the active signal index cache.
+func (sb *SubscriberBase) ActiveSignalIndexCache() *transport.SignalIndexCache {
 	return sb.dataSubscriber().ActiveSignalIndexCache()
 }
 
@@ -206,19 +204,19 @@ func (sb *SubscriberBase) TotalMeasurementsReceived() uint64 {
 
 // LookupMetadata gets the MeasurementMetadata for the specified signalID from the local
 // registry. If the metadata does not exist, a new record is created and returned.
-func (sb *SubscriberBase) LookupMetadata(signalID guid.Guid) *MeasurementMetadata {
+func (sb *SubscriberBase) LookupMetadata(signalID guid.Guid) *transport.MeasurementMetadata {
 	return sb.dataSubscriber().LookupMetadata(signalID)
 }
 
 // Metadata gets the MeasurementMetadata associated with a measurement from the local
 // registry. If the metadata does not exist, a new record is created and returned.
-func (sb *SubscriberBase) Metadata(measurement *Measurement) *MeasurementMetadata {
+func (sb *SubscriberBase) Metadata(measurement *transport.Measurement) *transport.MeasurementMetadata {
 	return sb.dataSubscriber().Metadata(measurement)
 }
 
 // AdjustedValue gets the Value of a Measurement with any linear adjustments applied from the
 // measurement's Adder and Multiplier metadata, if found.
-func (sb *SubscriberBase) AdjustedValue(measurement *Measurement) float64 {
+func (sb *SubscriberBase) AdjustedValue(measurement *transport.Measurement) float64 {
 	return sb.dataSubscriber().AdjustedValue(measurement)
 }
 
@@ -228,7 +226,7 @@ func (sb *SubscriberBase) RequestMetadata() {
 	ds := sb.dataSubscriber()
 
 	if len(sb.MetadataFilters) == 0 {
-		ds.SendServerCommand(ServerCommand.MetadataRefresh)
+		ds.SendServerCommand(transport.ServerCommand.MetadataRefresh)
 		return
 	}
 
@@ -238,7 +236,7 @@ func (sb *SubscriberBase) RequestMetadata() {
 	binary.BigEndian.PutUint32(buffer, uint32(len(filters)))
 	copy(buffer[4:], filters)
 
-	ds.SendServerCommandWithPayload(ServerCommand.MetadataRefresh, buffer)
+	ds.SendServerCommandWithPayload(transport.ServerCommand.MetadataRefresh, buffer)
 }
 
 // Subscribe sends a request to the data publisher indicating that the Subscriber would
@@ -294,10 +292,10 @@ func (sb *SubscriberBase) Connect() {
 	ds.ConfigurationChangedCallback = sb.handleConfigurationChanged
 	ds.ProcessingCompleteCallback = sb.handleProcessingComplete
 
-	var status ConnectStatusEnum
+	var status transport.ConnectStatusEnum
 
 	// Connect and subscribe to publisher
-	if status = con.Connect(ds); status == ConnectStatus.Success {
+	if status = con.Connect(ds); status == transport.ConnectStatus.Success {
 		sub.ConnectionEstablished()
 
 		// If automatically parsing metadata, request metadata upon successful connection,
@@ -308,7 +306,7 @@ func (sb *SubscriberBase) Connect() {
 		} else if sb.AutoSubscribe {
 			ds.Subscribe()
 		}
-	} else if status == ConnectStatus.Failed {
+	} else if status == transport.ConnectStatus.Failed {
 		sb.ErrorMessage("All connection attempts failed")
 	}
 }
@@ -320,7 +318,7 @@ func (sb *SubscriberBase) Disconnect() {
 
 // Intermediate callback handlers:
 
-func (sb *SubscriberBase) handleReconnect(ds *DataSubscriber) {
+func (sb *SubscriberBase) handleReconnect(ds *transport.DataSubscriber) {
 	if ds.IsConnected() {
 		sb.sub.ConnectionEstablished()
 
@@ -388,7 +386,7 @@ func (sb *SubscriberBase) ReceivedMetadata(metadata []byte) {
 
 // SubscriptionUpdated implements the default handler for notifications that a new
 // SignalIndexCache has been received.
-func (sb *SubscriberBase) SubscriptionUpdated(signalIndexCache *SignalIndexCache) {
+func (sb *SubscriberBase) SubscriptionUpdated(signalIndexCache *transport.SignalIndexCache) {
 }
 
 // DataStartTime implements the default handler for notifications of first received measurement.
@@ -401,11 +399,11 @@ func (sb *SubscriberBase) ConfigurationChanged() {
 }
 
 // ReceivedNewMeasurements implements the default handler for reception of new measurements.
-func (sb *SubscriberBase) ReceivedNewMeasurements(measurements []Measurement) {
+func (sb *SubscriberBase) ReceivedNewMeasurements(measurements []transport.Measurement) {
 }
 
 // ReceivedNewBufferBlocks implements the default handler for reception of new buffer blocks.
-func (sb *SubscriberBase) ReceivedNewBufferBlocks(bufferBlocks []BufferBlock) {
+func (sb *SubscriberBase) ReceivedNewBufferBlocks(bufferBlocks []transport.BufferBlock) {
 }
 
 // ReceivedNotification implements the default handler for reception of a notification.

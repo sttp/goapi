@@ -1176,7 +1176,7 @@ func (ds *DataSubscriber) Connector() *SubscriberConnector {
 	return &ds.connector
 }
 
-// GetSignalIndexCache gets the active signal index cache.
+// ActiveSignalIndexCache gets the active signal index cache.
 func (ds *DataSubscriber) ActiveSignalIndexCache() *SignalIndexCache {
 	ds.signalIndexCacheLock.Lock()
 	signalIndexCache := ds.signalIndexCache[ds.cacheIndex]

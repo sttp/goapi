@@ -58,6 +58,7 @@ type Decoder struct {
 	SequenceNumber uint16
 }
 
+// NewDecoder creates a new TSSC decoder.
 func NewDecoder(maxSignalIndex uint32) *Decoder {
 	td := &Decoder{
 		prevTimeDelta1: math.MaxInt64,

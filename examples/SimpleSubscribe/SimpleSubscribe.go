@@ -55,10 +55,10 @@ func main() {
 
 	subscriber.Hostname = hostname
 	subscriber.Port = port
-	subscriber.CompressPayloadData = true
-	subscriber.Version = 1
+	//subscriber.CompressPayloadData = false // Default is true
+	//subscriber.Version = 1                 // Default is 2
 
-	subscription.FilterExpression = "FILTER TOP 5 ActiveMeasurements WHERE True"
+	subscription.FilterExpression = "FILTER TOP 20 ActiveMeasurements WHERE True"
 
 	subscriber.Connect()
 	defer subscriber.Dispose()
