@@ -23,7 +23,9 @@
 
 package metadata
 
-import "strings"
+import (
+	"strings"
+)
 
 const (
 	// XmlSchemaNamespace defines the schema namespace for the W3C XML Schema Definition Language (XSD)
@@ -115,12 +117,12 @@ func (ds *DataSet) RemoveTable(tableName string) bool {
 }
 
 // ReadXML loads the DataSet from the XML in the specified buffer.
-func (ds *DataSet) ReadXML(buffer []byte) {
+func (ds *DataSet) ReadXML(data []byte) {
 
 }
 
 // WriteXML saves the DataSet information as XML into the specified buffer.
-func (ds *DataSet) WriteXml(buffer *[]byte, dataSetName string) {
+func (ds *DataSet) WriteXml(data *[]byte, dataSetName string) {
 	// TODO: Will be needed by DataPublisher
 }
 

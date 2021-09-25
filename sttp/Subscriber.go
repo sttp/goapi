@@ -116,7 +116,7 @@ type SubscriberBase struct {
 	CompressSignalIndexCache bool
 
 	// MetadataFilters defines any filters to be applied to incoming metadata to reduce total
-	// received metadata. Each filter expression should be separated by semi-colons.
+	// received metadata. Each filter expression should be separated by semi-colon.
 	MetadataFilters string
 
 	// Version defines the target STTP protocol version. This currently defaults to 2.
