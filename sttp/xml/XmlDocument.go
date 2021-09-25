@@ -31,8 +31,8 @@ import (
 
 // XmlDocument represents XML data as a tree of XmlNode instances.
 type XmlDocument struct {
-	// Root is the starting node in the XML data, or nil if there is not one.
-	// This XmlNode instance is the root of the XMLDocument tree.
+	// Root is the starting XmlNode in a set of parsed XML data, or nil if there is not one.
+	// This is the root node of the XMLDocument tree.
 	Root XmlNode
 
 	maxLevel int
@@ -83,12 +83,12 @@ func (xn *XmlNode) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		xn.Attributes[v.Name.Local] = v.Value
 	}
 
-	// Separate type prevents recursing into current UnmarshalXML for Decoder
+	// Separate type here prevents recursing into current UnmarshalXML for Decoder
 	type node XmlNode
 	return d.DecodeElement((*node)(xn), &start)
 }
 
-// LoadXml loads the XmlDocument from the specified data.
+// LoadXml loads the XmlDocument from the specified XML data.
 func (xd *XmlDocument) LoadXml(data []byte) error {
 	buffer := bytes.NewBuffer(data)
 	decoder := xml.NewDecoder(buffer)
@@ -108,7 +108,7 @@ func (xd *XmlDocument) LoadXml(data []byte) error {
 	return nil
 }
 
-// LoadXmlFromFile loads the XmlDocument from the specified file name.
+// LoadXmlFromFile loads the XmlDocument from the specified file name containing XML data.
 func (xd *XmlDocument) LoadXmlFromFile(fileName string) error {
 	data, err := os.ReadFile(fileName)
 
@@ -119,7 +119,7 @@ func (xd *XmlDocument) LoadXmlFromFile(fileName string) error {
 	return xd.LoadXml(data)
 }
 
-// MaxDepth gets the maximum node depth for this XmlDocument tree.
+// MaxDepth gets the maximum node depth for XmlNode instances in this XmlDocument tree.
 func (xd *XmlDocument) MaxDepth() int {
 	return xd.maxLevel + 1
 }

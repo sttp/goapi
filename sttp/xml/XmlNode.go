@@ -30,7 +30,7 @@ import (
 // XmlNode represents a single node in an XmlDocument tree.
 type XmlNode struct {
 	// XMLName gets the Go encoding xml.Name of this node.
-	XMLName xml.Name // This is a specially named required field name in Go XML parsing
+	XMLName xml.Name // This is a specially named required field in Go XML parsing
 	// Name is the name of this node.
 	Name string
 	// NameSpace is the namespace URI of this node, if any.
@@ -39,7 +39,7 @@ type XmlNode struct {
 	InnerXml []byte `xml:",innerxml"`
 	// ChildNodes is a the collection of child nodes of this node.
 	ChildNodes []XmlNode `xml:",any"`
-	// Parent is the parent of this node. Value will be nil if node has no parent.
+	// Parent is the parent of this node. Value will be nil if node has no parent, e.g., XmlDocument.Root.
 	Parent *XmlNode
 	// Next gets the sibling-level node immediately following this node, or nil if there is none.
 	Next *XmlNode
@@ -49,15 +49,15 @@ type XmlNode struct {
 	Attributes map[string]string
 	// Item is used to access the first child node of this node with the specified name.
 	Item map[string]*XmlNode
-	// Items is used to access all the child nodes of this node with the specified name.
+	// Items is used to access the collection of child nodes of this node with the specified name.
 	Items map[string][]*XmlNode
 	// Level is the current node depth.
 	Level int
-	// Owner is the XmlDocument to which the current node belongs.
+	// Owner is the XmlDocument to which this current node belongs.
 	Owner *XmlDocument
 }
 
-// HasChildNodes gets a flag indicating whether this node has any child nodes.
+// HasChildNodes gets a flag indicating if this node has any child nodes.
 func (xn *XmlNode) HasChildNodes() bool {
 	return len(xn.ChildNodes) > 0
 }
