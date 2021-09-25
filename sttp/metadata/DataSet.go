@@ -107,7 +107,10 @@ func (ds *DataSet) TableCount() int {
 
 // RemoveTable removes the specified tableName from the DataSet. Returns
 // true if table was removed; otherwise, false if it did not exist.
+// Lookup is case-insensitive.
 func (ds *DataSet) RemoveTable(tableName string) bool {
+	tableName = strings.ToUpper(tableName)
+
 	if _, ok := ds.tables[tableName]; ok {
 		delete(ds.tables, tableName)
 		return true
