@@ -101,6 +101,7 @@ func (xd *XmlDocument) LoadXml(data []byte) error {
 
 	xd.Root.Name = xd.Root.XMLName.Local
 	xd.Root.Namespace = xd.Root.XMLName.Space
+	xd.Root.Owner = xd
 
 	xd.traverse(xd.Root.ChildNodes, &xd.Root)
 
