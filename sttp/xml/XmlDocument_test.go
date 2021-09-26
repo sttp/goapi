@@ -26,11 +26,14 @@ package xml
 import (
 	"fmt"
 	"testing"
-
-	"github.com/sttp/goapi/sttp/metadata"
 )
 
 var doc XmlDocument
+
+const (
+	XmlSchemaNamespace        = "http://www.w3.org/2001/XMLSchema"
+	ExtXmlSchemaDataNamespace = "urn:schemas-microsoft-com:xml-msdata"
+)
 
 func init() {
 	doc.LoadXmlFromFile("../../test/SampleMetadata.xml")
@@ -39,6 +42,24 @@ func init() {
 func TestRootLevel(t *testing.T) {
 	if doc.Root.Level != 0 {
 		t.Fatalf("Root level in document tree should be zero")
+	}
+}
+
+func TestValue(t *testing.T) {
+	schemaVersion := doc.Root.Item["SchemaVersion"]
+	versionNumber := schemaVersion.Item["VersionNumber"].Value()
+
+	if versionNumber != "9" {
+		t.Fatalf("SampleMetadata.xml expected to have schema version of 9, received: %s", versionNumber)
+	}
+}
+
+func TestPath(t *testing.T) {
+	schemaVersion := doc.Root.Item["SchemaVersion"]
+	versionNumberPath := schemaVersion.Item["VersionNumber"].Path()
+
+	if versionNumberPath != "//DataSet/SchemaVersion/VersionNumber" {
+		t.Fatalf("SampleMetadata.xml expected to have schema version number path of \"//DataSet/SchemaVersion/VersionNumber\", received: %s", versionNumberPath)
 	}
 }
 
@@ -63,8 +84,8 @@ func TestMaxDepthLoad(t *testing.T) {
 func TestNamespaceLoad(t *testing.T) {
 	schema := doc.Root.Item["schema"]
 
-	if schema.Namespace != metadata.XmlSchemaNamespace {
-		t.Fatalf("SampleMetadata.xml expected to have schema namespace of \"%s\", received: \"%s\"", metadata.XmlSchemaNamespace, schema.Namespace)
+	if schema.Namespace != XmlSchemaNamespace {
+		t.Fatalf("SampleMetadata.xml expected to have schema namespace of \"%s\", received: \"%s\"", XmlSchemaNamespace, schema.Namespace)
 	}
 }
 
@@ -83,6 +104,84 @@ func TestAttributesLoad(t *testing.T) {
 
 	if len(schema.Attributes) != 3 {
 		t.Fatalf("SampleMetadata.xml \"schema\" element expected to have 3 attributes, received: %d", len(schema.Attributes))
+	}
+}
+
+func TestAttributeNamespacesLoad(t *testing.T) {
+	schema := doc.Root.Item["schema"]
+	tableNodes := schema.SelectNodes("element/complexType/choice/element")
+	guidFieldNodes := SelectNodes(tableNodes, "complexType/sequence/element[@DataType='System.Guid']")
+
+	if len(guidFieldNodes) != 3 {
+		t.Fatalf("SampleMetadata.xml schema expected to contain 3 fields with Guid type, received: %d", len(guidFieldNodes))
+	}
+
+	for _, node := range guidFieldNodes {
+		if namespace, found := node.AttributeNamespaces["DataType"]; found {
+			if namespace != ExtXmlSchemaDataNamespace {
+				t.Fatalf("SampleMetadata.xml Guid type fields expected to have namespace of \"%s\", received: \"%s\"", ExtXmlSchemaDataNamespace, namespace)
+			}
+		} else {
+			t.Fatalf("SampleMetadata.xml failed to find attribute namespace for Guid type in field node: \"%s\"", node.Name)
+		}
+	}
+}
+
+func TestSelectNodes(t *testing.T) {
+	nodes := doc.SelectNodes("schema/element/complexType/choice/element")
+
+	if len(nodes) != 4 {
+		t.Fatalf("SampleMetadata.xml schema expected to contain 4 table definitions, received: %d", len(nodes))
+	}
+}
+
+func TestSelectNodesFromRoot(t *testing.T) {
+	tableNodes := doc.SelectNodes("//DataSet/schema/element/complexType/choice/element")
+
+	if len(tableNodes) != 4 {
+		t.Fatalf("SampleMetadata.xml schema expected to contain 4 table definitions, received: %d", len(tableNodes))
+	}
+
+	records := doc.SelectNodes("SchemaVersion[VersionNumber]")
+
+	if len(records) != 1 {
+		t.Fatalf("SampleMetadata.xml schema expected to contain 1 SchemaVersion record, received: %d", len(records))
+	}
+}
+
+func TestSelectNodesWithWildcards(t *testing.T) {
+	schema := doc.Root.Item["schema"]
+	tableNodes := schema.SelectNodes("element/complexType/choice/*")
+
+	if len(tableNodes) != 4 {
+		t.Fatalf("SampleMetadata.xml schema expected to contain 4 table definitions, received: %d", len(tableNodes))
+	}
+
+	guidFieldNodes := SelectNodes(tableNodes, "complexType/sequence/*[@DataType]")
+
+	if len(guidFieldNodes) != 3 {
+		t.Fatalf("SampleMetadata.xml schema expected to contain 3 fields with Guid type, received: %d", len(guidFieldNodes))
+	}
+
+	guidFieldNodes = SelectNodes(tableNodes, "complexType/sequence/element[@*='System.Guid']")
+
+	if len(guidFieldNodes) != 3 {
+		t.Fatalf("SampleMetadata.xml schema expected to contain 3 fields with Guid type, received: %d", len(guidFieldNodes))
+	}
+
+	records := doc.SelectNodes("SchemaVersion[*]")
+
+	if len(records) != 1 {
+		t.Fatalf("SampleMetadata.xml schema expected to contain 1 SchemaVersion record, received: %d", len(records))
+	}
+}
+
+func TestSelectNodesWithSubExprPredicateAttributes(t *testing.T) {
+	schema := doc.Root.Item["schema"]
+	guidFieldNodes := schema.SelectNodes("element/complexType/choice/element/complexType/sequence/element[@DataType='System.Guid']")
+
+	if len(guidFieldNodes) != 3 {
+		t.Fatalf("SampleMetadata.xml schema expected to contain 3 fields with Guid type, received: %d", len(guidFieldNodes))
 	}
 }
 

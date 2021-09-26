@@ -27,6 +27,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"os"
+	"strings"
 )
 
 // XmlDocument represents XML data as a tree of XmlNode instances.
@@ -78,9 +79,11 @@ func (xd *XmlDocument) traverse(nodes []XmlNode, parent *XmlNode) {
 // This XmlNode targeted overriding implementation turns attributes into a map.
 func (xn *XmlNode) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	xn.Attributes = make(map[string]string, len(start.Attr))
+	xn.AttributeNamespaces = make(map[string]string, len(start.Attr))
 
 	for _, v := range start.Attr {
 		xn.Attributes[v.Name.Local] = v.Value
+		xn.AttributeNamespaces[v.Name.Local] = v.Name.Space
 	}
 
 	// Separate type here prevents recursing into current UnmarshalXML for Decoder
@@ -122,4 +125,15 @@ func (xd *XmlDocument) LoadXmlFromFile(fileName string) error {
 // MaxDepth gets the maximum node depth for XmlNode instances in this XmlDocument tree.
 func (xd *XmlDocument) MaxDepth() int {
 	return xd.maxLevel + 1
+}
+
+// SelectNodes finds all nodes matching xpath expression starting at XmlDocument root.
+// Predicates currently only support "=" matching.
+func (xn *XmlDocument) SelectNodes(xpath string) []*XmlNode {
+
+	if strings.HasPrefix(xpath, "//") && strings.HasPrefix(xpath[2:], xn.Root.Name+"/") {
+		return xn.Root.SelectNodes(xpath[3+len(xn.Root.Name):])
+	}
+
+	return xn.Root.SelectNodes(xpath)
 }
