@@ -24,7 +24,13 @@
 package metadata
 
 import (
+	"errors"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/sttp/goapi/sttp/guid"
+	"github.com/sttp/goapi/sttp/xml"
 )
 
 const (
@@ -74,7 +80,7 @@ func (ds *DataSet) Table(tableName string) *DataTable {
 
 // TableNames gets the table names defined in the DataSet.
 func (ds *DataSet) TableNames() []string {
-	tableNames := make([]string, len(ds.tables))
+	tableNames := make([]string, 0, len(ds.tables))
 
 	for _, table := range ds.tables {
 		tableNames = append(tableNames, table.Name())
@@ -85,7 +91,7 @@ func (ds *DataSet) TableNames() []string {
 
 // Tables gets the DataTable instances defined in the DataSet.
 func (ds *DataSet) Tables() []*DataTable {
-	tables := make([]*DataTable, len(ds.tables))
+	tables := make([]*DataTable, 0, len(ds.tables))
 
 	for _, table := range ds.tables {
 		tables = append(tables, table)
@@ -119,19 +125,181 @@ func (ds *DataSet) RemoveTable(tableName string) bool {
 	return false
 }
 
-// ReadXML loads the DataSet from the XML in the specified buffer.
-func (ds *DataSet) ReadXML(data []byte) {
+// ParseXml loads the DataSet from the XML in the specified buffer.
+func (ds *DataSet) ParseXml(data []byte) error {
+	var doc xml.XmlDocument
 
+	if err := doc.LoadXml(data); err != nil {
+		return err
+	}
+
+	return ds.ParseXmlDocument(&doc)
 }
 
-// WriteXML saves the DataSet information as XML into the specified buffer.
-func (ds *DataSet) WriteXml(data *[]byte, dataSetName string) {
-	// TODO: Will be needed by DataPublisher
+// ParseXmlDocument loads the DataSet from an existing XmlDocument.
+func (ds *DataSet) ParseXmlDocument(doc *xml.XmlDocument) error {
+	root := doc.Root
+
+	// Find schema node
+	schema, found := root.Item["schema"]
+
+	if !found {
+		return errors.New("failed to parse DataSet XML: Cannot find schema node")
+	}
+
+	id, found := schema.Attributes["id"]
+
+	if !found || id != root.Name {
+		return errors.New("failed to parse DataSet XML: Cannot find schema node matching \"" + root.Name + "\"")
+	}
+
+	// Validate schema namespace
+	if schema.Namespace != XmlSchemaNamespace {
+		return errors.New("failed to parse DataSet XML: cannot find schema namespace \"" + XmlSchemaNamespace + "\"")
+	}
+
+	schemaPrefix := schema.Prefix()
+
+	if len(schemaPrefix) > 0 {
+		schemaPrefix += ":"
+	}
+
+	// Find choice elements representing schema table definitions
+	tableNodes := schema.SelectNodes("element/complexType/choice/element")
+
+	for _, tableNode := range tableNodes {
+		tableName, found := tableNode.Attributes["name"]
+
+		if !found || len(tableName) == 0 {
+			continue
+		}
+
+		dataTable := ds.CreateTable(tableName)
+
+		// Find sequence elements representing schema table field definitions
+		fieldNodes := tableNode.SelectNodes("complexType/sequence/element")
+
+		dataTable.InitColumns(len(fieldNodes))
+
+		for _, fieldNode := range fieldNodes {
+			fieldName, found := fieldNode.Attributes["name"]
+
+			if !found || len(fieldName) == 0 {
+				continue
+			}
+
+			typeName, found := fieldNode.Attributes["type"]
+
+			if !found || len(typeName) == 0 {
+				continue
+			}
+
+			typeName = strings.TrimPrefix(typeName, schemaPrefix)
+
+			// Check for extended data type (allows XSD Guid field definitions)
+			extDataType, found := fieldNode.Attributes["DataType"]
+
+			if found && len(extDataType) > 0 {
+				// Ignore DataType attributes that do not target desired namespace
+				if fieldNode.AttributeNamespaces["DataType"] != ExtXmlSchemaDataNamespace {
+					extDataType = ""
+				}
+			}
+
+			dataType, found := ParseXsdDataType(typeName, extDataType)
+
+			// Columns with unsupported XSD data types are skipped
+			if !found {
+				continue
+			}
+
+			dataColumn := dataTable.CreateColumn(fieldName, dataType, tableNode.Attributes["Expression"])
+			dataTable.AddColumn(dataColumn)
+		}
+
+		ds.AddTable(dataTable)
+	}
+
+	// Each root node child that matches a table name represents a record
+	for _, table := range ds.Tables() {
+		records := root.Items[table.Name()]
+
+		table.InitRows(len(records))
+
+		for _, record := range records {
+			dataRow := table.CreateRow()
+
+			// Each child node of a record represents a field value
+			for _, field := range record.ChildNodes {
+				column := table.ColumnByName(field.Name)
+
+				if column == nil {
+					continue
+				}
+
+				columnIndex := column.Index()
+				value := field.Value()
+
+				switch column.Type() {
+				case DataType.String:
+					dataRow.SetValue(columnIndex, value)
+				case DataType.Boolean:
+					dataRow.SetValue(columnIndex, value == "true")
+				case DataType.DateTime:
+					dt, _ := time.Parse("2006-01-02T15:04:05.99-07:00", value)
+					dataRow.SetValue(columnIndex, dt)
+				case DataType.Single:
+					f32, _ := strconv.ParseFloat(value, 32)
+					dataRow.SetValue(columnIndex, float32(f32))
+				case DataType.Decimal:
+					fallthrough // Just using float64 for decimal type in Go
+				case DataType.Double:
+					f64, _ := strconv.ParseFloat(value, 64)
+					dataRow.SetValue(columnIndex, f64)
+				case DataType.Guid:
+					dataRow.SetValue(columnIndex, guid.Parse(value))
+				case DataType.Int8:
+					i8, _ := strconv.ParseInt(value, 10, 8)
+					dataRow.SetValue(columnIndex, int8(i8))
+				case DataType.Int16:
+					i16, _ := strconv.ParseInt(value, 10, 16)
+					dataRow.SetValue(columnIndex, int16(i16))
+				case DataType.Int32:
+					i32, _ := strconv.ParseInt(value, 10, 32)
+					dataRow.SetValue(columnIndex, int32(i32))
+				case DataType.Int64:
+					i64, _ := strconv.ParseInt(value, 10, 64)
+					dataRow.SetValue(columnIndex, i64)
+				case DataType.UInt8:
+					ui8, _ := strconv.ParseUint(value, 10, 8)
+					dataRow.SetValue(columnIndex, uint8(ui8))
+				case DataType.UInt16:
+					ui16, _ := strconv.ParseUint(value, 10, 16)
+					dataRow.SetValue(columnIndex, uint16(ui16))
+				case DataType.UInt32:
+					ui32, _ := strconv.ParseUint(value, 10, 32)
+					dataRow.SetValue(columnIndex, uint32(ui32))
+				case DataType.UInt64:
+					ui64, _ := strconv.ParseUint(value, 10, 64)
+					dataRow.SetValue(columnIndex, ui64)
+				}
+			}
+
+			table.AddRow(dataRow)
+		}
+	}
+
+	return nil
 }
+
+// // WriteXML saves the DataSet information as XML into the specified buffer.
+// func (ds *DataSet) WriteXml(data *[]byte, dataSetName string) {
+// // TODO: Will be needed by DataPublisher
+// }
 
 // FromXml creates a new DataSet as read from the XML in the specified buffer.
 func FromXml(buffer []byte) *DataSet {
 	dataSet := NewDataSet()
-	dataSet.ReadXML(buffer)
+	dataSet.ParseXml(buffer)
 	return dataSet
 }

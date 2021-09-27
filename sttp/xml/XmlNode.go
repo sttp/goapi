@@ -86,6 +86,19 @@ func (xn *XmlNode) Value() string {
 	return string(xn.InnerXml)
 }
 
+// Prefix looks up namespace prefix for this node.
+func (xn *XmlNode) Prefix() string {
+	namespace := xn.Namespace
+
+	for name, value := range xn.Attributes {
+		if value == namespace {
+			return name
+		}
+	}
+
+	return ""
+}
+
 // HasChildNodes gets a flag indicating if this node has any child nodes.
 func (xn *XmlNode) HasChildNodes() bool {
 	return len(xn.ChildNodes) > 0

@@ -41,8 +41,9 @@ type DataTable struct {
 
 func newDataTable(parent *DataSet, name string) *DataTable {
 	return &DataTable{
-		parent: parent,
-		name:   name,
+		parent:        parent,
+		name:          name,
+		columnIndexes: make(map[string]int),
 	}
 }
 
@@ -59,7 +60,7 @@ func (dt *DataTable) Name() string {
 // InitColumns initializes the internal column collection to the specified length.
 // Any existing columns will be deleted.
 func (dt *DataTable) InitColumns(length int) {
-	dt.columns = make([]*DataColumn, length)
+	dt.columns = make([]*DataColumn, 0, length)
 	dt.columnIndexes = make(map[string]int, length)
 }
 
@@ -90,6 +91,18 @@ func (dt *DataTable) ColumnByName(columnName string) *DataColumn {
 	return nil
 }
 
+// ColumnIndex gets the index for the specified columnName if the name exists;
+// otherwise, -1 is returned. Lookup is case-insensitive.
+func (dt *DataTable) ColumnIndex(columnName string) int {
+	column := dt.ColumnByName(columnName)
+
+	if column == nil {
+		return -1
+	}
+
+	return column.Index()
+}
+
 // CreateColumn creates a new DataColumn associated with the DataTable.
 // Use AddColumn to add the new column to the DataTable.
 func (dt *DataTable) CreateColumn(name string, dataType DataTypeEnum, expression string) *DataColumn {
@@ -109,7 +122,7 @@ func (dt *DataTable) ColumnCount() int {
 // InitRows initializes the internal row collection to the specified length.
 // Any existing rows will be deleted.
 func (dt *DataTable) InitRows(length int) {
-	dt.rows = make([]*DataRow, length)
+	dt.rows = make([]*DataRow, 0, length)
 }
 
 // AddRow adds the specified row to the DataTable.
@@ -138,7 +151,8 @@ func (dt *DataTable) CloneRow(source *DataRow) *DataRow {
 	row := dt.CreateRow()
 
 	for i := 0; i < len(dt.columns); i++ {
-		row.SetValue(i, source.Value(i))
+		value, _ := source.Value(i)
+		row.SetValue(i, value)
 	}
 
 	return row
@@ -147,4 +161,28 @@ func (dt *DataTable) CloneRow(source *DataRow) *DataRow {
 // RowCount gets the total number of rows defined in the DataTable.
 func (dt *DataTable) RowCount() int {
 	return len(dt.rows)
+}
+
+// GetRowValue reads the row record value at the specified columnIndex as a string,
+// if columnIndex is out of range, an empty string will be returned.
+func (dt *DataTable) GetRowValue(rowIndex int, columnIndex int) string {
+	row := dt.Row(rowIndex)
+
+	if row == nil {
+		return ""
+	}
+
+	return row.GetValue(columnIndex)
+}
+
+// GetRowValueByName reads the row record value at the specified columnName as a string,
+// if columnName is not found, an empty string will be returned.
+func (dt *DataTable) GetRowValueByName(rowIndex int, columnName string) string {
+	row := dt.Row(rowIndex)
+
+	if row == nil {
+		return ""
+	}
+
+	return row.GetValueByName(columnName)
 }

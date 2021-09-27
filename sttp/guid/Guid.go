@@ -23,9 +23,6 @@
 
 package guid
 
-// Note: In general it should be slightly faster to use receiver functions for Guid values
-// using pointer syntax due to the size of the base UUID structure, i.e., 16 bytes.
-
 import "github.com/google/uuid"
 
 // Guid is a standard UUID value that can handle alternate wire serialization options.
@@ -40,8 +37,8 @@ func New() Guid {
 }
 
 // IsZero determines if the Guid value is its zero value, i.e., empty.
-func (g *Guid) IsZero() bool {
-	return *g == Empty
+func (g Guid) IsZero() bool {
+	return g == Empty
 }
 
 // Parse decodes a Guid value from a string.
@@ -57,8 +54,8 @@ func Parse(value string) Guid {
 
 // String returns the string form of a Guid, i.e., {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx},
 // or "" if Guid is invalid.
-func (g *Guid) String() string {
-	image := uuid.UUID(*g).String()
+func (g Guid) String() string {
+	image := uuid.UUID(g).String()
 
 	if len(image) > 0 {
 		return "{" + image + "}"

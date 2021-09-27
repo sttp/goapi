@@ -30,29 +30,6 @@ import (
 	"github.com/sttp/goapi/sttp/ticks"
 )
 
-// MeasurementMetadata defines the ancillary information associated with a Measurement.
-// Metadata gets cached in a registry associated with a DataSubscriber.
-type MeasurementMetadata struct {
-	// Measurement's globally unique identifier.
-	SignalID guid.Guid
-
-	// Additive value modifier.
-	Adder float64
-
-	// Multiplicative value modifier.
-	Multiplier float64
-
-	// Identification number used in human-readable measurement key.
-	ID uint64
-
-	// Source used in human-readable measurement key.
-	Source string
-
-	// Human-readable tag name or reference value used to help describe or help identify
-	// the measurement. This value is initially empty and intended for end-user application.
-	Tag string
-}
-
 // Measurement defines a basic unit of data for use by the STTP API.
 type Measurement struct {
 	// Measurement's globally unique identifier.

@@ -23,6 +23,8 @@
 
 package metadata
 
+import "strings"
+
 // DataTypeEnum defines the type for the DataType enumeration.
 type DataTypeEnum int
 
@@ -38,8 +40,7 @@ var DataType = struct {
 	Single DataTypeEnum
 	// Double represents a Go float64 data type.
 	Double DataTypeEnum
-	// Decimal represents a Go decimal.Decimal data type.
-	// Type defined in github.com/shopspring/decimal.
+	// Decimal represents a Go float64 data type.
 	Decimal DataTypeEnum
 	// Guid represents a Go guid.Guid data type.
 	// Type defined in github.com/sttp/goapi/sttp/guid.
@@ -113,5 +114,47 @@ func (dte DataTypeEnum) Name() string {
 		return "UInt64"
 	default:
 		return "Undefined"
+	}
+}
+
+// ParseXsdDataType gets the DataType from the provided XSD data type. Return tuple includes
+// boolean value that determines if parse was successful. See XML Schema Language Datatypes
+// for possible xsdTypeName values:  https://www.w3.org/TR/xmlschema-2/
+func ParseXsdDataType(xsdTypeName string, extDataType string) (DataTypeEnum, bool) {
+	switch xsdTypeName {
+	case "string":
+		if strings.HasPrefix(extDataType, "System.Guid") {
+			return DataType.Guid, true
+		} else {
+			return DataType.String, true
+		}
+	case "boolean":
+		return DataType.Boolean, true
+	case "dateTime":
+		return DataType.DateTime, true
+	case "float":
+		return DataType.Single, true
+	case "double":
+		return DataType.Double, true
+	case "decimal":
+		return DataType.Decimal, true
+	case "byte": // XSD defines byte as signed 8-bit int
+		return DataType.Int8, true
+	case "short":
+		return DataType.Int16, true
+	case "int":
+		return DataType.Int32, true
+	case "long":
+		return DataType.Int64, true
+	case "unsignedByte":
+		return DataType.UInt8, true
+	case "unsignedShort":
+		return DataType.UInt16, true
+	case "unsignedInt":
+		return DataType.UInt32, true
+	case "unsignedLong":
+		return DataType.UInt64, true
+	default:
+		return DataType.String, false
 	}
 }

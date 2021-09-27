@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/sttp/goapi/sttp"
+	"github.com/sttp/goapi/sttp/metadata"
 	"github.com/sttp/goapi/sttp/transport"
 )
 
@@ -69,19 +70,35 @@ func main() {
 }
 
 // ReceivedMetadata handles reception of the metadata response.
-func (ss *AdvancedSubscriber) ReceivedMetadata(metadata []byte) {
-	ss.StatusMessage(fmt.Sprintf("Received %d bytes of metadata", len(metadata)))
+func (sub *AdvancedSubscriber) ReceivedMetadata(dataSet *metadata.DataSet) {
+	var rows int
+	var tables int
+
+	for _, table := range dataSet.Tables() {
+		rows += table.RowCount()
+		tables++
+	}
+
+	sub.StatusMessage(fmt.Sprintf("Received %d rows of metadata spanning %d tables", rows, tables))
+
+	schemaVersion := dataSet.Table("SchemaVersion")
+
+	if schemaVersion != nil {
+		sub.StatusMessage("    Schema version: " + schemaVersion.GetRowValueByName(0, "VersionNumber"))
+	} else {
+		sub.StatusMessage("    No SchemaVersion metadata table found")
+	}
 }
 
 // SubscriptionUpdated handles notifications that a new SignalIndexCache has been received.
-func (ss *AdvancedSubscriber) SubscriptionUpdated(signalIndexCache *transport.SignalIndexCache) {
-	ss.StatusMessage(fmt.Sprintf("Received signal index cache with %d mappings", signalIndexCache.Count()))
+func (sub *AdvancedSubscriber) SubscriptionUpdated(signalIndexCache *transport.SignalIndexCache) {
+	sub.StatusMessage(fmt.Sprintf("Received signal index cache with %d mappings", signalIndexCache.Count()))
 }
 
 var lastMessageDisplay time.Time
 
 // ReceivedNewMeasurements handles reception of new measurements.
-func (ss *AdvancedSubscriber) ReceivedNewMeasurements(measurements []transport.Measurement) {
+func (sub *AdvancedSubscriber) ReceivedNewMeasurements(measurements []transport.Measurement) {
 
 	if time.Since(lastMessageDisplay).Seconds() < 5.0 {
 		return
@@ -90,13 +107,13 @@ func (ss *AdvancedSubscriber) ReceivedNewMeasurements(measurements []transport.M
 	defer func() { lastMessageDisplay = time.Now() }()
 
 	if lastMessageDisplay.IsZero() {
-		ss.StatusMessage("Receiving measurements...")
+		sub.StatusMessage("Receiving measurements...")
 		return
 	}
 
 	var message strings.Builder
 
-	message.WriteString(strconv.FormatUint(ss.TotalMeasurementsReceived(), 10))
+	message.WriteString(strconv.FormatUint(sub.TotalMeasurementsReceived(), 10))
 	message.WriteString(" measurements received so far...\n")
 	message.WriteString("Timestamp: ")
 	message.WriteString(measurements[0].DateTime().Format("2006-01-02 15:04:05.999999999"))
@@ -105,7 +122,7 @@ func (ss *AdvancedSubscriber) ReceivedNewMeasurements(measurements []transport.M
 
 	for i := 0; i < len(measurements); i++ {
 		measurement := measurements[i]
-		metadata := ss.Metadata(&measurement)
+		metadata := sub.Metadata(&measurement)
 
 		message.WriteRune('\t')
 		message.WriteString(strconv.FormatUint(metadata.ID, 10))
@@ -116,13 +133,13 @@ func (ss *AdvancedSubscriber) ReceivedNewMeasurements(measurements []transport.M
 		message.WriteRune('\n')
 	}
 
-	ss.StatusMessage(message.String())
+	sub.StatusMessage(message.String())
 }
 
 // ConnectionTerminated handles notification that a connection has been terminated.
-func (ss *AdvancedSubscriber) ConnectionTerminated() {
+func (sub *AdvancedSubscriber) ConnectionTerminated() {
 	// Call base implementation which will display a connection terminated message to stderr
-	ss.SubscriberBase.ConnectionTerminated()
+	sub.SubscriberBase.ConnectionTerminated()
 
 	// Reset last message display time on disconnect
 	lastMessageDisplay = time.Time{}

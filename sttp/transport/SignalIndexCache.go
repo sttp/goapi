@@ -66,10 +66,13 @@ func (sic *SignalIndexCache) addRecord(ds *DataSubscriber, signalIndex int32, si
 		sic.maxSignalIndex = index
 	}
 
-	// Register measurement metadata
 	metadata := ds.LookupMetadata(signalID)
-	metadata.Source = source
-	metadata.ID = id
+
+	// Register measurement metadata if not defined already
+	if len(metadata.Source) == 0 {
+		metadata.Source = source
+		metadata.ID = id
+	}
 
 	// Char size here helps provide a rough-estimate on binary length used to reserve
 	// bytes for a vector, if exact size is needed call RecalculateBinaryLength first

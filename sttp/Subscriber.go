@@ -28,10 +28,12 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/sttp/goapi/sttp/guid"
+	"github.com/sttp/goapi/sttp/metadata"
 	"github.com/sttp/goapi/sttp/ticks"
 	"github.com/sttp/goapi/sttp/transport"
 )
@@ -46,7 +48,7 @@ type Subscriber interface {
 	// ErrorMessage handles error message logging.
 	ErrorMessage(message string)
 	// ReceivedMetadata handles reception of the metadata response.
-	ReceivedMetadata(metadata []byte)
+	ReceivedMetadata(dataSet *metadata.DataSet)
 	// SubscriptionUpdated handles notifications that a new SignalIndexCache has been received.
 	SubscriptionUpdated(signalIndexCache *transport.SignalIndexCache)
 	// DataStartTime handles notifications of first received measurement. This can be useful in
@@ -208,7 +210,7 @@ func (sb *SubscriberBase) LookupMetadata(signalID guid.Guid) *transport.Measurem
 	return sb.dataSubscriber().LookupMetadata(signalID)
 }
 
-// Metadata gets the MeasurementMetadata associated with a measurement from the local
+// Metadata gets the measurement-level metadata associated with a measurement from the local
 // registry. If the metadata does not exist, a new record is created and returned.
 func (sb *SubscriberBase) Metadata(measurement *transport.Measurement) *transport.MeasurementMetadata {
 	return sb.dataSubscriber().Metadata(measurement)
@@ -307,7 +309,7 @@ func (sb *SubscriberBase) Connect() {
 			ds.Subscribe()
 		}
 	} else if status == transport.ConnectStatus.Failed {
-		sb.ErrorMessage("All connection attempts failed")
+		sb.sub.ErrorMessage("All connection attempts failed")
 	}
 }
 
@@ -332,12 +334,86 @@ func (sb *SubscriberBase) handleReconnect(ds *transport.DataSubscriber) {
 		}
 	} else {
 		ds.Disconnect()
-		sb.StatusMessage("Connection retry attempts exceeded.")
+		sb.sub.StatusMessage("Connection retry attempts exceeded.")
 	}
 }
 
-func (sb *SubscriberBase) handleMetadataReceived(metadata []byte) {
-	sb.sub.ReceivedMetadata(metadata)
+func (sb *SubscriberBase) handleMetadataReceived(data []byte) {
+	dataSet := metadata.NewDataSet()
+	err := dataSet.ParseXml(data)
+
+	if err == nil {
+		// Load parsed measurement metadata into measurement registry
+		measurements := dataSet.Table("MeasurementDetail")
+
+		if measurements != nil {
+			signalIDIndex := measurements.ColumnIndex("SignalID")
+
+			if signalIDIndex > -1 {
+				idIndex := measurements.ColumnIndex("ID")
+				pointTagIndex := measurements.ColumnIndex("PointTag")
+				signalRefIndex := measurements.ColumnIndex("SignalReference")
+				signalTypeIndex := measurements.ColumnIndex("SignalAcronym")
+				descriptionIndex := measurements.ColumnIndex("Description")
+				updatedOnIndex := measurements.ColumnIndex("UpdatedOn")
+				ds := sb.dataSubscriber()
+
+				for i := 0; i < measurements.RowCount(); i++ {
+					measurement := measurements.Row(i)
+
+					if measurement == nil {
+						continue
+					}
+
+					signalID, err := measurement.ValueAsGuid(signalIDIndex)
+
+					if err != nil {
+						continue
+					}
+
+					metadata := ds.LookupMetadata(signalID)
+
+					if idIndex > -1 {
+						id, _ := measurement.ValueAsString(idIndex)
+						parts := strings.Split(id, ":")
+
+						if len(parts) == 2 {
+							metadata.Source = parts[0]
+							metadata.ID, _ = strconv.ParseUint(parts[1], 10, 64)
+						}
+					}
+
+					if pointTagIndex > -1 {
+						metadata.Tag, _ = measurement.ValueAsString(pointTagIndex)
+					}
+
+					if signalRefIndex > -1 {
+						metadata.SignalReference, _ = measurement.ValueAsString(signalRefIndex)
+					}
+
+					if signalTypeIndex > -1 {
+						metadata.SignalType, _ = measurement.ValueAsString(signalTypeIndex)
+					}
+
+					if descriptionIndex > -1 {
+						metadata.Description, _ = measurement.ValueAsString(descriptionIndex)
+					}
+
+					if updatedOnIndex > -1 {
+						metadata.UpdatedOn, _ = measurement.ValueAsDateTime(updatedOnIndex)
+					}
+				}
+			} else {
+				sb.sub.ErrorMessage("Received metadata does not contain the required MeasurementDetail.SignalID field")
+			}
+		} else {
+			sb.sub.ErrorMessage("Received metadata does not contain the required MeasurementDetail table")
+		}
+	} else {
+		sb.sub.ErrorMessage("Failed to parse received XML metadata: " + err.Error())
+	}
+
+	sb.sub.ReceivedMetadata(dataSet)
 
 	if sb.AutoRequestMetadata && sb.AutoSubscribe {
 		sb.dataSubscriber().Subscribe()
@@ -381,7 +457,7 @@ func (sb *SubscriberBase) ErrorMessage(message string) {
 }
 
 // ReceivedMetadata implements the default handler for reception of the metadata response.
-func (sb *SubscriberBase) ReceivedMetadata(metadata []byte) {
+func (sb *SubscriberBase) ReceivedMetadata(dataSet *metadata.DataSet) {
 }
 
 // SubscriptionUpdated implements the default handler for notifications that a new
