@@ -129,11 +129,11 @@ func (xd *XmlDocument) MaxDepth() int {
 
 // SelectNodes finds all nodes matching xpath expression starting at XmlDocument root.
 // Predicates currently only support "=" matching.
-func (xn *XmlDocument) SelectNodes(xpath string) []*XmlNode {
+func (xd *XmlDocument) SelectNodes(xpath string) []*XmlNode {
 
-	if strings.HasPrefix(xpath, "//") && strings.HasPrefix(xpath[2:], xn.Root.Name+"/") {
-		return xn.Root.SelectNodes(xpath[3+len(xn.Root.Name):])
+	if strings.HasPrefix(xpath, "//") && strings.HasPrefix(xpath[2:], xd.Root.Name+"/") {
+		return xd.Root.SelectNodes(xpath[3+len(xd.Root.Name):])
 	}
 
-	return xn.Root.SelectNodes(xpath)
+	return xd.Root.SelectNodes(xpath)
 }

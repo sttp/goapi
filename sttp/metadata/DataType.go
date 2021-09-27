@@ -125,9 +125,8 @@ func ParseXsdDataType(xsdTypeName string, extDataType string) (DataTypeEnum, boo
 	case "string":
 		if strings.HasPrefix(extDataType, "System.Guid") {
 			return DataType.Guid, true
-		} else {
-			return DataType.String, true
 		}
+		return DataType.String, true
 	case "boolean":
 		return DataType.Boolean, true
 	case "dateTime":
