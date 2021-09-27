@@ -38,7 +38,7 @@ const (
 	// used by STTP metadata tables.
 	XmlSchemaNamespace = "http://www.w3.org/2001/XMLSchema"
 
-	// ExtXmlSchemaDataNamespace is used to define an WSD extended type element as a Guid value.
+	// ExtXmlSchemaDataNamespace is used to define extended types for XSD elements, e.g., Guid and expression data types.
 	ExtXmlSchemaDataNamespace = "urn:schemas-microsoft-com:xml-msdata"
 )
 
@@ -158,6 +158,16 @@ func (ds *DataSet) ParseXmlDocument(doc *xml.XmlDocument) error {
 		return errors.New("failed to parse DataSet XML: cannot find schema namespace \"" + XmlSchemaNamespace + "\"")
 	}
 
+	// Populate DataSet schema
+	ds.loadSchema(schema)
+
+	// Populate DataSet records
+	ds.loadRecords(&root)
+
+	return nil
+}
+
+func (ds *DataSet) loadSchema(schema *xml.XmlNode) {
 	schemaPrefix := schema.Prefix()
 
 	if len(schemaPrefix) > 0 {
@@ -213,13 +223,25 @@ func (ds *DataSet) ParseXmlDocument(doc *xml.XmlDocument) error {
 				continue
 			}
 
-			dataColumn := dataTable.CreateColumn(fieldName, dataType, tableNode.Attributes["Expression"])
+			// Check for computed expression
+			expression, found := tableNode.Attributes["Expression"]
+
+			if found && len(expression) > 0 {
+				// Ignore Expression attributes that do not target desired namespace
+				if fieldNode.AttributeNamespaces["Expression"] != ExtXmlSchemaDataNamespace {
+					expression = ""
+				}
+			}
+
+			dataColumn := dataTable.CreateColumn(fieldName, dataType, expression)
 			dataTable.AddColumn(dataColumn)
 		}
 
 		ds.AddTable(dataTable)
 	}
+}
 
+func (ds *DataSet) loadRecords(root *xml.XmlNode) {
 	// Each root node child that matches a table name represents a record
 	for _, table := range ds.Tables() {
 		records := root.Items[table.Name()]
@@ -288,8 +310,6 @@ func (ds *DataSet) ParseXmlDocument(doc *xml.XmlDocument) error {
 			table.AddRow(dataRow)
 		}
 	}
-
-	return nil
 }
 
 // // WriteXML saves the DataSet information as XML into the specified buffer.

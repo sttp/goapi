@@ -135,6 +135,7 @@ func (xn *XmlNode) GetChildNodes() []*XmlNode {
 }
 
 // SelectNodes finds all nodes matching xpath expression for each input node.
+// Predicates currently only support "=" matching.
 func SelectNodes(nodes []*XmlNode, xpath string) []*XmlNode {
 	results := make([]*XmlNode, 0)
 
