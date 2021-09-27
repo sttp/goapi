@@ -365,7 +365,7 @@ func (sb *SubscriberBase) handleMetadataReceived(data []byte) {
 						continue
 					}
 
-					signalID, err := measurement.ValueAsGuid(signalIDIndex)
+					signalID, err := measurement.GuidValue(signalIDIndex)
 
 					if err != nil {
 						continue
@@ -374,7 +374,7 @@ func (sb *SubscriberBase) handleMetadataReceived(data []byte) {
 					metadata := ds.LookupMetadata(signalID)
 
 					if idIndex > -1 {
-						id, _ := measurement.ValueAsString(idIndex)
+						id, _ := measurement.StringValue(idIndex)
 						parts := strings.Split(id, ":")
 
 						if len(parts) == 2 {
@@ -384,23 +384,23 @@ func (sb *SubscriberBase) handleMetadataReceived(data []byte) {
 					}
 
 					if pointTagIndex > -1 {
-						metadata.Tag, _ = measurement.ValueAsString(pointTagIndex)
+						metadata.Tag, _ = measurement.StringValue(pointTagIndex)
 					}
 
 					if signalRefIndex > -1 {
-						metadata.SignalReference, _ = measurement.ValueAsString(signalRefIndex)
+						metadata.SignalReference, _ = measurement.StringValue(signalRefIndex)
 					}
 
 					if signalTypeIndex > -1 {
-						metadata.SignalType, _ = measurement.ValueAsString(signalTypeIndex)
+						metadata.SignalType, _ = measurement.StringValue(signalTypeIndex)
 					}
 
 					if descriptionIndex > -1 {
-						metadata.Description, _ = measurement.ValueAsString(descriptionIndex)
+						metadata.Description, _ = measurement.StringValue(descriptionIndex)
 					}
 
 					if updatedOnIndex > -1 {
-						metadata.UpdatedOn, _ = measurement.ValueAsDateTime(updatedOnIndex)
+						metadata.UpdatedOn, _ = measurement.DateTimeValue(updatedOnIndex)
 					}
 				}
 			} else {

@@ -163,26 +163,26 @@ func (dt *DataTable) RowCount() int {
 	return len(dt.rows)
 }
 
-// GetRowValue reads the row record value at the specified columnIndex as a string,
-// if columnIndex is out of range, an empty string will be returned.
-func (dt *DataTable) GetRowValue(rowIndex int, columnIndex int) string {
+// RowValueAsString reads the row record value at the specified columnIndex converted to a string.
+// For columnIndex out of range or any other errors, an empty string will be returned.
+func (dt *DataTable) RowValueAsString(rowIndex int, columnIndex int) string {
 	row := dt.Row(rowIndex)
 
 	if row == nil {
 		return ""
 	}
 
-	return row.GetValue(columnIndex)
+	return row.ValueAsString(columnIndex)
 }
 
-// GetRowValueByName reads the row record value at the specified columnName as a string,
-// if columnName is not found, an empty string will be returned.
-func (dt *DataTable) GetRowValueByName(rowIndex int, columnName string) string {
+// RowValueAsStringByName reads the row record value for the specified columnName converted to a string.
+// For columnName not found or any other errors, an empty string will be returned.
+func (dt *DataTable) RowValueAsStringByName(rowIndex int, columnName string) string {
 	row := dt.Row(rowIndex)
 
 	if row == nil {
 		return ""
 	}
 
-	return row.GetValueByName(columnName)
+	return row.ValueAsStringByName(columnName)
 }

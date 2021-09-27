@@ -84,7 +84,7 @@ func (sub *AdvancedSubscriber) ReceivedMetadata(dataSet *metadata.DataSet) {
 	schemaVersion := dataSet.Table("SchemaVersion")
 
 	if schemaVersion != nil {
-		sub.StatusMessage("    Schema version: " + schemaVersion.GetRowValueByName(0, "VersionNumber"))
+		sub.StatusMessage("    Schema version: " + schemaVersion.RowValueAsStringByName(0, "VersionNumber"))
 	} else {
 		sub.StatusMessage("    No SchemaVersion metadata table found")
 	}

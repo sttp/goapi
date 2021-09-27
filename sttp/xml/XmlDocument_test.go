@@ -63,6 +63,15 @@ func TestPath(t *testing.T) {
 	}
 }
 
+func TestPrefix(t *testing.T) {
+	schema := doc.Root.Item["schema"]
+	prefix := schema.Prefix()
+
+	if prefix != "xs" {
+		t.Fatalf("SampleMetadata.xml expected to have schema prefix of \"xs\", received: \"%s\"", prefix)
+	}
+}
+
 func TestChildNodeLoad(t *testing.T) {
 	root := doc.Root
 
