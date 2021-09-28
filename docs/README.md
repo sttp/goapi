@@ -2,22 +2,26 @@
 
 <img align="right" src="img/sttp.png">
 
+### Streaming Telemetry Transport Protocol
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/sttp/goapi)](https://goreportcard.com/report/github.com/sttp/goapi)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/sttp/goapi)](https://pkg.go.dev/github.com/sttp/goapi)
 [![Release](https://img.shields.io/github/release/sttp/goapi.svg?style=flat-square)](https://github.com/sttp/goapi/releases/latest)
-
+ 
 ## Example Usage
 ```go
 package main
 
 import (
     "bufio"
+    "fmt"
     "os"
     "strconv"
     "strings"
     "time"
     
     "github.com/sttp/goapi/sttp"
+    "github.com/sttp/goapi/sttp/metadata"
     "github.com/sttp/goapi/sttp/transport"
 )
 
@@ -41,7 +45,7 @@ func main() {
     subscriber.Port = 7165
     subscriber.Version = 1
 
-    subscription.FilterExpression = "FILTER TOP 5 ActiveMeasurements WHERE SignalType = 'FREQ'"
+    subscription.FilterExpression = "FILTER TOP 10 ActiveMeasurements WHERE SignalType = 'FREQ'"
 
     subscriber.Connect()
     defer subscriber.Dispose()
@@ -50,10 +54,31 @@ func main() {
     reader.ReadRune()
 }
 
+// ReceivedMetadata handles reception of the metadata response.
+func (sub *TestSubscriber) ReceivedMetadata(dataSet *metadata.DataSet) {
+    var rows int
+    var tables int
+
+    for _, table := range dataSet.Tables() {
+        rows += table.RowCount()
+        tables++
+    }
+
+    sub.StatusMessage(fmt.Sprintf("Received %d rows of metadata spanning %d tables", rows, tables))
+
+    schemaVersion := dataSet.Table("SchemaVersion")
+
+    if schemaVersion != nil {
+        sub.StatusMessage("    Schema version: " + schemaVersion.RowValueAsStringByName(0, "VersionNumber"))
+    } else {
+        sub.StatusMessage("    No SchemaVersion metadata table found")
+    }
+}
+
 var lastMessageDisplay time.Time
 
 // ReceivedNewMeasurements handles reception of new measurements.
-func (ts *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measurement) {
+func (sub *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measurement) {
 
     if time.Since(lastMessageDisplay).Seconds() < 5.0 {
         return
@@ -62,13 +87,13 @@ func (ts *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measu
     defer func() { lastMessageDisplay = time.Now() }()
 
     if lastMessageDisplay.IsZero() {
-        ts.StatusMessage("Receiving measurements...")
+        sub.StatusMessage("Receiving measurements...")
         return
     }
 
     var message strings.Builder
 
-    message.WriteString(strconv.FormatUint(ts.TotalMeasurementsReceived(), 10))
+    message.WriteString(strconv.FormatUint(sub.TotalMeasurementsReceived(), 10))
     message.WriteString(" measurements received so far...\n")
     message.WriteString("Timestamp: ")
     message.WriteString(measurements[0].DateTime().Format("2006-01-02 15:04:05.999999999"))
@@ -77,7 +102,7 @@ func (ts *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measu
 
     for i := 0; i < len(measurements); i++ {
         measurement := measurements[i]
-        metadata := ts.Metadata(&measurement)
+        metadata := sub.Metadata(&measurement)
 
         message.WriteRune('\t')
         message.WriteString(strconv.FormatUint(metadata.ID, 10))
@@ -88,28 +113,32 @@ func (ts *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measu
         message.WriteRune('\n')
     }
 
-    ts.StatusMessage(message.String())
+    sub.StatusMessage(message.String())
 }
 
 // ConnectionTerminated handles notification that a connection has been terminated.
-func (ts *TestSubscriber) ConnectionTerminated() {
+func (sub *TestSubscriber) ConnectionTerminated() {
     // Call base implementation method which will display a connection terminated message to stderr
-    ts.SubscriberBase.ConnectionTerminated()
+    sub.SubscriberBase.ConnectionTerminated()
 
     // Reset last message display time on disconnect
     lastMessageDisplay = time.Time{}
 }
 ```
 
-See examples: https://github.com/sttp/goapi/examples
+## More Examples
+> [https://github.com/sttp/goapi/examples](https://github.com/sttp/goapi/examples)
+
 
 ## Quick Installation
 ```console
 go get https://github.com/sttp/goapi
 ```
 
+## Support
+For discussion and support, join our [discussions channel](https://github.com/sttp/goapi/discussions) or [open an issue](https://github.com/sttp/goapi/issues) on GitHub.
 ## Links
 
-* [STTP (IEEE 2664)](https://standards.ieee.org/project/2664.html)
-* [STTP Documentation](https://sttp.github.io/documentation/)
-* [Phasor Protocols Comparison](https://www.osti.gov/servlets/purl/1504742)
+* [STTP Go API Package Docs](https://pkg.go.dev/github.com/sttp/goapi)
+* [STTP General Documentation](https://sttp.github.io/documentation/)
+* [STTP (IEEE 2664) Standard](https://standards.ieee.org/project/2664.html)

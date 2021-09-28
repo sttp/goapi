@@ -1,6 +1,8 @@
-## goapi - Go STTP ([IEEE 2664](https://standards.ieee.org/project/2664.html)) Implementation
+## Go STTP ([IEEE 2664](https://standards.ieee.org/project/2664.html)) Implementation
 
 <img align="right" src="assets/sttp.png">
+
+### Streaming Telemetry Transport Protocol
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/sttp/goapi)](https://goreportcard.com/report/github.com/sttp/goapi)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/sttp/goapi)](https://pkg.go.dev/github.com/sttp/goapi)
@@ -11,12 +13,15 @@
 go get https://github.com/sttp/goapi
 ```
 
+## Examples
+> [https://github.com/sttp/goapi/examples](https://github.com/sttp/goapi/examples)
+
+
 ## Support
-For discussion and support, [open an issue](https://github.com/sttp/goapi/issues) or join our [discussions channel](https://github.com/sttp/goapi/discussions) on GitHub.
+For discussion and support, join our [discussions channel](https://github.com/sttp/goapi/discussions) or [open an issue](https://github.com/sttp/goapi/issues) on GitHub.
 
 ## Links
 
-* [STTP API Documentation](https://sttp.github.io/goapi/)
+* [STTP Go API Documentation](https://sttp.github.io/goapi/)
+* [STTP General Documentation](https://sttp.github.io/documentation/)
 * [STTP (IEEE 2664) Standard](https://standards.ieee.org/project/2664.html)
-* [General STTP Documentation](https://sttp.github.io/documentation/)
-* [Phasor Protocols Comparison](https://www.osti.gov/servlets/purl/1504742)

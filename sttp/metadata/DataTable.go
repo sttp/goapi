@@ -28,9 +28,8 @@ import "strings"
 // DataTable represents a collection of DataColumn objects where each data column defines a name and
 // a data type. Data columns can also be computed where its value would be derived from other columns
 // and functions (https://sttp.github.io/documentation/filter-expressions/) defined in an expression.
-// Note that this implementation uses a case-insensitive map for DataColumn name lookups. Internally
-// this is accomplished using ToUpper to keep things simple and efficient, however, this implies that
-// case-insensitivity will be effectively restricted to ASCII-based column names.
+// Note that this implementation uses a case-insensitive map for DataColumn name lookups. Internally,
+// case-insensitive lookups are accomplished using `strings.ToUpper`.
 type DataTable struct {
 	parent        *DataSet
 	name          string

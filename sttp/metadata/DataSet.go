@@ -45,9 +45,8 @@ const (
 // DataSet represents an in-memory cache of records that is structured similarly to information
 // defined in a database. The data set object consists of a collection of data table objects.
 // See https://sttp.github.io/documentation/data-sets/ for more information.
-// Note that this implementation uses a case-insensitive map for DataTable name lookups. Internally
-// this is accomplished using ToUpper to keep things simple and efficient, however, this implies that
-// case-insensitivity will be effectively restricted to ASCII-based table names.
+// Note that this implementation uses a case-insensitive map for DataTable name lookups.
+// Internally, case-insensitive lookups are accomplished using `strings.ToUpper`.
 type DataSet struct {
 	tables map[string]*DataTable
 
