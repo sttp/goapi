@@ -278,7 +278,8 @@ func (ds *DataSet) loadRecords(root *xml.XmlNode) {
 					f64, _ := strconv.ParseFloat(value, 64)
 					dataRow.SetValue(columnIndex, f64)
 				case DataType.Guid:
-					dataRow.SetValue(columnIndex, guid.Parse(value))
+					g, _ := guid.Parse(value)
+					dataRow.SetValue(columnIndex, g)
 				case DataType.Int8:
 					i8, _ := strconv.ParseInt(value, 10, 8)
 					dataRow.SetValue(columnIndex, int8(i8))

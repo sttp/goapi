@@ -340,13 +340,13 @@ func (ds *DataSubscriber) Subscribe() error {
 		udpAddr, err := net.ResolveUDPAddr("udp", ":"+udpPort)
 
 		if err != nil {
-			return errors.New("Failed to resolve UDP address for port " + udpPort + ": " + err.Error())
+			return errors.New("failed to resolve UDP address for port " + udpPort + ": " + err.Error())
 		}
 
 		ds.dataChannelSocket, err = net.ListenUDP("udp", udpAddr)
 
 		if err != nil {
-			return errors.New("Failed to open UDP socket for port " + udpPort + ": " + err.Error())
+			return errors.New("failed to open UDP socket for port " + udpPort + ": " + err.Error())
 		}
 
 		ds.dataChannelResponseThread = thread.NewThread(ds.runDataChannelResponseThread)
@@ -932,7 +932,9 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCac
 	}
 
 	if data[0] != 85 {
-		panic("TSSC version not recognized: " + strconv.Itoa(int(data[0])))
+		ds.dispatchErrorMessage("TSSC version not recognized - disconnecting. Received version: " + strconv.Itoa(int(data[0])))
+		ds.dispatchConnectionTerminated()
+		return
 	}
 
 	sequenceNumber := binary.BigEndian.Uint16(data[1:])
@@ -954,7 +956,7 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCac
 
 	if decoder.SequenceNumber != sequenceNumber {
 		if !ds.tsscResetRequested && time.Since(ds.tsscLastOOSReport).Seconds() > 2.0 {
-			ds.dispatchErrorMessage("TSSC is out of sequence. Expecting: " + strconv.Itoa(int(decoder.SequenceNumber)) + ", Received: " + strconv.Itoa(int(sequenceNumber)))
+			ds.dispatchErrorMessage("TSSC is out of sequence. Expecting: " + strconv.Itoa(int(decoder.SequenceNumber)) + ", received: " + strconv.Itoa(int(sequenceNumber)))
 			ds.tsscLastOOSReport = time.Now()
 		}
 
@@ -968,17 +970,28 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCac
 	var timestamp int64
 	var stateFlags uint32
 	var value float32
+	var err error
+
+	ok := true
 	index := 0
 
-	for decoder.TryGetMeasurement(&id, &timestamp, &stateFlags, &value) {
-		measurements[index] = Measurement{
-			SignalID:  signalIndexCache.SignalID(id),
-			Value:     float64(value),
-			Timestamp: ticks.Ticks(timestamp),
-			Flags:     StateFlagsEnum(stateFlags),
-		}
+	for ok {
+		if ok, err = decoder.TryGetMeasurement(&id, &timestamp, &stateFlags, &value); ok {
+			measurements[index] = Measurement{
+				SignalID:  signalIndexCache.SignalID(id),
+				Value:     float64(value),
+				Timestamp: ticks.Ticks(timestamp),
+				Flags:     StateFlagsEnum(stateFlags),
+			}
 
-		index++
+			index++
+		}
+	}
+
+	if err != nil {
+		ds.dispatchErrorMessage("Failed to parse TSSC measurements - disconnecting: " + err.Error())
+		ds.dispatchConnectionTerminated()
+		return
 	}
 
 	decoder.SequenceNumber++
@@ -998,7 +1011,15 @@ func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndex
 		if signalIndexCache.Count() > 0 {
 			// Deserialize compact measurement format
 			compactMeasurement := NewCompactMeasurement(signalIndexCache, includeTime, useMillisecondResolution, &ds.baseTimeOffsets)
-			index += compactMeasurement.Decode(data[index:])
+			bytesDecoded, err := compactMeasurement.Decode(data[index:])
+
+			if err != nil {
+				ds.dispatchErrorMessage("Failed to parse compact measurements - disconnecting: " + err.Error())
+				ds.dispatchConnectionTerminated()
+				return
+			}
+
+			index += bytesDecoded
 			measurements[i] = compactMeasurement.Measurement
 		} else if ds.lastMissingCacheWarning+missingCacheWarningInterval < ticks.UtcNow() {
 			// Warning message for missing signal index cache

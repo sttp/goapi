@@ -55,7 +55,7 @@ func (dr *DataRow) getColumnIndex(columnName string) (int, error) {
 	column := dr.parent.ColumnByName(columnName)
 
 	if column == nil {
-		return -1, errors.New("Column name \"" + columnName + "\" was not found in table \"" + dr.parent.Name() + "\"")
+		return -1, errors.New("column name \"" + columnName + "\" was not found in table \"" + dr.parent.Name() + "\"")
 	}
 
 	return column.Index(), nil
@@ -65,7 +65,7 @@ func (dr *DataRow) validateColumnType(columnIndex int, targetType int, read bool
 	column := dr.parent.Column(columnIndex)
 
 	if column == nil {
-		return nil, errors.New("Column index " + strconv.Itoa(columnIndex) + " is out of range for table \"" + dr.parent.Name() + "\"")
+		return nil, errors.New("column index " + strconv.Itoa(columnIndex) + " is out of range for table \"" + dr.parent.Name() + "\"")
 	}
 
 	if targetType > -1 && column.Type() != DataTypeEnum(targetType) {
@@ -80,11 +80,11 @@ func (dr *DataRow) validateColumnType(columnIndex int, targetType int, read bool
 			preposition = "to"
 		}
 
-		panic(fmt.Sprintf("Cannot %s \"%s\" value %s DataColumn \"%s\" for table \"%s\", column data type is \"%s\"", action, DataTypeEnum(targetType).Name(), preposition, column.Name(), dr.parent.Name(), column.Type().Name()))
+		return nil, fmt.Errorf("cannot %s \"%s\" value %s DataColumn \"%s\" for table \"%s\", column data type is \"%s\"", action, DataTypeEnum(targetType).Name(), preposition, column.Name(), dr.parent.Name(), column.Type().Name())
 	}
 
 	if !read && column.Computed() {
-		panic("Cannot assign value to DataColumn \"" + column.Name() + "\" for table \"" + dr.parent.Name() + "\", column is computed with an expression")
+		return nil, errors.New("cannot assign value to DataColumn \"" + column.Name() + "\" for table \"" + dr.parent.Name() + "\", column is computed with an expression")
 	}
 
 	return column, nil
@@ -105,7 +105,7 @@ func (dr *DataRow) validateColumnType(columnIndex int, targetType int, read bool
 // 		expressionTrees := parser.GetExpressionTrees()
 
 // 		if len(expressionTrees) == 0 {
-// 			return nil, errors.New("Expression defined for computed DataColumn \"" + column.Name() + "\" for table \"" + dr.parent.Name() + "\" cannot produce a value")
+// 			return nil, errors.New("expression defined for computed DataColumn \"" + column.Name() + "\" for table \"" + dr.parent.Name() + "\" cannot produce a value")
 // 		}
 
 // 		dr.values[columnIndex] = parser

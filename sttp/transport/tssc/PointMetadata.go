@@ -25,7 +25,10 @@
 
 package tssc
 
-import "math"
+import (
+	"errors"
+	"math"
+)
 
 var codeWords = struct {
 	EndOfStream       byte
@@ -135,7 +138,7 @@ func newPointMetadata(writeBits func(int32, int32), readBit func() int32, readBi
 	}
 }
 
-func (pm *pointMetadata) WriteCode(code int32) {
+func (pm *pointMetadata) WriteCode(code int32) error {
 	switch pm.mode {
 	case 1:
 		pm.writeBits(code, 5)
@@ -164,13 +167,13 @@ func (pm *pointMetadata) WriteCode(code int32) {
 			pm.writeBits(code, 8)
 		}
 	default:
-		panic("Coding Error")
+		return errors.New("coding Error")
 	}
 
-	pm.updatedCodeStatistics(code)
+	return pm.updatedCodeStatistics(code)
 }
 
-func (pm *pointMetadata) ReadCode() int32 {
+func (pm *pointMetadata) ReadCode() (int32, error) {
 	var code int32
 
 	switch pm.mode {
@@ -201,29 +204,31 @@ func (pm *pointMetadata) ReadCode() int32 {
 			code = pm.readBits5()
 		}
 	default:
-		panic("Unsupported compression mode")
+		return 0, errors.New("unsupported compression mode")
 	}
 
-	pm.updatedCodeStatistics(code)
-	return code
+	err := pm.updatedCodeStatistics(code)
+	return code, err
 }
 
-func (pm *pointMetadata) updatedCodeStatistics(code int32) {
+func (pm *pointMetadata) updatedCodeStatistics(code int32) error {
 	pm.commandsSentSinceLastChange++
 	pm.commandStats[code]++
 
 	if pm.startupMode == 0 && pm.commandsSentSinceLastChange > 5 {
 		pm.startupMode++
-		pm.adaptCommands()
+		return pm.adaptCommands()
 	} else if pm.startupMode == 1 && pm.commandsSentSinceLastChange > 20 {
 		pm.startupMode++
-		pm.adaptCommands()
+		return pm.adaptCommands()
 	} else if pm.startupMode == 2 && pm.commandsSentSinceLastChange > 100 {
-		pm.adaptCommands()
+		return pm.adaptCommands()
 	}
+
+	return nil
 }
 
-func (pm *pointMetadata) adaptCommands() {
+func (pm *pointMetadata) adaptCommands() error {
 	var code1 byte
 	var count1 int32
 
@@ -292,13 +297,14 @@ func (pm *pointMetadata) adaptCommands() {
 		pm.mode4001 = code3
 	} else {
 		if pm.writeBits == nil {
-			panic("Subscriber Coding Error")
+			return errors.New("subscriber coding error")
 		}
 
-		panic("Publisher Coding Error")
+		return errors.New("publisher coding error")
 	}
 
 	pm.commandsSentSinceLastChange = 0
+	return nil
 }
 
 func min(lv int32, rv int32) int32 {

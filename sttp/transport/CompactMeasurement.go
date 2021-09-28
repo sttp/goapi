@@ -25,6 +25,7 @@ package transport
 
 import (
 	"encoding/binary"
+	"errors"
 	"math"
 
 	"github.com/sttp/goapi/sttp/ticks"
@@ -246,9 +247,9 @@ func (cm *CompactMeasurement) SetRuntimeID(signalIndex int32) {
 }
 
 // Decode parses a CompactMeasurement from the specified byte buffer.
-func (cm *CompactMeasurement) Decode(buffer []byte) int {
+func (cm *CompactMeasurement) Decode(buffer []byte) (int, error) {
 	if len(buffer) < 1 {
-		panic("Not enough buffer available to deserialize compact measurement.")
+		return 0, errors.New("not enough buffer available to deserialize compact measurement")
 	}
 
 	// Basic Compact Measurement Format:
@@ -273,7 +274,7 @@ func (cm *CompactMeasurement) Decode(buffer []byte) int {
 	index += 4
 
 	if !cm.includeTime {
-		return index
+		return index, nil
 	}
 
 	if cm.usingBaseTimeOffset {
@@ -299,7 +300,7 @@ func (cm *CompactMeasurement) Decode(buffer []byte) int {
 		index += 8
 	}
 
-	return index
+	return index, nil
 }
 
 //// Encode serializes a CompactMeasurement to a byte buffer for publication to a DataSubscriber.

@@ -42,14 +42,9 @@ func (g Guid) IsZero() bool {
 }
 
 // Parse decodes a Guid value from a string.
-func Parse(value string) Guid {
-	guid, err := uuid.Parse(value)
-
-	if err == nil {
-		return Guid(guid)
-	}
-
-	panic("Failed to parse Guid from string \"" + value + "\": " + err.Error())
+func Parse(s string) (Guid, error) {
+	value, err := uuid.Parse(s)
+	return Guid(value), err
 }
 
 // String returns the string form of a Guid, i.e., {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx},

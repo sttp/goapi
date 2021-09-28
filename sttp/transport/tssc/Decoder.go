@@ -26,6 +26,7 @@
 package tssc
 
 import (
+	"errors"
 	"math"
 	"strconv"
 	"strings"
@@ -77,21 +78,6 @@ func (td *Decoder) newPointMetadata() *pointMetadata {
 	return newPointMetadata(nil, td.readBit, td.readBits5)
 }
 
-// func (td *Decoder) Reset() {
-// 	td.data = make([]byte, 0)
-// 	td.position = 0
-// 	td.lastPosition = 0
-// 	td.prevTimestamp1 = 0
-// 	td.prevTimestamp2 = 0
-// 	td.prevTimeDelta1 = math.MaxInt64
-// 	td.prevTimeDelta2 = math.MaxInt64
-// 	td.prevTimeDelta3 = math.MaxInt64
-// 	td.prevTimeDelta4 = math.MaxInt64
-// 	td.lastPoint = td.newPointMetadata()
-// 	td.points = make([]*pointMetadata, 0)
-// 	td.clearBitStream()
-// }
-
 func (td *Decoder) bitStreamIsEmpty() bool {
 	return td.bitStreamCount == 0
 }
@@ -110,14 +96,14 @@ func (td *Decoder) SetBuffer(data []byte) {
 }
 
 // TryGetMeasurement attempts to get the next decoded measurement from the working buffer.
-func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *uint32, value *float32) bool {
+func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *uint32, value *float32) (bool, error) {
 	if td.position == td.lastPosition && td.bitStreamIsEmpty() {
 		td.clearBitStream()
 		*id = 0
 		*timestamp = 0
 		*stateFlags = 0
 		*value = 0.0
-		return false
+		return false, nil
 	}
 
 	// Given that the incoming pointID is not known in advance, the current
@@ -131,7 +117,11 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 	// codes using as few bits as possible
 
 	// Read next code for measurement ID decoding
-	code := td.lastPoint.ReadCode()
+	code, err := td.lastPoint.ReadCode()
+
+	if err != nil {
+		return false, err
+	}
 
 	if code == int32(codeWords.EndOfStream) {
 		td.clearBitStream()
@@ -139,25 +129,34 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 		*timestamp = 0
 		*stateFlags = 0
 		*value = 0.0
-		return false
+		return false, nil
 	}
 
 	// Decode measurement ID and read next code for timestamp decoding
 	if code <= int32(codeWords.PointIDXor32) {
-		td.decodePointID(byte(code))
-		code = td.lastPoint.ReadCode()
+		err := td.decodePointID(byte(code))
+
+		if err != nil {
+			return false, err
+		}
+
+		code, err = td.lastPoint.ReadCode()
+
+		if err != nil {
+			return false, err
+		}
 
 		if code < int32(codeWords.TimeDelta1Forward) {
 			var message strings.Builder
 
-			message.WriteString("Expecting code >= ")
+			message.WriteString("expecting code >= ")
 			message.WriteString(strconv.Itoa(int(codeWords.TimeDelta1Forward)))
 			message.WriteString(" at position ")
 			message.WriteString(strconv.Itoa(td.position))
 			message.WriteString(" with last position ")
 			message.WriteString(strconv.Itoa(td.lastPosition))
 
-			panic(message.String())
+			return false, errors.New(message.String())
 		}
 	}
 
@@ -194,19 +193,23 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 	// Decode measurement timestamp and read next code for quality flags decoding
 	if code <= int32(codeWords.TimeXor7Bit) {
 		*timestamp = td.decodeTimestamp(byte(code))
-		code = td.lastPoint.ReadCode()
+		code, err = td.lastPoint.ReadCode()
+
+		if err != nil {
+			return false, err
+		}
 
 		if code < int32(codeWords.StateFlags2) {
 			var message strings.Builder
 
-			message.WriteString("Expecting code >= ")
+			message.WriteString("expecting code >= ")
 			message.WriteString(strconv.Itoa(int(codeWords.StateFlags2)))
 			message.WriteString(" at position ")
 			message.WriteString(strconv.Itoa(td.position))
 			message.WriteString(" with last position ")
 			message.WriteString(strconv.Itoa(td.lastPosition))
 
-			panic(message.String())
+			return false, errors.New(message.String())
 		}
 	} else {
 		*timestamp = td.prevTimestamp1
@@ -215,19 +218,23 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 	// Decode measurement state flags and read next code for measurement value decoding
 	if code <= int32(codeWords.StateFlags7Bit32) {
 		*stateFlags = td.decodeStateFlags(byte(code), nextPoint)
-		code = td.lastPoint.ReadCode()
+		code, err = td.lastPoint.ReadCode()
+
+		if err != nil {
+			return false, err
+		}
 
 		if code < int32(codeWords.Value1) {
 			var message strings.Builder
 
-			message.WriteString("Expecting code >= ")
+			message.WriteString("expecting code >= ")
 			message.WriteString(strconv.Itoa(int(codeWords.Value1)))
 			message.WriteString(" at position ")
 			message.WriteString(strconv.Itoa(td.position))
 			message.WriteString(" with last position ")
 			message.WriteString(strconv.Itoa(td.lastPosition))
 
-			panic(message.String())
+			return false, errors.New(message.String())
 		}
 	} else {
 		*stateFlags = nextPoint.PrevStateFlags1
@@ -281,14 +288,14 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 		default:
 			var message strings.Builder
 
-			message.WriteString("Invalid code received ")
+			message.WriteString("invalid code received ")
 			message.WriteString(strconv.Itoa(int(code)))
 			message.WriteString(" at position ")
 			message.WriteString(strconv.Itoa(td.position))
 			message.WriteString(" with last position ")
 			message.WriteString(strconv.Itoa(td.lastPosition))
 
-			panic(message.String())
+			return false, errors.New(message.String())
 		}
 
 		nextPoint.PrevValue3 = nextPoint.PrevValue2
@@ -300,10 +307,10 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 	*value = math.Float32frombits(valueRaw)
 	td.lastPoint = nextPoint
 
-	return true
+	return true, nil
 }
 
-func (td *Decoder) decodePointID(code byte) {
+func (td *Decoder) decodePointID(code byte) error {
 	switch code {
 	case codeWords.PointIDXor4:
 		td.lastPoint.PrevNextPointID1 = td.readBits4() ^ td.lastPoint.PrevNextPointID1
@@ -328,15 +335,17 @@ func (td *Decoder) decodePointID(code byte) {
 	default:
 		var message strings.Builder
 
-		message.WriteString("Invalid code received ")
+		message.WriteString("invalid code received ")
 		message.WriteString(strconv.Itoa(int(code)))
 		message.WriteString(" at position ")
 		message.WriteString(strconv.Itoa(td.position))
 		message.WriteString(" with last position ")
 		message.WriteString(strconv.Itoa(td.lastPosition))
 
-		panic(message.String())
+		return errors.New(message.String())
 	}
+
+	return nil
 }
 
 func (td *Decoder) decodeTimestamp(code byte) int64 {
