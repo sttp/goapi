@@ -184,118 +184,132 @@ func (dr *DataRow) ColumnValueAsString(column *DataColumn) string {
 		return ""
 	}
 
+	checkState := func(null bool, err error) (bool, string) {
+		if err != nil {
+			return true, ""
+		}
+
+		if null {
+			return true, "<NULL>"
+		}
+
+		return false, ""
+	}
+
 	index := column.Index()
 
 	switch column.Type() {
 	case DataType.String:
-		value, err := dr.StringValue(index)
+		value, null, err := dr.StringValue(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return value
 	case DataType.Boolean:
-		value, err := dr.BoolValue(index)
+		value, null, err := dr.BoolValue(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return strconv.FormatBool(value)
 	case DataType.DateTime:
-		value, err := dr.DateTimeValue(index)
+		value, null, err := dr.DateTimeValue(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
+
 		return value.String()
 	case DataType.Single:
-		value, err := dr.SingleValue(index)
+		value, null, err := dr.SingleValue(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
+
 		return strconv.FormatFloat(float64(value), 'f', 6, 32)
 	case DataType.Decimal:
 		fallthrough
 	case DataType.Double:
-		value, err := dr.DoubleValue(index)
+		value, null, err := dr.DoubleValue(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return strconv.FormatFloat(value, 'f', 6, 64)
 	case DataType.Guid:
-		value, err := dr.GuidValue(index)
+		value, null, err := dr.GuidValue(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return value.String()
 	case DataType.Int8:
-		value, err := dr.Int8Value(index)
+		value, null, err := dr.Int8Value(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return strconv.FormatInt(int64(value), 10)
 	case DataType.Int16:
-		value, err := dr.Int16Value(index)
+		value, null, err := dr.Int16Value(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return strconv.FormatInt(int64(value), 10)
 	case DataType.Int32:
-		value, err := dr.Int32Value(index)
+		value, null, err := dr.Int32Value(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return strconv.FormatInt(int64(value), 10)
 	case DataType.Int64:
-		value, err := dr.Int64Value(index)
+		value, null, err := dr.Int64Value(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return strconv.FormatInt(value, 10)
 	case DataType.UInt8:
-		value, err := dr.UInt8Value(index)
+		value, null, err := dr.UInt8Value(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return strconv.FormatUint(uint64(value), 10)
 	case DataType.UInt16:
-		value, err := dr.UInt16Value(index)
+		value, null, err := dr.UInt16Value(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return strconv.FormatUint(uint64(value), 10)
 	case DataType.UInt32:
-		value, err := dr.UInt32Value(index)
+		value, null, err := dr.UInt32Value(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return strconv.FormatUint(uint64(value), 10)
 	case DataType.UInt64:
-		value, err := dr.UInt64Value(index)
+		value, null, err := dr.UInt64Value(index)
 
-		if err != nil {
-			return ""
+		if invalid, result := checkState(null, err); invalid {
+			return result
 		}
 
 		return strconv.FormatUint(value, 10)
@@ -317,510 +331,690 @@ func (dr *DataRow) ValueAsStringByName(columnName string) string {
 }
 
 // StringValue gets the record value at the specified columnIndex cast as a string.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.String.
-func (dr *DataRow) StringValue(columnIndex int) (string, error) {
+func (dr *DataRow) StringValue(columnIndex int) (string, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.String), true)
 
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
 
-		return value.(string), nil
+		if value == nil {
+			return "", true, nil
+		}
+
+		return value.(string), false, nil
 	}
 
-	return dr.values[columnIndex].(string), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return "", true, nil
+	}
+
+	return value.(string), false, nil
 }
 
 // StringValueByName gets the record value for the specified columnName cast as a string.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.String.
-func (dr *DataRow) StringValueByName(columnName string) (string, error) {
+func (dr *DataRow) StringValueByName(columnName string) (string, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	return dr.StringValue(index)
 }
 
 // BoolValue gets the record value at the specified columnIndex cast as a bool.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Boolean.
-func (dr *DataRow) BoolValue(columnIndex int) (bool, error) {
+func (dr *DataRow) BoolValue(columnIndex int) (bool, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Boolean), true)
 
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return false, err
+			return false, false, err
 		}
 
-		return value.(bool), nil
+		if value == nil {
+			return false, true, nil
+		}
+
+		return value.(bool), false, nil
 	}
 
-	return dr.values[columnIndex].(bool), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return false, true, nil
+	}
+
+	return value.(bool), false, nil
 }
 
 // BoolValueByName gets the record value for the specified columnName cast as a bool.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Boolean.
-func (dr *DataRow) BoolValueByName(columnName string) (bool, error) {
+func (dr *DataRow) BoolValueByName(columnName string) (bool, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	return dr.BoolValue(index)
 }
 
 // DateTimeValue gets the record value at the specified columnIndex cast as a time.Time.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.DateTime.
-func (dr *DataRow) DateTimeValue(columnIndex int) (time.Time, error) {
+func (dr *DataRow) DateTimeValue(columnIndex int) (time.Time, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.DateTime), true)
 
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return time.Time{}, err
+			return time.Time{}, false, err
 		}
 
-		return value.(time.Time), nil
+		if value == nil {
+			return time.Time{}, true, nil
+		}
+
+		return value.(time.Time), false, nil
 	}
 
-	return dr.values[columnIndex].(time.Time), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return time.Time{}, true, nil
+	}
+
+	return value.(time.Time), false, nil
 }
 
 // DateTimeValueByName gets the record value for the specified columnName cast as a time.Time.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.DateTime.
-func (dr *DataRow) DateTimeValueByName(columnName string) (time.Time, error) {
+func (dr *DataRow) DateTimeValueByName(columnName string) (time.Time, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, false, err
 	}
 
 	return dr.DateTimeValue(index)
 }
 
 // SingleValue gets the record value at the specified columnIndex cast as a float32.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Single.
-func (dr *DataRow) SingleValue(columnIndex int) (float32, error) {
+func (dr *DataRow) SingleValue(columnIndex int) (float32, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Single), true)
 
 	if err != nil {
-		return 0.0, err
+		return 0.0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0.0, err
+			return 0.0, false, err
 		}
 
-		return value.(float32), nil
+		if value == nil {
+			return 0.0, true, nil
+		}
+
+		return value.(float32), false, nil
 	}
 
-	return dr.values[columnIndex].(float32), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0.0, true, nil
+	}
+
+	return value.(float32), false, nil
 }
 
 // SingleValueByName gets the record value for the specified columnName cast as a float32.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Single.
-func (dr *DataRow) SingleValueByName(columnName string) (float32, error) {
+func (dr *DataRow) SingleValueByName(columnName string) (float32, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0.0, err
+		return 0.0, false, err
 	}
 
 	return dr.SingleValue(index)
 }
 
 // DoubleValue gets the record value at the specified columnIndex cast as a float64.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Double.
-func (dr *DataRow) DoubleValue(columnIndex int) (float64, error) {
+func (dr *DataRow) DoubleValue(columnIndex int) (float64, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Double), true)
 
 	if err != nil {
-		return 0.0, err
+		return 0.0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0.0, err
+			return 0.0, false, err
 		}
 
-		return value.(float64), nil
+		if value == nil {
+			return 0.0, true, nil
+		}
+
+		return value.(float64), false, nil
 	}
 
-	return dr.values[columnIndex].(float64), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0.0, true, nil
+	}
+
+	return value.(float64), false, nil
 }
 
 // DoubleValueByName gets the record value for the specified columnName cast as a float64.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Double.
-func (dr *DataRow) DoubleValueByName(columnName string) (float64, error) {
+func (dr *DataRow) DoubleValueByName(columnName string) (float64, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0.0, err
+		return 0.0, false, err
 	}
 
 	return dr.DoubleValue(index)
 }
 
 // DecimalValue gets the record value at the specified columnIndex cast as a float64.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Decimal.
-func (dr *DataRow) DecimalValue(columnIndex int) (float64, error) {
+func (dr *DataRow) DecimalValue(columnIndex int) (float64, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Decimal), true)
 
 	if err != nil {
-		return 0.0, err
+		return 0.0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0.0, err
+			return 0.0, false, err
 		}
 
-		return value.(float64), nil
+		if value == nil {
+			return 0.0, true, nil
+		}
+
+		return value.(float64), false, nil
 	}
 
-	return dr.values[columnIndex].(float64), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0.0, true, nil
+	}
+
+	return value.(float64), false, nil
 }
 
 // DecimalValueByName gets the record value for the specified columnName cast as a float64.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Decimal.
-func (dr *DataRow) DecimalValueByName(columnName string) (float64, error) {
+func (dr *DataRow) DecimalValueByName(columnName string) (float64, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0.0, err
+		return 0.0, false, err
 	}
 
 	return dr.DecimalValue(index)
 }
 
 // GuidValue gets the record value at the specified columnIndex cast as a guid.Guid.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Guid.
-func (dr *DataRow) GuidValue(columnIndex int) (guid.Guid, error) {
+func (dr *DataRow) GuidValue(columnIndex int) (guid.Guid, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Guid), true)
 
 	if err != nil {
-		return guid.Guid{}, err
+		return guid.Guid{}, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return guid.Guid{}, err
+			return guid.Guid{}, false, err
 		}
 
-		return value.(guid.Guid), nil
+		if value == nil {
+			return guid.Guid{}, true, nil
+		}
+
+		return value.(guid.Guid), false, nil
 	}
 
-	return dr.values[columnIndex].(guid.Guid), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return guid.Guid{}, true, nil
+	}
+
+	return value.(guid.Guid), false, nil
 }
 
 // GuidValueByName gets the record value for the specified columnName cast as a guid.Guid.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Guid.
-func (dr *DataRow) GuidValueByName(columnName string) (guid.Guid, error) {
+func (dr *DataRow) GuidValueByName(columnName string) (guid.Guid, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return guid.Guid{}, err
+		return guid.Guid{}, false, err
 	}
 
 	return dr.GuidValue(index)
 }
 
 // Int8Value gets the record value at the specified columnIndex cast as a int8.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int8.
-func (dr *DataRow) Int8Value(columnIndex int) (int8, error) {
+func (dr *DataRow) Int8Value(columnIndex int) (int8, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Int8), true)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 
-		return value.(int8), nil
+		if value == nil {
+			return 0, true, nil
+		}
+
+		return value.(int8), false, nil
 	}
 
-	return dr.values[columnIndex].(int8), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0, true, nil
+	}
+
+	return value.(int8), false, nil
 }
 
 // Int8ValueByName gets the record value for the specified columnName cast as a int8.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int8.
-func (dr *DataRow) Int8ValueByName(columnName string) (int8, error) {
+func (dr *DataRow) Int8ValueByName(columnName string) (int8, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	return dr.Int8Value(index)
 }
 
 // Int16Value gets the record value at the specified columnIndex cast as a int16.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int16.
-func (dr *DataRow) Int16Value(columnIndex int) (int16, error) {
+func (dr *DataRow) Int16Value(columnIndex int) (int16, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Int16), true)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 
-		return value.(int16), nil
+		if value == nil {
+			return 0, true, nil
+		}
+
+		return value.(int16), false, nil
 	}
 
-	return dr.values[columnIndex].(int16), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0, true, nil
+	}
+
+	return value.(int16), false, nil
 }
 
 // Int16ValueByName gets the record value for the specified columnName cast as a int16.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int16.
-func (dr *DataRow) Int16ValueByName(columnName string) (int16, error) {
+func (dr *DataRow) Int16ValueByName(columnName string) (int16, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	return dr.Int16Value(index)
 }
 
 // Int32Value gets the record value at the specified columnIndex cast as a int32.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int32.
-func (dr *DataRow) Int32Value(columnIndex int) (int32, error) {
+func (dr *DataRow) Int32Value(columnIndex int) (int32, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Int32), true)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 
-		return value.(int32), nil
+		if value == nil {
+			return 0, true, nil
+		}
+
+		return value.(int32), false, nil
 	}
 
-	return dr.values[columnIndex].(int32), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0, true, nil
+	}
+
+	return value.(int32), false, nil
 }
 
 // Int32ValueByName gets the record value for the specified columnName cast as a int32.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int32.
-func (dr *DataRow) Int32ValueByName(columnName string) (int32, error) {
+func (dr *DataRow) Int32ValueByName(columnName string) (int32, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	return dr.Int32Value(index)
 }
 
 // Int64Value gets the record value at the specified columnIndex cast as a int64.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int64.
-func (dr *DataRow) Int64Value(columnIndex int) (int64, error) {
+func (dr *DataRow) Int64Value(columnIndex int) (int64, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Int64), true)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 
-		return value.(int64), nil
+		if value == nil {
+			return 0, true, nil
+		}
+
+		return value.(int64), false, nil
 	}
 
-	return dr.values[columnIndex].(int64), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0, true, nil
+	}
+
+	return value.(int64), false, nil
 }
 
 // Int64ValueByName gets the record value for the specified columnName cast as a int64.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int64.
-func (dr *DataRow) Int64ValueByName(columnName string) (int64, error) {
+func (dr *DataRow) Int64ValueByName(columnName string) (int64, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	return dr.Int64Value(index)
 }
 
 // UInt8Value gets the record value at the specified columnIndex cast as a uint8.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt8.
-func (dr *DataRow) UInt8Value(columnIndex int) (uint8, error) {
+func (dr *DataRow) UInt8Value(columnIndex int) (uint8, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.UInt8), true)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 
-		return value.(uint8), nil
+		if value == nil {
+			return 0, true, nil
+		}
+
+		return value.(uint8), false, nil
 	}
 
-	return dr.values[columnIndex].(uint8), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0, true, nil
+	}
+
+	return value.(uint8), false, nil
 }
 
 // UInt8ValueByName gets the record value for the specified columnName cast as a uint8.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt8.
-func (dr *DataRow) UInt8ValueByName(columnName string) (uint8, error) {
+func (dr *DataRow) UInt8ValueByName(columnName string) (uint8, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	return dr.UInt8Value(index)
 }
 
 // UInt16Value gets the record value at the specified columnIndex cast as a uint16.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt16.
-func (dr *DataRow) UInt16Value(columnIndex int) (uint16, error) {
+func (dr *DataRow) UInt16Value(columnIndex int) (uint16, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.UInt16), true)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 
-		return value.(uint16), nil
+		if value == nil {
+			return 0, true, nil
+		}
+
+		return value.(uint16), false, nil
 	}
 
-	return dr.values[columnIndex].(uint16), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0, true, nil
+	}
+
+	return value.(uint16), false, nil
 }
 
 // UInt16ValueByName gets the record value for the specified columnName cast as a uint16.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt16.
-func (dr *DataRow) UInt16ValueByName(columnName string) (uint16, error) {
+func (dr *DataRow) UInt16ValueByName(columnName string) (uint16, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	return dr.UInt16Value(index)
 }
 
 // UInt32Value gets the record value at the specified columnIndex cast as a uint32.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt32.
-func (dr *DataRow) UInt32Value(columnIndex int) (uint32, error) {
+func (dr *DataRow) UInt32Value(columnIndex int) (uint32, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.UInt32), true)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 
-		return value.(uint32), nil
+		if value == nil {
+			return 0, true, nil
+		}
+
+		return value.(uint32), false, nil
 	}
 
-	return dr.values[columnIndex].(uint32), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0, true, nil
+	}
+
+	return value.(uint32), false, nil
 }
 
 // UInt32ValueByName gets the record value for the specified columnName cast as a uint32.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt32.
-func (dr *DataRow) UInt32ValueByName(columnName string) (uint32, error) {
+func (dr *DataRow) UInt32ValueByName(columnName string) (uint32, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	return dr.UInt32Value(index)
 }
 
 // UInt64Value gets the record value at the specified columnIndex cast as a uint64.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt64.
-func (dr *DataRow) UInt64Value(columnIndex int) (uint64, error) {
+func (dr *DataRow) UInt64Value(columnIndex int) (uint64, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.UInt64), true)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 
-		return value.(uint64), nil
+		if value == nil {
+			return 0, true, nil
+		}
+
+		return value.(uint64), false, nil
 	}
 
-	return dr.values[columnIndex].(uint64), nil
+	value := dr.values[columnIndex]
+
+	if value == nil {
+		return 0, true, nil
+	}
+
+	return value.(uint64), false, nil
 }
 
 // UInt64ValueByName gets the record value for the specified columnName cast as a uint64.
+// Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt64.
-func (dr *DataRow) UInt64ValueByName(columnName string) (uint64, error) {
+func (dr *DataRow) UInt64ValueByName(columnName string) (uint64, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	return dr.UInt64Value(index)

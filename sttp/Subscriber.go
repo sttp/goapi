@@ -381,16 +381,16 @@ func (sb *SubscriberBase) loadMeasurementMetadata(dataSet *metadata.DataSet) {
 					continue
 				}
 
-				signalID, err := measurement.GuidValue(signalIDIndex)
+				signalID, null, err := measurement.GuidValue(signalIDIndex)
 
-				if err != nil {
+				if null || err != nil {
 					continue
 				}
 
 				metadata := ds.LookupMetadata(signalID)
 
 				if idIndex > -1 {
-					id, _ := measurement.StringValue(idIndex)
+					id, _, _ := measurement.StringValue(idIndex)
 					parts := strings.Split(id, ":")
 
 					if len(parts) == 2 {
@@ -400,23 +400,23 @@ func (sb *SubscriberBase) loadMeasurementMetadata(dataSet *metadata.DataSet) {
 				}
 
 				if pointTagIndex > -1 {
-					metadata.Tag, _ = measurement.StringValue(pointTagIndex)
+					metadata.Tag, _, _ = measurement.StringValue(pointTagIndex)
 				}
 
 				if signalRefIndex > -1 {
-					metadata.SignalReference, _ = measurement.StringValue(signalRefIndex)
+					metadata.SignalReference, _, _ = measurement.StringValue(signalRefIndex)
 				}
 
 				if signalTypeIndex > -1 {
-					metadata.SignalType, _ = measurement.StringValue(signalTypeIndex)
+					metadata.SignalType, _, _ = measurement.StringValue(signalTypeIndex)
 				}
 
 				if descriptionIndex > -1 {
-					metadata.Description, _ = measurement.StringValue(descriptionIndex)
+					metadata.Description, _, _ = measurement.StringValue(descriptionIndex)
 				}
 
 				if updatedOnIndex > -1 {
-					metadata.UpdatedOn, _ = measurement.DateTimeValue(updatedOnIndex)
+					metadata.UpdatedOn, _, _ = measurement.DateTimeValue(updatedOnIndex)
 				}
 			}
 		} else {
