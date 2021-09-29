@@ -1,8 +1,7 @@
 ## Go STTP ([IEEE 2664](https://standards.ieee.org/project/2664.html)) Documentation
+### Streaming Telemetry Transport Protocol
 
 <img align="right" src="img/sttp.png">
-
-### Streaming Telemetry Transport Protocol
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/sttp/goapi)](https://goreportcard.com/report/github.com/sttp/goapi)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/sttp/goapi)](https://pkg.go.dev/github.com/sttp/goapi)
