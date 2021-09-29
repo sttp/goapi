@@ -7,7 +7,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/sttp/goapi)](https://goreportcard.com/report/github.com/sttp/goapi)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/sttp/goapi)](https://pkg.go.dev/github.com/sttp/goapi)
 [![Release](https://img.shields.io/github/release/sttp/goapi.svg?style=flat-square)](https://github.com/sttp/goapi/releases/latest)
- 
+
 ## Example Usage
 ```go
 package main
@@ -19,9 +19,9 @@ import (
     "strconv"
     "strings"
     "time"
-    
+
     "github.com/sttp/goapi/sttp"
-    "github.com/sttp/goapi/sttp/metadata"
+    "github.com/sttp/goapi/sttp/format"
     "github.com/sttp/goapi/sttp/transport"
 )
 
@@ -54,27 +54,6 @@ func main() {
     reader.ReadRune()
 }
 
-// ReceivedMetadata handles reception of the metadata response.
-func (sub *TestSubscriber) ReceivedMetadata(dataSet *metadata.DataSet) {
-    var rows int
-    var tables int
-
-    for _, table := range dataSet.Tables() {
-        rows += table.RowCount()
-        tables++
-    }
-
-    sub.StatusMessage(fmt.Sprintf("Received %d rows of metadata spanning %d tables", rows, tables))
-
-    schemaVersion := dataSet.Table("SchemaVersion")
-
-    if schemaVersion != nil {
-        sub.StatusMessage("    Schema version: " + schemaVersion.RowValueAsStringByName(0, "VersionNumber"))
-    } else {
-        sub.StatusMessage("    No SchemaVersion metadata table found")
-    }
-}
-
 var lastMessageDisplay time.Time
 
 // ReceivedNewMeasurements handles reception of new measurements.
@@ -93,7 +72,7 @@ func (sub *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Meas
 
     var message strings.Builder
 
-    message.WriteString(strconv.FormatUint(sub.TotalMeasurementsReceived(), 10))
+	message.WriteString(format.UInt64(sub.TotalMeasurementsReceived()))
     message.WriteString(" measurements received so far...\n")
     message.WriteString("Timestamp: ")
     message.WriteString(measurements[0].DateTime().Format("2006-01-02 15:04:05.999999999"))
@@ -109,7 +88,7 @@ func (sub *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Meas
         message.WriteRune('\t')
         message.WriteString(measurement.SignalID.String())
         message.WriteRune('\t')
-        message.WriteString(strconv.FormatFloat(measurement.Value, 'f', 6, 64))
+		message.WriteString(format.Float(measurement.Value, 6))
         message.WriteRune('\n')
     }
 

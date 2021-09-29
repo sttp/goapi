@@ -27,6 +27,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"strconv"
@@ -34,6 +35,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sttp/goapi/sttp/format"
 	"github.com/sttp/goapi/sttp/guid"
 	"github.com/sttp/goapi/sttp/thread"
 	"github.com/sttp/goapi/sttp/ticks"
@@ -130,6 +132,7 @@ type DataSubscriber struct {
 	STTPUpdatedOnInfo string
 
 	// Measurement parsing
+	metadataRequested       time.Time
 	measurementRegistry     map[guid.Guid]*MeasurementMetadata
 	signalIndexCache        [2]*SignalIndexCache
 	signalIndexCacheLock    sync.Mutex
@@ -709,12 +712,19 @@ func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byt
 func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
 	if ds.MetadataReceivedCallback != nil {
 		if ds.CompressMetadata {
+			ds.dispatchStatusMessage(fmt.Sprintf("Received %s bytes of metadata in %s seconds. Decompressing...", format.Int(len(data)), format.Float(time.Since(ds.metadataRequested).Seconds(), 3)))
+
+			decompressStarted := time.Now()
 			var err error
 
 			if data, err = decompressGZip(data); err != nil {
 				ds.dispatchErrorMessage("Failed to decompress received metadata: " + err.Error())
 				return
 			}
+
+			ds.dispatchStatusMessage(fmt.Sprintf("Decompressed %s bytes of metadata in %s seconds. Parsing...", format.Int(len(data)), format.Float(time.Since(decompressStarted).Seconds(), 3)))
+		} else {
+			ds.dispatchStatusMessage(fmt.Sprintf("Received %s bytes of metadata in %s seconds. Parsing...", format.Int(len(data)), format.Float(time.Since(ds.metadataRequested).Seconds(), 3)))
 		}
 
 		go ds.MetadataReceivedCallback(data)
@@ -1154,6 +1164,11 @@ func (ds *DataSubscriber) SendServerCommandWithPayload(commandCode ServerCommand
 		for i := 0; i < len(data); i++ {
 			ds.writeBuffer[5+i] = data[i]
 		}
+	}
+
+	if commandCode == ServerCommand.MetadataRefresh {
+		// Track time of metadata request to calculate round-trip receive time
+		ds.metadataRequested = time.Now()
 	}
 
 	if _, err := ds.commandChannelSocket.Write(ds.writeBuffer[:commandBufferSize]); err != nil {

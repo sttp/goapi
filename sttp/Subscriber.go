@@ -32,6 +32,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sttp/goapi/sttp/format"
 	"github.com/sttp/goapi/sttp/guid"
 	"github.com/sttp/goapi/sttp/metadata"
 	"github.com/sttp/goapi/sttp/ticks"
@@ -339,85 +340,134 @@ func (sb *SubscriberBase) handleReconnect(ds *transport.DataSubscriber) {
 }
 
 func (sb *SubscriberBase) handleMetadataReceived(data []byte) {
+	parseStarted := time.Now()
 	dataSet := metadata.NewDataSet()
 	err := dataSet.ParseXml(data)
 
 	if err == nil {
-		// Load parsed measurement metadata into measurement registry
-		measurements := dataSet.Table("MeasurementDetail")
-
-		if measurements != nil {
-			signalIDIndex := measurements.ColumnIndex("SignalID")
-
-			if signalIDIndex > -1 {
-				idIndex := measurements.ColumnIndex("ID")
-				pointTagIndex := measurements.ColumnIndex("PointTag")
-				signalRefIndex := measurements.ColumnIndex("SignalReference")
-				signalTypeIndex := measurements.ColumnIndex("SignalAcronym")
-				descriptionIndex := measurements.ColumnIndex("Description")
-				updatedOnIndex := measurements.ColumnIndex("UpdatedOn")
-				ds := sb.dataSubscriber()
-
-				for i := 0; i < measurements.RowCount(); i++ {
-					measurement := measurements.Row(i)
-
-					if measurement == nil {
-						continue
-					}
-
-					signalID, err := measurement.GuidValue(signalIDIndex)
-
-					if err != nil {
-						continue
-					}
-
-					metadata := ds.LookupMetadata(signalID)
-
-					if idIndex > -1 {
-						id, _ := measurement.StringValue(idIndex)
-						parts := strings.Split(id, ":")
-
-						if len(parts) == 2 {
-							metadata.Source = parts[0]
-							metadata.ID, _ = strconv.ParseUint(parts[1], 10, 64)
-						}
-					}
-
-					if pointTagIndex > -1 {
-						metadata.Tag, _ = measurement.StringValue(pointTagIndex)
-					}
-
-					if signalRefIndex > -1 {
-						metadata.SignalReference, _ = measurement.StringValue(signalRefIndex)
-					}
-
-					if signalTypeIndex > -1 {
-						metadata.SignalType, _ = measurement.StringValue(signalTypeIndex)
-					}
-
-					if descriptionIndex > -1 {
-						metadata.Description, _ = measurement.StringValue(descriptionIndex)
-					}
-
-					if updatedOnIndex > -1 {
-						metadata.UpdatedOn, _ = measurement.DateTimeValue(updatedOnIndex)
-					}
-				}
-			} else {
-				sb.sub.ErrorMessage("Received metadata does not contain the required MeasurementDetail.SignalID field")
-			}
-		} else {
-			sb.sub.ErrorMessage("Received metadata does not contain the required MeasurementDetail table")
-		}
+		sb.loadMeasurementMetadata(dataSet)
 	} else {
 		sb.sub.ErrorMessage("Failed to parse received XML metadata: " + err.Error())
 	}
+
+	sb.showMetadataSummary(dataSet, parseStarted)
 
 	sb.sub.ReceivedMetadata(dataSet)
 
 	if sb.AutoRequestMetadata && sb.AutoSubscribe {
 		sb.dataSubscriber().Subscribe()
 	}
+}
+
+func (sb *SubscriberBase) loadMeasurementMetadata(dataSet *metadata.DataSet) {
+	measurements := dataSet.Table("MeasurementDetail")
+
+	if measurements != nil {
+		signalIDIndex := measurements.ColumnIndex("SignalID")
+
+		if signalIDIndex > -1 {
+			idIndex := measurements.ColumnIndex("ID")
+			pointTagIndex := measurements.ColumnIndex("PointTag")
+			signalRefIndex := measurements.ColumnIndex("SignalReference")
+			signalTypeIndex := measurements.ColumnIndex("SignalAcronym")
+			descriptionIndex := measurements.ColumnIndex("Description")
+			updatedOnIndex := measurements.ColumnIndex("UpdatedOn")
+			ds := sb.dataSubscriber()
+
+			for i := 0; i < measurements.RowCount(); i++ {
+				measurement := measurements.Row(i)
+
+				if measurement == nil {
+					continue
+				}
+
+				signalID, err := measurement.GuidValue(signalIDIndex)
+
+				if err != nil {
+					continue
+				}
+
+				metadata := ds.LookupMetadata(signalID)
+
+				if idIndex > -1 {
+					id, _ := measurement.StringValue(idIndex)
+					parts := strings.Split(id, ":")
+
+					if len(parts) == 2 {
+						metadata.Source = parts[0]
+						metadata.ID, _ = strconv.ParseUint(parts[1], 10, 64)
+					}
+				}
+
+				if pointTagIndex > -1 {
+					metadata.Tag, _ = measurement.StringValue(pointTagIndex)
+				}
+
+				if signalRefIndex > -1 {
+					metadata.SignalReference, _ = measurement.StringValue(signalRefIndex)
+				}
+
+				if signalTypeIndex > -1 {
+					metadata.SignalType, _ = measurement.StringValue(signalTypeIndex)
+				}
+
+				if descriptionIndex > -1 {
+					metadata.Description, _ = measurement.StringValue(descriptionIndex)
+				}
+
+				if updatedOnIndex > -1 {
+					metadata.UpdatedOn, _ = measurement.DateTimeValue(updatedOnIndex)
+				}
+			}
+		} else {
+			sb.sub.ErrorMessage("Received metadata does not contain the required MeasurementDetail.SignalID field")
+		}
+	} else {
+		sb.sub.ErrorMessage("Received metadata does not contain the required MeasurementDetail table")
+	}
+}
+
+func (sb *SubscriberBase) showMetadataSummary(dataSet *metadata.DataSet, parseStarted time.Time) {
+	getRowCount := func(tableName string) int {
+		table := dataSet.Table(tableName)
+
+		if table == nil {
+			return 0
+		}
+
+		return table.RowCount()
+	}
+
+	var tableDetails strings.Builder
+	totalRows := 0
+
+	tableDetails.WriteString("    Discovered:\n")
+
+	for _, table := range dataSet.Tables() {
+		tableName := table.Name()
+		tableRows := getRowCount(tableName)
+		totalRows += tableRows
+		tableDetails.WriteString(fmt.Sprintf("        %s %s records\n", format.Int(tableRows), tableName))
+	}
+
+	var message strings.Builder
+
+	message.WriteString("Parsed ")
+	message.WriteString(format.Int(totalRows))
+	message.WriteString(" metadata records in ")
+	message.WriteString(format.Float(time.Since(parseStarted).Seconds(), 3))
+	message.WriteString(" seconds.\n")
+	message.WriteString(tableDetails.String())
+
+	schemaVersion := dataSet.Table("SchemaVersion")
+
+	if schemaVersion != nil {
+		message.WriteString("Metadata schema version: " + schemaVersion.RowValueAsStringByName(0, "VersionNumber"))
+	} else {
+		message.WriteString("No SchemaVersion table found in metadata")
+	}
+
+	sb.sub.StatusMessage(message.String())
 }
 
 func (sb *SubscriberBase) handleDataStartTime(startTime ticks.Ticks) {
