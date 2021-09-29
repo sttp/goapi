@@ -39,12 +39,13 @@ func Float(f float64, prec int) string {
 // and the specified numeric thousands groupSymbol, e.g., ','.
 func FloatWith(f float64, prec int, decimalSymbol byte, groupSymbol byte) string {
 	in := strconv.FormatFloat(f, 'f', prec, 64)
+	decSymbolAsStr := string([]byte{decimalSymbol})
 
 	if decimalSymbol != '.' {
-		in = strings.Replace(in, ".", string([]byte{decimalSymbol}), 1)
+		in = strings.Replace(in, ".", decSymbolAsStr, 1)
 	}
 
-	parts := strings.Split(in, ".")
+	parts := strings.Split(in, decSymbolAsStr)
 	var fraction string
 
 	if len(parts) > 1 {
