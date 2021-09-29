@@ -106,7 +106,7 @@ func (sub *TestSubscriber) ConnectionTerminated() {
 ```
 
 ## More Examples
-> [https://github.com/sttp/goapi/examples](https://github.com/sttp/goapi/examples)
+> [https://github.com/sttp/goapi/tree/main/examples](https://github.com/sttp/goapi/tree/main/examples)
 
 
 ## Quick Installation

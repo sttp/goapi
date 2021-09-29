@@ -14,7 +14,7 @@ go get https://github.com/sttp/goapi
 ```
 
 ## Examples
-> [https://github.com/sttp/goapi/examples](https://github.com/sttp/goapi/examples)
+> [https://github.com/sttp/goapi/tree/main/examples](https://github.com/sttp/goapi/tree/main/examples)
 
 
 ## Support
