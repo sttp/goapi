@@ -50,7 +50,7 @@ func FloatWith(f float64, prec int, decimalSymbol byte, groupSymbol byte) string
 
 	if len(parts) > 1 {
 		in = parts[0]
-		fraction = "." + parts[1]
+		fraction = decSymbolAsStr + parts[1]
 	}
 
 	digits := len(in)
