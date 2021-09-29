@@ -71,7 +71,7 @@ func (sub *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Meas
 
     var message strings.Builder
 
-	message.WriteString(format.UInt64(sub.TotalMeasurementsReceived()))
+    message.WriteString(format.UInt64(sub.TotalMeasurementsReceived()))
     message.WriteString(" measurements received so far...\n")
     message.WriteString("Timestamp: ")
     message.WriteString(measurements[0].DateTime().Format("2006-01-02 15:04:05.999999999"))
@@ -87,7 +87,7 @@ func (sub *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Meas
         message.WriteRune('\t')
         message.WriteString(measurement.SignalID.String())
         message.WriteRune('\t')
-		message.WriteString(format.Float(measurement.Value, 6))
+        message.WriteString(format.Float(measurement.Value, 6))
         message.WriteRune('\n')
     }
 
