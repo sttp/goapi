@@ -104,6 +104,45 @@ func (sub *TestSubscriber) ConnectionTerminated() {
 }
 ```
 
+Example Output:
+```
+Connection to localhost:7175 established.
+Received 28,323 bytes of metadata in 0.017 seconds. Decompressing...
+Decompressed 251,898 bytes of metadata in 0.001 seconds. Parsing...
+Parsed 532 metadata records in 0.021 seconds.
+    Discovered:
+        4 DeviceDetail records
+        434 MeasurementDetail records
+        93 PhasorDetail records
+        1 SchemaVersion records
+Metadata schema version: 14
+Received signal index cache with 20 mappings
+Received success code in response to server command 0x2
+Client subscribed as compact with 20 signals.
+Receiving measurements...
+2,994 measurements received so far...
+Timestamp: 2021-09-29 13:19:52.4333333
+        ID      Signal ID                               Value
+        152     {76cf5782-72f3-4312-ab92-d1e04bfd0e80}  149.011917
+        155     {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e}  -2.539322
+        153     {fefec5df-ca04-4c2b-a7b2-b4c8b1298795}  42.401386
+        156     {2c9a565f-424c-44c6-ac03-c6f8be199b24}  48.603382
+        154     {f0a6f8c5-0c0b-48d4-b181-db45ed555b7e}  -67.139977
+        157     {6ee8c6ca-3421-4867-846e-b301f730702e}  -10.387241
+
+5,968 measurements received so far...
+Timestamp: 2021-09-29 13:19:57.4333333
+        ID      Signal ID                               Value
+        152     {76cf5782-72f3-4312-ab92-d1e04bfd0e80}  150.768799
+        155     {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e}  -1.029660
+        153     {fefec5df-ca04-4c2b-a7b2-b4c8b1298795}  42.121387
+        156     {2c9a565f-424c-44c6-ac03-c6f8be199b24}  48.389652
+        154     {f0a6f8c5-0c0b-48d4-b181-db45ed555b7e}  -67.775978
+        157     {6ee8c6ca-3421-4867-846e-b301f730702e}  -11.303692
+
+Connection to localhost:7175 terminated.
+```
+
 ## More Examples
 > [https://github.com/sttp/goapi/tree/main/examples](https://github.com/sttp/goapi/tree/main/examples)
 
