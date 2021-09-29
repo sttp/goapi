@@ -169,15 +169,15 @@ func (xn *XmlNode) SelectNodes(xpath string) []*XmlNode {
 				predicate := expr[lbp+1 : rbp]
 
 				if predicate[0] == '@' {
-					if (node.Name == name || name == "*") && node.attributeMatch(predicate[1:]) {
+					if isMatch(node.Name, name) && node.attributeMatch(predicate[1:]) {
 						results = append(results, node)
 					}
 				} else {
-					if (node.Name == name || name == "*") && node.childValueMatch(predicate) {
+					if isMatch(node.Name, name) && node.childValueMatch(predicate) {
 						results = append(results, node)
 					}
 				}
-			} else if node.Name == expr || expr == "*" {
+			} else if isMatch(node.Name, expr) {
 				results = append(results, node)
 			}
 		}
@@ -197,6 +197,10 @@ func (xn *XmlNode) SelectNodes(xpath string) []*XmlNode {
 	}
 
 	return results
+}
+
+func isMatch(value, name string) bool {
+	return value == name || name == "*"
 }
 
 func (xn *XmlNode) attributeMatch(expr string) bool {
