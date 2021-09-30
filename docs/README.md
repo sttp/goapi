@@ -55,7 +55,8 @@ func main() {
     }()
 
     bufio.NewReader(os.Stdin).ReadRune()
-}```
+}
+```
 
 Example Output:
 ```cmd
