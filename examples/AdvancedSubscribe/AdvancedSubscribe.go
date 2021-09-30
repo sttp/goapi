@@ -24,10 +24,7 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"math"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -37,55 +34,56 @@ import (
 	"github.com/sttp/goapi/sttp/transport"
 )
 
-// AdvancedSubscriber is a simple STTP data subscriber implementation.
+// AdvancedSubscriber represents an STTP data subscriber implementation.
 type AdvancedSubscriber struct {
-	sttp.SubscriberBase // Provides default implementation
+	sttp.Subscriber
+	Config   *sttp.Config
+	Settings *sttp.Settings
+
+	lastMessage time.Time
 }
 
 // NewAdvancedSubscriber creates a new AdvancedSubscriber.
 func NewAdvancedSubscriber() *AdvancedSubscriber {
-	subscriber := &AdvancedSubscriber{}
-	subscriber.SubscriberBase = sttp.NewSubscriberBase(subscriber)
+	subscriber := &AdvancedSubscriber{
+		Subscriber: *sttp.NewSubscriber(),
+		Config:     sttp.NewConfig(),
+		Settings:   sttp.NewSettings(),
+	}
+
+	subscriber.SetSubscriptionUpdatedReceiver(subscriber.subscriptionUpdated)
+	subscriber.SetNewMeasurementsReceiver(subscriber.receivedNewMeasurements)
+	subscriber.SetConnectionTerminatedReceiver(subscriber.connectionTerminated)
+
 	return subscriber
 }
 
 func main() {
-	hostname, port := parseCmdLineArgs()
+	address := parseCmdLineArgs()
 	subscriber := NewAdvancedSubscriber()
-	subscription := subscriber.Subscription()
 
-	subscriber.Hostname = hostname
-	subscriber.Port = port
+	subscriber.Settings.UdpPort = 9600
+	subscriber.Settings.UseMillisecondResolution = true
 
-	subscription.FilterExpression = "FILTER TOP 20 ActiveMeasurements WHERE True"
-	subscription.UdpDataChannel = true
-	subscription.DataChannelLocalPort = 9600
-	subscription.UseMillisecondResolution = true
+	subscriber.Subscribe("FILTER TOP 20 ActiveMeasurements WHERE True", nil)
+	subscriber.Dial(address, nil)
+	defer subscriber.Close()
 
-	subscriber.Connect()
-	defer subscriber.Dispose()
-
-	reader := bufio.NewReader(os.Stdin)
-	reader.ReadRune()
+	readKey()
 }
 
-// SubscriptionUpdated handles notifications that a new SignalIndexCache has been received.
-func (sub *AdvancedSubscriber) SubscriptionUpdated(signalIndexCache *transport.SignalIndexCache) {
+func (sub *AdvancedSubscriber) subscriptionUpdated(signalIndexCache *transport.SignalIndexCache) {
 	sub.StatusMessage(fmt.Sprintf("Received signal index cache with %d mappings", signalIndexCache.Count()))
 }
 
-var lastMessageDisplay time.Time
-
-// ReceivedNewMeasurements handles reception of new measurements.
-func (sub *AdvancedSubscriber) ReceivedNewMeasurements(measurements []transport.Measurement) {
-
-	if time.Since(lastMessageDisplay).Seconds() < 5.0 {
+func (sub *AdvancedSubscriber) receivedNewMeasurements(measurements []transport.Measurement) {
+	if time.Since(sub.lastMessage).Seconds() < 5.0 {
 		return
 	}
 
-	defer func() { lastMessageDisplay = time.Now() }()
+	defer func() { sub.lastMessage = time.Now() }()
 
-	if lastMessageDisplay.IsZero() {
+	if sub.lastMessage.IsZero() {
 		sub.StatusMessage("Receiving measurements...")
 		return
 	}
@@ -95,7 +93,7 @@ func (sub *AdvancedSubscriber) ReceivedNewMeasurements(measurements []transport.
 	message.WriteString(format.UInt64(sub.TotalMeasurementsReceived()))
 	message.WriteString(" measurements received so far...\n")
 	message.WriteString("Timestamp: ")
-	message.WriteString(measurements[0].DateTime().Format("2006-01-02 15:04:05.999999999"))
+	message.WriteString(measurements[0].Timestamp.String())
 	message.WriteRune('\n')
 	message.WriteString("\tID\tSignal ID\t\t\t\tValue\n")
 
@@ -115,36 +113,10 @@ func (sub *AdvancedSubscriber) ReceivedNewMeasurements(measurements []transport.
 	sub.StatusMessage(message.String())
 }
 
-// ConnectionTerminated handles notification that a connection has been terminated.
-func (sub *AdvancedSubscriber) ConnectionTerminated() {
-	// Call base implementation which will display a connection terminated message to stderr
-	sub.SubscriberBase.ConnectionTerminated()
+func (sub *AdvancedSubscriber) connectionTerminated() {
+	// Call default implementation which will display a connection terminated message to stderr
+	sub.DefaultConnectionEstablishedReceiver()
 
 	// Reset last message display time on disconnect
-	lastMessageDisplay = time.Time{}
-}
-
-func parseCmdLineArgs() (string, uint16) {
-	args := os.Args
-
-	if len(args) < 3 {
-		fmt.Println("Usage:")
-		fmt.Println("    AdvancedSubscribe HOSTNAME PORT")
-		os.Exit(1)
-	}
-
-	hostname := args[1]
-	port, err := strconv.Atoi(args[2])
-
-	if err != nil {
-		fmt.Printf("Invalid port number \"%s\": %s\n", args[1], err.Error())
-		os.Exit(2)
-	}
-
-	if port < 1 || port > math.MaxUint16 {
-		fmt.Printf("Port number \"%s\" is out of range: must be 1 to %d\n", args[1], math.MaxUint16)
-		os.Exit(2)
-	}
-
-	return hostname, uint16(port)
+	sub.lastMessage = time.Time{}
 }

@@ -13,132 +13,75 @@ package main
 
 import (
     "bufio"
-    "fmt"
     "os"
     "strconv"
     "strings"
     "time"
 
     "github.com/sttp/goapi/sttp"
-    "github.com/sttp/goapi/sttp/format"
-    "github.com/sttp/goapi/sttp/transport"
 )
 
-// TestSubscriber is a simple STTP data subscriber implementation.
-type TestSubscriber struct {
-    sttp.SubscriberBase // Provides default implementation
-}
-
-// NewTestSubscriber creates a new TestSubscriber.
-func NewTestSubscriber() *TestSubscriber {
-    subscriber := &TestSubscriber{}
-    subscriber.SubscriberBase = sttp.NewSubscriberBase(subscriber)
-    return subscriber
-}
-
 func main() {
-    subscriber := NewTestSubscriber()
-    subscription := subscriber.Subscription()
+    subscriber := sttp.NewSubscriber()
+    subscriber.Subscribe("FILTER TOP 20 ActiveMeasurements WHERE True", nil)
+    subscriber.Dial("localhost:7175", nil)
+    defer subscriber.Close()
 
-    subscriber.Hostname = "localhost"
-    subscriber.Port = 7165
-    subscriber.Version = 1
+    reader := subscriber.ReadMeasurements()
 
-    subscription.FilterExpression = "FILTER TOP 10 ActiveMeasurements WHERE SignalType = 'FREQ'"
+    go func() {
+        var lastMessage time.Time
 
-    subscriber.Connect()
-    defer subscriber.Dispose()
+        for subscriber.IsConnected() {
+            measurement := reader.NextMeasurement()
 
-    reader := bufio.NewReader(os.Stdin)
-    reader.ReadRune()
-}
+            if time.Since(lastMessage).Seconds() < 5.0 {
+                continue
+            } else if lastMessage.IsZero() {
+                subscriber.StatusMessage("Receiving measurements...")
+                lastMessage = time.Now()
+                continue
+            }
 
-var lastMessageDisplay time.Time
+            var message strings.Builder
 
-// ReceivedNewMeasurements handles reception of new measurements.
-func (sub *TestSubscriber) ReceivedNewMeasurements(measurements []transport.Measurement) {
+            message.WriteString(strconv.FormatUint(subscriber.TotalMeasurementsReceived(), 10))
+            message.WriteString(" measurements received so far. Current measurement:\n    ")
+            message.WriteString(measurement.String())
 
-    if time.Since(lastMessageDisplay).Seconds() < 5.0 {
-        return
-    }
+            subscriber.StatusMessage(message.String())
+            lastMessage = time.Now()
+        }
+    }()
 
-    defer func() { lastMessageDisplay = time.Now() }()
-
-    if lastMessageDisplay.IsZero() {
-        sub.StatusMessage("Receiving measurements...")
-        return
-    }
-
-    var message strings.Builder
-
-    message.WriteString(format.UInt64(sub.TotalMeasurementsReceived()))
-    message.WriteString(" measurements received so far...\n")
-    message.WriteString("Timestamp: ")
-    message.WriteString(measurements[0].DateTime().Format("2006-01-02 15:04:05.999999999"))
-    message.WriteRune('\n')
-    message.WriteString("\tID\tSignal ID\t\t\t\tValue\n")
-
-    for i := 0; i < len(measurements); i++ {
-        measurement := measurements[i]
-        metadata := sub.Metadata(&measurement)
-
-        message.WriteRune('\t')
-        message.WriteString(strconv.FormatUint(metadata.ID, 10))
-        message.WriteRune('\t')
-        message.WriteString(measurement.SignalID.String())
-        message.WriteRune('\t')
-        message.WriteString(format.Float(measurement.Value, 6))
-        message.WriteRune('\n')
-    }
-
-    sub.StatusMessage(message.String())
-}
-
-// ConnectionTerminated handles notification that a connection has been terminated.
-func (sub *TestSubscriber) ConnectionTerminated() {
-    // Call base implementation method which will display a connection terminated message to stderr
-    sub.SubscriberBase.ConnectionTerminated()
-
-    // Reset last message display time on disconnect
-    lastMessageDisplay = time.Time{}
-}
-```
+    bufio.NewReader(os.Stdin).ReadRune()
+}```
 
 Example Output:
-```
+```cmd
 Connection to localhost:7175 established.
-Received 28,323 bytes of metadata in 0.017 seconds. Decompressing...
-Decompressed 251,898 bytes of metadata in 0.001 seconds. Parsing...
-Parsed 532 metadata records in 0.021 seconds.
+Received 34,884 bytes of metadata in 0.586 seconds. Decompressing...
+Decompressed 304,329 bytes of metadata in 0.003 seconds. Parsing...
+Parsed 643 metadata records in 1.236 seconds.
     Discovered:
         4 DeviceDetail records
-        434 MeasurementDetail records
-        93 PhasorDetail records
+        517 MeasurementDetail records
+        121 PhasorDetail records
         1 SchemaVersion records
 Metadata schema version: 14
-Received signal index cache with 20 mappings
 Received success code in response to server command 0x2
 Client subscribed as compact with 20 signals.
 Receiving measurements...
-2,994 measurements received so far...
-Timestamp: 2021-09-29 13:19:52.4333333
-        ID      Signal ID                               Value
-        152     {76cf5782-72f3-4312-ab92-d1e04bfd0e80}  149.011917
-        155     {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e}  -2.539322
-        153     {fefec5df-ca04-4c2b-a7b2-b4c8b1298795}  42.401386
-        156     {2c9a565f-424c-44c6-ac03-c6f8be199b24}  48.603382
-        154     {f0a6f8c5-0c0b-48d4-b181-db45ed555b7e}  -67.139977
-        157     {6ee8c6ca-3421-4867-846e-b301f730702e}  -10.387241
-
-5,968 measurements received so far...
-Timestamp: 2021-09-29 13:19:57.4333333
-        ID      Signal ID                               Value
-        152     {76cf5782-72f3-4312-ab92-d1e04bfd0e80}  150.768799
-        155     {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e}  -1.029660
-        153     {fefec5df-ca04-4c2b-a7b2-b4c8b1298795}  42.121387
-        156     {2c9a565f-424c-44c6-ac03-c6f8be199b24}  48.389652
-        154     {f0a6f8c5-0c0b-48d4-b181-db45ed555b7e}  -67.775978
-        157     {6ee8c6ca-3421-4867-846e-b301f730702e}  -11.303692
+2960 measurements received so far. Current measurement:
+    {7c30766c-8775-4763-b4e4-b2bb9512f464} @ 07:55:29.333 = 0.000 (Norm)
+5900 measurements received so far. Current measurement:
+    {f395d119-9b56-433b-9368-c78221d22639} @ 07:55:34.333 = 7.000 (Norm)
+8860 measurements received so far. Current measurement:
+    {f395d119-9b56-433b-9368-c78221d22639} @ 07:55:39.333 = 7.000 (Norm)
+11840 measurements received so far. Current measurement:
+    {f395d119-9b56-433b-9368-c78221d22639} @ 07:55:44.366 = 7.000 (Norm)
+14814 measurements received so far. Current measurement:
+    {3fccba58-ce36-4b05-8418-4cd9152aa9f0} @ 07:55:49.366 = 10.000 (Norm)
 
 Connection to localhost:7175 terminated.
 ```

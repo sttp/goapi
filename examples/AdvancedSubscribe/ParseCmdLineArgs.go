@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  SimpleSubscribe.go - Gbtc
+//  ParseCmdLineArgs.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -16,7 +16,7 @@
 //
 //  Code Modification History:
 //  ----------------------------------------------------------------------------------------------------
-//  09/17/2021 - J. Ritchie Carroll
+//  09/30/2021 - J. Ritchie Carroll
 //       Generated original version of source code.
 //
 //******************************************************************************************************
@@ -24,47 +24,38 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
+	"math"
+	"os"
 	"strconv"
-	"strings"
-	"time"
-
-	"github.com/sttp/goapi/sttp"
 )
 
-func main() {
-	address := parseCmdLineArgs()
-	subscriber := sttp.NewSubscriber()
+func parseCmdLineArgs() string {
+	args := os.Args
 
-	subscriber.Subscribe("FILTER TOP 20 ActiveMeasurements WHERE True", nil)
-	subscriber.Dial(address, nil)
-	defer subscriber.Close()
+	if len(args) < 3 {
+		fmt.Println("Usage:")
+		fmt.Println("    SimpleSubscribe HOSTNAME PORT")
+		os.Exit(1)
+	}
 
-	reader := subscriber.ReadMeasurements()
+	hostname := args[1]
+	port, err := strconv.Atoi(args[2])
 
-	go func() {
-		var lastMessage time.Time
+	if err != nil {
+		fmt.Printf("Invalid port number \"%s\": %s\n", args[1], err.Error())
+		os.Exit(2)
+	}
 
-		for subscriber.IsConnected() {
-			measurement := reader.NextMeasurement()
+	if port < 1 || port > math.MaxUint16 {
+		fmt.Printf("Port number \"%s\" is out of range: must be 1 to %d\n", args[1], math.MaxUint16)
+		os.Exit(2)
+	}
 
-			if time.Since(lastMessage).Seconds() < 5.0 {
-				continue
-			} else if lastMessage.IsZero() {
-				subscriber.StatusMessage("Receiving measurements...")
-				lastMessage = time.Now()
-				continue
-			}
+	return hostname + ":" + strconv.Itoa(port)
+}
 
-			var message strings.Builder
-
-			message.WriteString(strconv.FormatUint(subscriber.TotalMeasurementsReceived(), 10))
-			message.WriteString(" measurements received so far. Current measurement:\n    ")
-			message.WriteString(measurement.String())
-
-			subscriber.StatusMessage(message.String())
-			lastMessage = time.Now()
-		}
-	}()
-
-	readKey()
+func readKey() {
+	bufio.NewReader(os.Stdin).ReadRune()
 }
