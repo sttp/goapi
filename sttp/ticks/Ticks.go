@@ -115,7 +115,7 @@ func (t Ticks) String() string {
 	return t.ToTime().Format("2006-01-02 15:04:05.999999999")
 }
 
-// String returns the short time string form of a Ticks value.
+// ShortTime returns the short time string form of a Ticks value.
 func (t Ticks) ShortTime() string {
 	return t.ToTime().Format("15:04:05.999")
 }
