@@ -24,6 +24,8 @@
 package transport
 
 import (
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/sttp/goapi/sttp/guid"
@@ -53,5 +55,22 @@ func (m *Measurement) TicksValue() int64 {
 
 // DateTime gets a Measurement Ticks based timestamp as a standard Go Time value.
 func (m *Measurement) DateTime() time.Time {
-	return ticks.ToTime(m.Timestamp)
+	return m.Timestamp.ToTime()
+}
+
+// String returns the string form of a Measurement value.
+func (m *Measurement) String() string {
+	var state string
+
+	if m.Flags == StateFlags.Normal {
+		state = "Norm"
+	} else {
+		state = "Off Norm"
+	}
+
+	return fmt.Sprintf("%s @ %s = %s (%s)",
+		m.SignalID.String(),
+		m.Timestamp.ShortTime(),
+		strconv.FormatFloat(m.Value, 'f', 3, 64),
+		state)
 }

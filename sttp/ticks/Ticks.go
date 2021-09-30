@@ -94,3 +94,28 @@ func SetLeapSecond(ticks Ticks) Ticks {
 func UtcNow() Ticks {
 	return FromTime(time.Now().UTC())
 }
+
+// ToTime converts a Ticks value to standard Go Time value.
+func (t Ticks) ToTime() time.Time {
+	return ToTime(t)
+}
+
+// IsLeapSecond determines if the deserialized Ticks value represents a leap second, i.e., second 60.
+func (t Ticks) IsLeapSecond() bool {
+	return IsLeapSecond(t)
+}
+
+// SetLeapSecond flags a Ticks value to represent a leap second, i.e., second 60, before wire serialization.
+func (t Ticks) SetLeapSecond() Ticks {
+	return SetLeapSecond(t)
+}
+
+// String returns the string form of a Ticks value, i.e., a standard date/time value.
+func (t Ticks) String() string {
+	return t.ToTime().Format("2006-01-02 15:04:05.999999999")
+}
+
+// String returns the short time string form of a Ticks value.
+func (t Ticks) ShortTime() string {
+	return t.ToTime().Format("15:04:05.999")
+}
