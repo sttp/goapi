@@ -27,9 +27,8 @@ func main() {
     subscriber.Dial("localhost:7175", nil)
     defer subscriber.Close()
 
-    reader := subscriber.ReadMeasurements()
-
     go func() {
+        reader := subscriber.ReadMeasurements()
         var lastMessage time.Time
 
         for subscriber.IsConnected() {
@@ -61,28 +60,30 @@ func main() {
 Example Output:
 ```cmd
 Connection to localhost:7175 established.
-Received 34,884 bytes of metadata in 0.586 seconds. Decompressing...
-Decompressed 304,329 bytes of metadata in 0.003 seconds. Parsing...
-Parsed 643 metadata records in 1.236 seconds.
+Received 28,323 bytes of metadata in 0.020 seconds. Decompressing...
+Decompressed 251,898 bytes of metadata in 0.001 seconds. Parsing...
+Parsed 532 metadata records in 0.038 seconds.
     Discovered:
         4 DeviceDetail records
-        517 MeasurementDetail records
-        121 PhasorDetail records
+        434 MeasurementDetail records
+        93 PhasorDetail records
         1 SchemaVersion records
 Metadata schema version: 14
 Received success code in response to server command 0x2
 Client subscribed as compact with 20 signals.
 Receiving measurements...
-2960 measurements received so far. Current measurement:
-    {7c30766c-8775-4763-b4e4-b2bb9512f464} @ 07:55:29.333 = 0.000 (Norm)
-5900 measurements received so far. Current measurement:
-    {f395d119-9b56-433b-9368-c78221d22639} @ 07:55:34.333 = 7.000 (Norm)
-8860 measurements received so far. Current measurement:
-    {f395d119-9b56-433b-9368-c78221d22639} @ 07:55:39.333 = 7.000 (Norm)
-11840 measurements received so far. Current measurement:
-    {f395d119-9b56-433b-9368-c78221d22639} @ 07:55:44.366 = 7.000 (Norm)
-14814 measurements received so far. Current measurement:
-    {3fccba58-ce36-4b05-8418-4cd9152aa9f0} @ 07:55:49.366 = 10.000 (Norm)
+2986 measurements received so far. Current measurement:
+    {c84fcf2f-d83a-4cd8-9dc8-7c5292c4a068} @ 18:21:42.766 = 60.019 (Norm)
+5924 measurements received so far. Current measurement:
+    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 18:21:42.766 = 1.397 (Norm)
+8892 measurements received so far. Current measurement:
+    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 18:21:47.766 = -1.739 (Norm)
+11880 measurements received so far. Current measurement:
+    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 18:21:52.766 = -4.064 (Norm)
+14866 measurements received so far. Current measurement:
+    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 18:21:57.766 = -2.472 (Norm)
+17846 measurements received so far. Current measurement:
+    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 18:22:02.766 = 0.569 (Norm)
 
 Connection to localhost:7175 terminated.
 ```

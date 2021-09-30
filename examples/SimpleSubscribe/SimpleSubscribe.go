@@ -39,9 +39,8 @@ func main() {
 	subscriber.Dial(address, nil)
 	defer subscriber.Close()
 
-	reader := subscriber.ReadMeasurements()
-
 	go func() {
+		reader := subscriber.ReadMeasurements()
 		var lastMessage time.Time
 
 		for subscriber.IsConnected() {
