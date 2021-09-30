@@ -26,6 +26,8 @@ package sttp
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -39,254 +41,170 @@ import (
 	"github.com/sttp/goapi/sttp/transport"
 )
 
-// Subscriber defines the primary functionality of an STTP data subscription.
-// Struct implementations of this interface that embed the SubscriberBase as a
-// composite field will inherit a default implementation of all required interface
-// methods. This allows implementations to focus only on needed functionality.
-type Subscriber interface {
-	// StatusMessage handles informational message logging.
-	StatusMessage(message string)
-	// ErrorMessage handles error message logging.
-	ErrorMessage(message string)
-	// ReceivedMetadata handles reception of the metadata response.
-	ReceivedMetadata(dataSet *metadata.DataSet)
-	// SubscriptionUpdated handles notifications that a new SignalIndexCache has been received.
-	SubscriptionUpdated(signalIndexCache *transport.SignalIndexCache)
-	// DataStartTime handles notifications of first received measurement. This can be useful in
-	// cases where SubscriptionInfo.IncludeTime has been set to false.
-	DataStartTime(startTime time.Time)
-	// ConfigurationChanged handles notifications that the publisher configuration has changed.
-	ConfigurationChanged()
-	// ReceivedNewMeasurements handles reception of new measurements.
-	ReceivedNewMeasurements(measurements []transport.Measurement)
-	// ReceivedNewBufferBlocks handles reception of new buffer blocks.
-	ReceivedNewBufferBlocks(bufferBlocks []transport.BufferBlock)
-	// ReceivedNotification handles reception of a notification.
-	ReceivedNotification(notification string)
-	// HistoricalReadComplete handles notification that temporal processing has completed,
-	// i.e., the end of a historical playback data stream has been reached.
-	HistoricalReadComplete()
-	// ConnectionEstablished handles notification that a connection has been established.
-	ConnectionEstablished()
-	// ConnectionTerminated handles notification that a connection has been terminated.
-	ConnectionTerminated()
+// Subscriber represents an STTP data subscriber.
+type Subscriber struct {
+	// Configuration reference
+	config *Config
+
+	// DataSubscriber reference
+	ds *transport.DataSubscriber
+
+	// Callback references
+	statusMessageLogger            func(message string)
+	errorMessageLogger             func(message string)
+	metadataReceiver               func(dataSet *metadata.DataSet)
+	dataStartTimeReceiver          func(startTime time.Time)
+	configurationChangedReceiver   func()
+	historicalReadCompleteReceiver func()
+	connectionEstablishedReceiver  func()
+	connectionTerminatedReceiver   func()
+
+	// Lock used to synchronize console writes
+	consoleLock sync.Mutex
 }
 
-// SubscriberBase provides the default functionality for a Subscriber implementation.
-type SubscriberBase struct {
-	// Hostname is the DataPublisher DNS name or IP.
-	Hostname string
-
-	// Port it the TCP/IP listening port of the DataPublisher.
-	Port uint16
-
-	// MaxRetries defines the maximum number of times to retry a connection.
-	// Set value to -1 to retry infinitely.
-	MaxRetries int32
-
-	// RetryInterval defines the base retry interval, in milliseconds. Retries will
-	// exponentially back-off starting from this interval.
-	RetryInterval int32
-
-	// MaxRetryInterval defines the maximum retry interval, in milliseconds.
-	MaxRetryInterval int32
-
-	// AutoReconnect defines flag that determines if connections should be
-	// automatically reattempted.
-	AutoReconnect bool
-
-	// AutoRequestMetadata defines the flag that determines if metadata should be
-	// automatically requested upon successful connection. When true, metadata will
-	// be requested upon connection before subscription; otherwise, any metadata
-	// operations must be handled manually.
-	AutoRequestMetadata bool
-
-	// AutoSubscribe defines the flag that determines if subscription should be
-	// handled automatically upon successful connection. When AutoRequestMetadata
-	// is true and AutoSubscribe is true, subscription will occur after reception
-	// of metadata. When AutoRequestMetadata is false and AutoSubscribe is true,
-	// subscription will occur at successful connection. When AutoSubscribe is
-	// false, any subscribe operations must be handled manually.
-	AutoSubscribe bool
-
-	// CompressPayloadData determines whether payload data is compressed.
-	CompressPayloadData bool
-
-	// CompressMetadata determines whether the metadata transfer is compressed.
-	CompressMetadata bool
-
-	// CompressSignalIndexCache determines whether the signal index cache is compressed.
-	CompressSignalIndexCache bool
-
-	// MetadataFilters defines any filters to be applied to incoming metadata to reduce total
-	// received metadata. Each filter expression should be separated by semi-colon.
-	MetadataFilters string
-
-	// Version defines the target STTP protocol version. This currently defaults to 2.
-	Version byte
-
-	sub         Subscriber                // Reference to consumer Subscriber implementation
-	ds          *transport.DataSubscriber // Reference to internal DataSubscriber instance
-	consoleLock sync.Mutex                // Simple lock to synchronize console writes
-}
-
-// NewSubscriberBase creates a new SubscriberBase with specified Subscriber.
-func NewSubscriberBase(subscriber Subscriber) SubscriberBase {
-	return SubscriberBase{
-		sub:                      subscriber,
-		ds:                       transport.NewDataSubscriber(),
-		MaxRetries:               -1,
-		RetryInterval:            1000,
-		MaxRetryInterval:         30000,
-		AutoReconnect:            true,
-		AutoRequestMetadata:      true,
-		AutoSubscribe:            true,
-		CompressPayloadData:      true,
-		CompressMetadata:         true,
-		CompressSignalIndexCache: true,
-		Version:                  2,
+// NewSubscriber creates a new Subscriber.
+func NewSubscriber() *Subscriber {
+	sb := Subscriber{
+		config: NewConfig(),
+		ds:     transport.NewDataSubscriber(),
 	}
+	sb.statusMessageLogger = sb.DefaultStatusMessageLogger
+	sb.errorMessageLogger = sb.DefaultErrorMessageLogger
+	sb.connectionEstablishedReceiver = sb.DefaultConnectionEstablishedReceiver
+	sb.connectionTerminatedReceiver = sb.DefaultConnectionTerminatedReceiver
+	return &sb
 }
 
-// Dispose cleanly shuts down a DataSubscriber that is no longer being used, e.g.,
+// Close cleanly shuts down a DataSubscriber that is no longer being used, e.g.,
 // during a normal application exit.
-func (sb *SubscriberBase) Dispose() {
+func (sb *Subscriber) Close() {
 	if sb.ds != nil {
 		sb.ds.Dispose()
 	}
 }
 
 // dataSubscriber gets a reference to the internal DataSubscriber instance.
-func (sb *SubscriberBase) dataSubscriber() *transport.DataSubscriber {
+func (sb *Subscriber) dataSubscriber() *transport.DataSubscriber {
 	if sb.ds == nil {
-		panic("Internal DataSubscriber instance has not been initialized. Make sure to use NewSubscriberBase.")
+		panic("Internal DataSubscriber instance has not been initialized. Make sure to use NewSubscriber.")
 	}
 
 	return sb.ds
 }
 
 // IsConnected determines if Subscriber is currently connected to a data publisher.
-func (sb *SubscriberBase) IsConnected() bool {
+func (sb *Subscriber) IsConnected() bool {
 	return sb.dataSubscriber().IsConnected()
 }
 
 // IsSubscribed determines if Subscriber is currently subscribed to a data stream.
-func (sb *SubscriberBase) IsSubscribed() bool {
+func (sb *Subscriber) IsSubscribed() bool {
 	return sb.dataSubscriber().IsSubscribed()
 }
 
-// Subscription gets subscription related settings for Subscriber.
-func (sb *SubscriberBase) Subscription() *transport.SubscriptionInfo {
-	return sb.dataSubscriber().Subscription()
-}
-
 // ActiveSignalIndexCache gets the active signal index cache.
-func (sb *SubscriberBase) ActiveSignalIndexCache() *transport.SignalIndexCache {
+func (sb *Subscriber) ActiveSignalIndexCache() *transport.SignalIndexCache {
 	return sb.dataSubscriber().ActiveSignalIndexCache()
 }
 
 // SubscriberID gets the subscriber ID as assigned by the data publisher upon receipt of the SignalIndexCache.
-func (sb *SubscriberBase) SubscriberID() guid.Guid {
+func (sb *Subscriber) SubscriberID() guid.Guid {
 	return sb.dataSubscriber().SubscriberID()
 }
 
 // TotalCommandChannelBytesReceived gets the total number of bytes received via the command channel since last connection.
-func (sb *SubscriberBase) TotalCommandChannelBytesReceived() uint64 {
+func (sb *Subscriber) TotalCommandChannelBytesReceived() uint64 {
 	return sb.dataSubscriber().TotalCommandChannelBytesReceived()
 }
 
 // TotalDataChannelBytesReceived gets the total number of bytes received via the data channel since last connection.
-func (sb *SubscriberBase) TotalDataChannelBytesReceived() uint64 {
+func (sb *Subscriber) TotalDataChannelBytesReceived() uint64 {
 	return sb.dataSubscriber().TotalDataChannelBytesReceived()
 }
 
 // TotalMeasurementsReceived gets the total number of measurements received since last subscription.
-func (sb *SubscriberBase) TotalMeasurementsReceived() uint64 {
+func (sb *Subscriber) TotalMeasurementsReceived() uint64 {
 	return sb.dataSubscriber().TotalMeasurementsReceived()
 }
 
 // LookupMetadata gets the MeasurementMetadata for the specified signalID from the local
 // registry. If the metadata does not exist, a new record is created and returned.
-func (sb *SubscriberBase) LookupMetadata(signalID guid.Guid) *transport.MeasurementMetadata {
+func (sb *Subscriber) LookupMetadata(signalID guid.Guid) *transport.MeasurementMetadata {
 	return sb.dataSubscriber().LookupMetadata(signalID)
 }
 
 // Metadata gets the measurement-level metadata associated with a measurement from the local
 // registry. If the metadata does not exist, a new record is created and returned.
-func (sb *SubscriberBase) Metadata(measurement *transport.Measurement) *transport.MeasurementMetadata {
+func (sb *Subscriber) Metadata(measurement *transport.Measurement) *transport.MeasurementMetadata {
 	return sb.dataSubscriber().Metadata(measurement)
 }
 
 // AdjustedValue gets the Value of a Measurement with any linear adjustments applied from the
 // measurement's Adder and Multiplier metadata, if found.
-func (sb *SubscriberBase) AdjustedValue(measurement *transport.Measurement) float64 {
+func (sb *Subscriber) AdjustedValue(measurement *transport.Measurement) float64 {
 	return sb.dataSubscriber().AdjustedValue(measurement)
 }
 
-// RequestMetadata sends a request to the data publisher indicating that the Subscriber would
-// like new metadata. Any defined MetadataFilters will be included in request.
-func (sb *SubscriberBase) RequestMetadata() {
-	ds := sb.dataSubscriber()
+// Dial starts the client-based connection cycle to an STTP publisher. Config parameter controls
+// connection related settings, set value to nil for default values. When the config defines
+// AutoReconnect as true, the connection will automatically be retried when the connection drops.
+// If the config defines AutoRequestMetadata as true, then upon successful connection, meta-data
+// will be requested. When the config defines both AutoRequestMetadata and AutoSubscribe as true,
+// subscription will occur after reception of metadata. When the config defines AutoRequestMetadata
+// as false and AutoSubscribe as true, subscription will occur at successful connection.
+func (sb *Subscriber) Dial(address string, config *Config) error {
+	hostname, portname, err := net.SplitHostPort(address)
 
-	if len(sb.MetadataFilters) == 0 {
-		ds.SendServerCommand(transport.ServerCommand.MetadataRefresh)
-		return
+	if err != nil {
+		return err
 	}
 
-	filters := ds.EncodeString(sb.MetadataFilters)
-	buffer := make([]byte, 4+len(filters))
+	port, err := strconv.Atoi(portname)
 
-	binary.BigEndian.PutUint32(buffer, uint32(len(filters)))
-	copy(buffer[4:], filters)
+	if err != nil {
+		return fmt.Errorf("invalid port number \"%s\": %s", portname, err.Error())
+	}
 
-	ds.SendServerCommandWithPayload(transport.ServerCommand.MetadataRefresh, buffer)
+	if port < 1 || port > math.MaxUint16 {
+		return fmt.Errorf("port number \"%s\" is out of range: must be 1 to %d", portname, math.MaxUint16)
+	}
+
+	if config != nil {
+		sb.config = config
+	}
+
+	sb.connect(hostname, uint16(port))
+	return nil
 }
 
-// Subscribe sends a request to the data publisher indicating that the Subscriber would
-// like to start receiving streaming data. Subscribe parameters are controlled by the
-// SubscriptionInfo fields available through the Subscription receiver method.
-func (sb *SubscriberBase) Subscribe() {
-	sb.dataSubscriber().Subscribe()
-}
+func (sb *Subscriber) connect(hostname string, port uint16) {
+	if sb.config == nil {
+		panic("Internal Config instance has not been initialized. Make sure to use NewSubscriber.")
+	}
 
-// Unsubscribe sends a request to the data publisher indicating that the Subscriber would
-// like to stop receiving streaming data.
-func (sb *SubscriberBase) Unsubscribe() {
-	sb.dataSubscriber().Unsubscribe()
-}
-
-// Connect starts the connection cycle to an STTP publisher. When AutoReconnect is true, the connection
-// will automatically be retried when the connection drops. If AutoRequestMetadata is true, then upon
-// successful connection, meta-data will be requested. When AutoRequestMetadata is true and AutoSubscribe
-// is true, subscription will occur after reception of metadata. When AutoRequestMetadata is false and
-// AutoSubscribe is true, subscription will occur at successful connection.
-func (sb *SubscriberBase) Connect() {
 	ds := sb.dataSubscriber()
 	con := ds.Connector()
-	sub := sb.sub
 
 	// Set connection properties
-	con.Hostname = sb.Hostname
-	con.Port = sb.Port
-	con.MaxRetries = sb.MaxRetries
-	con.RetryInterval = sb.RetryInterval
-	con.MaxRetryInterval = sb.MaxRetryInterval
-	con.AutoReconnect = sb.AutoReconnect
+	con.Hostname = hostname
+	con.Port = port
 
-	ds.CompressPayloadData = sb.CompressPayloadData
-	ds.CompressMetadata = sb.CompressMetadata
-	ds.CompressSignalIndexCache = sb.CompressSignalIndexCache
-	ds.Version = sb.Version
+	con.MaxRetries = sb.config.MaxRetries
+	con.RetryInterval = sb.config.RetryInterval
+	con.MaxRetryInterval = sb.config.MaxRetryInterval
+	con.AutoReconnect = sb.config.AutoReconnect
 
-	// Register direct Subscriber interface callbacks
-	con.ErrorMessageCallback = sub.ErrorMessage
-	ds.StatusMessageCallback = sub.StatusMessage
-	ds.ErrorMessageCallback = sub.ErrorMessage
-	ds.ConnectionTerminatedCallback = sub.ConnectionTerminated
-	ds.SubscriptionUpdatedCallback = sub.SubscriptionUpdated
-	ds.NewMeasurementsCallback = sub.ReceivedNewMeasurements
-	ds.NewBufferBlocksCallback = sub.ReceivedNewBufferBlocks
-	ds.NotificationReceivedCallback = sub.ReceivedNotification
+	ds.CompressPayloadData = sb.config.CompressPayloadData
+	ds.CompressMetadata = sb.config.CompressMetadata
+	ds.CompressSignalIndexCache = sb.config.CompressSignalIndexCache
+	ds.Version = sb.config.Version
+
+	// Register direct Subscriber callbacks
+	con.ErrorMessageCallback = sb.errorMessageLogger
+	ds.StatusMessageCallback = sb.statusMessageLogger
+	ds.ErrorMessageCallback = sb.errorMessageLogger
+	ds.ConnectionTerminatedCallback = sb.connectionTerminatedReceiver
 
 	// Register callbacks with intermediate handlers
 	con.ReconnectCallback = sb.handleReconnect
@@ -299,47 +217,155 @@ func (sb *SubscriberBase) Connect() {
 
 	// Connect and subscribe to publisher
 	if status = con.Connect(ds); status == transport.ConnectStatus.Success {
-		sub.ConnectionEstablished()
+		if sb.connectionEstablishedReceiver != nil {
+			sb.connectionEstablishedReceiver()
+		}
 
 		// If automatically parsing metadata, request metadata upon successful connection,
 		// after metadata is received the SubscriberInstance will then initiate subscribe;
 		// otherwise, subscribe is initiated immediately (when auto subscribe requested)
-		if sb.AutoRequestMetadata {
+		if sb.config.AutoRequestMetadata {
 			sb.RequestMetadata()
-		} else if sb.AutoSubscribe {
+		} else if sb.config.AutoSubscribe {
 			ds.Subscribe()
 		}
 	} else if status == transport.ConnectStatus.Failed {
-		sb.sub.ErrorMessage("All connection attempts failed")
+		sb.ErrorMessage("All connection attempts failed")
 	}
 }
 
 // Disconnect disconnects from an STTP publisher.
-func (sb *SubscriberBase) Disconnect() {
+func (sb *Subscriber) Disconnect() {
 	sb.dataSubscriber().Disconnect()
+}
+
+// RequestMetadata sends a request to the data publisher indicating that the Subscriber would
+// like new metadata. Any defined MetadataFilters will be included in request.
+func (sb *Subscriber) RequestMetadata() {
+	ds := sb.dataSubscriber()
+
+	if len(sb.config.MetadataFilters) == 0 {
+		ds.SendServerCommand(transport.ServerCommand.MetadataRefresh)
+		return
+	}
+
+	filters := ds.EncodeString(sb.config.MetadataFilters)
+	buffer := make([]byte, 4+len(filters))
+
+	binary.BigEndian.PutUint32(buffer, uint32(len(filters)))
+	copy(buffer[4:], filters)
+
+	ds.SendServerCommandWithPayload(transport.ServerCommand.MetadataRefresh, buffer)
+}
+
+// Subscribe sets up a request indicating that the Subscriber would like to start receiving
+// streaming data from a data publisher. If the subscriber is already connected, the updated
+// filter expression and subscription settings will be requested immediately; otherwise, the
+// settings will be used when the connection to the data publisher is established.
+//
+// The filterExpression defines the desired measurements for a subscription. Examples include:
+//
+// * Directly specified signal IDs (UUID values in string format):
+//     38A47B0-F10B-4143-9A0A-0DBC4FFEF1E8; E4BBFE6A-35BD-4E5B-92C9-11FF913E7877
+//
+// * Directly specified tag names:
+//     DOM_GPLAINS-BUS1:VH; TVA_SHELBY-BUS1:VH
+//
+// * Directly specified identifiers in "measurement key" format:
+//     PPA:15; STAT:20
+//
+// * A filter expression against a selection view:
+//     FILTER ActiveMeasurements WHERE Company='GPA' AND SignalType='FREQ'
+//
+// Settings parameter controls subscription related settings, set value to nil for default values.
+func (sb *Subscriber) Subscribe(filterExpression string, settings *Settings) {
+	ds := sb.dataSubscriber()
+	sub := ds.Subscription()
+
+	if settings == nil {
+		settings = &settingsDefaults
+	}
+
+	sub.FilterExpression = filterExpression
+	sub.Throttled = settings.Throttled
+	sub.PublishInterval = settings.PublishInterval
+
+	if settings.UdpPort > 0 {
+		sub.UdpDataChannel = true
+		sub.DataChannelLocalPort = settings.UdpPort
+	} else {
+		sub.UdpDataChannel = false
+		sub.DataChannelLocalPort = 0
+	}
+
+	sub.IncludeTime = settings.IncludeTime
+	sub.UseMillisecondResolution = settings.UseMillisecondResolution
+	sub.RequestNaNValueFilter = settings.RequestNaNValueFilter
+	sub.StartTime = settings.StartTime
+	sub.StopTime = settings.StopTime
+	sub.ConstraintParameters = settings.ConstraintParameters
+	sub.ProcessingInterval = settings.ProcessingInterval
+	sub.ExtraConnectionStringParameters = settings.ExtraConnectionStringParameters
+
+	if ds.IsConnected() {
+		ds.Subscribe()
+	}
+}
+
+// Unsubscribe sends a request to the data publisher indicating that the Subscriber would
+// like to stop receiving streaming data.
+func (sb *Subscriber) Unsubscribe() {
+	sb.dataSubscriber().Unsubscribe()
+}
+
+// ReadMeasurements sets up a new MeasurementReader to start reading measurements.
+func (sb *Subscriber) ReadMeasurements() *MeasurementReader {
+	return newMeasurementReader(sb)
+}
+
+// Local callback handlers:
+
+// StatusMessage executes the defined status message logger callback.
+func (sb *Subscriber) StatusMessage(message string) {
+	if sb.statusMessageLogger == nil {
+		return
+	}
+
+	sb.statusMessageLogger(message)
+}
+
+// ErrorMessage executes the defined error message logger callback.
+func (sb *Subscriber) ErrorMessage(message string) {
+	if sb.errorMessageLogger == nil {
+		return
+	}
+
+	sb.errorMessageLogger(message)
 }
 
 // Intermediate callback handlers:
 
-func (sb *SubscriberBase) handleReconnect(ds *transport.DataSubscriber) {
+func (sb *Subscriber) handleReconnect(ds *transport.DataSubscriber) {
 	if ds.IsConnected() {
-		sb.sub.ConnectionEstablished()
+		if sb.connectionEstablishedReceiver != nil {
+			sb.connectionEstablishedReceiver()
+		}
 
 		// If automatically parsing metadata, request metadata upon successful connection,
 		// after metadata is received the SubscriberInstance will then initiate subscribe;
 		// otherwise, subscribe is initiated immediately (when auto subscribe requested)
-		if sb.AutoRequestMetadata {
+		if sb.config.AutoRequestMetadata {
 			sb.RequestMetadata()
-		} else if sb.AutoSubscribe {
+		} else if sb.config.AutoSubscribe {
 			ds.Subscribe()
 		}
 	} else {
 		ds.Disconnect()
-		sb.sub.StatusMessage("Connection retry attempts exceeded.")
+		sb.StatusMessage("Connection retry attempts exceeded.")
 	}
 }
 
-func (sb *SubscriberBase) handleMetadataReceived(data []byte) {
+func (sb *Subscriber) handleMetadataReceived(data []byte) {
 	parseStarted := time.Now()
 	dataSet := metadata.NewDataSet()
 	err := dataSet.ParseXml(data)
@@ -347,19 +373,21 @@ func (sb *SubscriberBase) handleMetadataReceived(data []byte) {
 	if err == nil {
 		sb.loadMeasurementMetadata(dataSet)
 	} else {
-		sb.sub.ErrorMessage("Failed to parse received XML metadata: " + err.Error())
+		sb.ErrorMessage("Failed to parse received XML metadata: " + err.Error())
 	}
 
 	sb.showMetadataSummary(dataSet, parseStarted)
 
-	sb.sub.ReceivedMetadata(dataSet)
+	if sb.metadataReceiver != nil {
+		sb.metadataReceiver(dataSet)
+	}
 
-	if sb.AutoRequestMetadata && sb.AutoSubscribe {
+	if sb.config.AutoRequestMetadata && sb.config.AutoSubscribe {
 		sb.dataSubscriber().Subscribe()
 	}
 }
 
-func (sb *SubscriberBase) loadMeasurementMetadata(dataSet *metadata.DataSet) {
+func (sb *Subscriber) loadMeasurementMetadata(dataSet *metadata.DataSet) {
 	measurements := dataSet.Table("MeasurementDetail")
 
 	if measurements != nil {
@@ -420,14 +448,14 @@ func (sb *SubscriberBase) loadMeasurementMetadata(dataSet *metadata.DataSet) {
 				}
 			}
 		} else {
-			sb.sub.ErrorMessage("Received metadata does not contain the required MeasurementDetail.SignalID field")
+			sb.ErrorMessage("Received metadata does not contain the required MeasurementDetail.SignalID field")
 		}
 	} else {
-		sb.sub.ErrorMessage("Received metadata does not contain the required MeasurementDetail table")
+		sb.ErrorMessage("Received metadata does not contain the required MeasurementDetail table")
 	}
 }
 
-func (sb *SubscriberBase) showMetadataSummary(dataSet *metadata.DataSet, parseStarted time.Time) {
+func (sb *Subscriber) showMetadataSummary(dataSet *metadata.DataSet, parseStarted time.Time) {
 	getRowCount := func(tableName string) int {
 		table := dataSet.Table(tableName)
 
@@ -467,90 +495,126 @@ func (sb *SubscriberBase) showMetadataSummary(dataSet *metadata.DataSet, parseSt
 		message.WriteString("No SchemaVersion table found in metadata")
 	}
 
-	sb.sub.StatusMessage(message.String())
+	sb.StatusMessage(message.String())
 }
 
-func (sb *SubscriberBase) handleDataStartTime(startTime ticks.Ticks) {
-	sb.sub.DataStartTime(ticks.ToTime(startTime))
+func (sb *Subscriber) handleDataStartTime(startTime ticks.Ticks) {
+	if sb.dataStartTimeReceiver == nil {
+		return
+	}
+
+	sb.dataStartTimeReceiver(ticks.ToTime(startTime))
 }
 
-func (sb *SubscriberBase) handleConfigurationChanged() {
-	sb.sub.ConfigurationChanged()
+func (sb *Subscriber) handleConfigurationChanged() {
+	if sb.configurationChangedReceiver != nil {
+		sb.configurationChangedReceiver()
+	}
 
-	if sb.AutoRequestMetadata {
+	if sb.config.AutoRequestMetadata {
 		sb.RequestMetadata()
 	}
 }
 
-func (sb *SubscriberBase) handleProcessingComplete(message string) {
-	sb.sub.StatusMessage(message)
-	sb.sub.HistoricalReadComplete()
+func (sb *Subscriber) handleProcessingComplete(message string) {
+	sb.StatusMessage(message)
+
+	if sb.historicalReadCompleteReceiver != nil {
+		sb.historicalReadCompleteReceiver()
+	}
 }
 
-// SubscriberBase default implementation of Subscriber interface. Note that an OOP language
-// would consider the following "overridable" methods - effect here is the same.
-
-// StatusMessage implements the default handler for informational message logging.
+// DefaultStatusMessageLogger implements the default handler for the statusMessage callback.
 // Default implementation synchronously writes output to stdio. Logging is recommended.
-func (sb *SubscriberBase) StatusMessage(message string) {
+func (sb *Subscriber) DefaultStatusMessageLogger(message string) {
 	sb.consoleLock.Lock()
 	defer sb.consoleLock.Unlock()
 	fmt.Println(message)
 }
 
-// ErrorMessage implements the default handler for error message logging.
+// DefaultErrorMessageLogger implements the default handler for the errorMessage callback.
 // Default implementation synchronously writes output to to stderr. Logging is recommended.
-func (sb *SubscriberBase) ErrorMessage(message string) {
+func (sb *Subscriber) DefaultErrorMessageLogger(message string) {
 	sb.consoleLock.Lock()
 	defer sb.consoleLock.Unlock()
 	fmt.Fprintln(os.Stderr, message)
 }
 
-// ReceivedMetadata implements the default handler for reception of the metadata response.
-func (sb *SubscriberBase) ReceivedMetadata(dataSet *metadata.DataSet) {
+// DefaultConnectionEstablishedReceiver implements the default handler for the ConnectionEstablished callback.
+// Default implementation simply writes connection feedback to statusMessage callback.
+func (sb *Subscriber) DefaultConnectionEstablishedReceiver() {
+	con := sb.dataSubscriber().Connector()
+	sb.StatusMessage("Connection to " + con.Hostname + ":" + strconv.Itoa(int(con.Port)) + " established.")
 }
 
-// SubscriptionUpdated implements the default handler for notifications that a new
+// DefaultConnectionTerminatedReceiver implements the default handler for the ConnectionTerminated callback.
+// Default implementation simply writes connection terminated feedback to errorMessage callback.
+func (sb *Subscriber) DefaultConnectionTerminatedReceiver() {
+	con := sb.dataSubscriber().Connector()
+	sb.ErrorMessage("Connection to " + con.Hostname + ":" + strconv.Itoa(int(con.Port)) + " terminated.")
+}
+
+// SetStatusMessageLogger defines the callback that handles informational message logging.
+func (sb *Subscriber) SetStatusMessageLogger(callback func(message string)) {
+	sb.statusMessageLogger = callback
+}
+
+// SetErrorMessageLogger defines the callback that handles error message logging.
+func (sb *Subscriber) SetErrorMessageLogger(callback func(message string)) {
+	sb.errorMessageLogger = callback
+}
+
+// SetMetadataReceiver defines the callback that handles reception of the metadata response.
+func (sb *Subscriber) SetMetadataReceiver(callback func(dataSet *metadata.DataSet)) {
+	sb.metadataReceiver = callback
+}
+
+// SetSubscriptionUpdatedReceiver defines the callback that handles notifications that a new
 // SignalIndexCache has been received.
-func (sb *SubscriberBase) SubscriptionUpdated(signalIndexCache *transport.SignalIndexCache) {
+func (sb *Subscriber) SetSubscriptionUpdatedReceiver(callback func(signalIndexCache *transport.SignalIndexCache)) {
+	sb.dataSubscriber().SubscriptionUpdatedCallback = callback
 }
 
-// DataStartTime implements the default handler for notifications of first received measurement.
-func (sb *SubscriberBase) DataStartTime(startTime time.Time) {
+// SetDataStartTimeReceiver defines the callback that handles notification of first received measurement.
+func (sb *Subscriber) SetDataStartTimeReceiver(callback func(startTime time.Time)) {
+	sb.dataStartTimeReceiver = callback
 }
 
-// ConfigurationChanged implements the default handler for notifications that the
-// data publisher configuration has changed.
-func (sb *SubscriberBase) ConfigurationChanged() {
+// SetConfigurationChangedReceiver defines the callback that handles notifications that the data publisher
+// configuration has changed.
+func (sb *Subscriber) SetConfigurationChangedReceiver(callback func()) {
+	sb.configurationChangedReceiver = callback
 }
 
-// ReceivedNewMeasurements implements the default handler for reception of new measurements.
-func (sb *SubscriberBase) ReceivedNewMeasurements(measurements []transport.Measurement) {
+// SetNewMeasurementsReceiver defines the callback that handles reception of new measurements.
+func (sb *Subscriber) SetNewMeasurementsReceiver(callback func(measurements []transport.Measurement)) {
+	sb.dataSubscriber().NewMeasurementsCallback = callback
 }
 
-// ReceivedNewBufferBlocks implements the default handler for reception of new buffer blocks.
-func (sb *SubscriberBase) ReceivedNewBufferBlocks(bufferBlocks []transport.BufferBlock) {
+// SetNewBufferBlocksReceiver defines the callback that handles reception of new buffer blocks.
+func (sb *Subscriber) SetNewBufferBlocksReceiver(callback func(bufferBlocks []transport.BufferBlock)) {
+	sb.dataSubscriber().NewBufferBlocksCallback = callback
 }
 
-// ReceivedNotification implements the default handler for reception of a notification.
-func (sb *SubscriberBase) ReceivedNotification(notification string) {
+// SetNotificationReceiver defines the callback that handles reception of a notification.
+func (sb *Subscriber) SetNotificationReceiver(callback func(notification string)) {
+	sb.dataSubscriber().NotificationReceivedCallback = callback
 }
 
-// HistoricalReadComplete implements the default handler for notification that temporal processing
+// SetHistoricalReadCompleteReceiver defines the callback that handles notification that temporal processing
 // has completed, i.e., the end of a historical playback data stream has been reached.
-func (sb *SubscriberBase) HistoricalReadComplete() {
+func (sb *Subscriber) SetHistoricalReadCompleteReceiver(callback func()) {
+	sb.historicalReadCompleteReceiver = callback
 }
 
-// ConnectionEstablished implements the default handler for notification that a connection has been established.
+// SetConnectionEstablishedReceiver defines the callback that handles notification that a connection has been established.
 // Default implementation simply writes connection feedback to StatusMessage handler.
-func (sb *SubscriberBase) ConnectionEstablished() {
-	con := sb.dataSubscriber().Connector()
-	sb.sub.StatusMessage("Connection to " + con.Hostname + ":" + strconv.Itoa(int(con.Port)) + " established.")
+func (sb *Subscriber) SetConnectionEstablishedReceiver(callback func()) {
+	sb.connectionEstablishedReceiver = callback
 }
 
-// ConnectionTerminated implements the default handler for notification that a connection has been terminated.
+// SetConnectionTerminatedReceiver defines the callback that handles notification that a connection has been terminated.
 // Default implementation simply writes connection terminated feedback to ErrorMessage handler.
-func (sb *SubscriberBase) ConnectionTerminated() {
-	con := sb.dataSubscriber().Connector()
-	sb.sub.ErrorMessage("Connection to " + con.Hostname + ":" + strconv.Itoa(int(con.Port)) + " terminated.")
+func (sb *Subscriber) SetConnectionTerminatedReceiver(callback func()) {
+	sb.connectionTerminatedReceiver = callback
 }
