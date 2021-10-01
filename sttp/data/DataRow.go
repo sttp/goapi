@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/sttp/goapi/sttp/guid"
+	"github.com/sttp/goapi/sttp/ticks"
 )
 
 // DataRow represents a row, i.e., a record, in a DataTable defining a set of values for each
@@ -223,7 +224,7 @@ func (dr *DataRow) ColumnValueAsString(column *DataColumn) string {
 			return result
 		}
 
-		return value.String()
+		return value.Format(ticks.TimeFormat)
 	case DataType.Single:
 		value, null, err := dr.SingleValue(index)
 
@@ -232,10 +233,16 @@ func (dr *DataRow) ColumnValueAsString(column *DataColumn) string {
 		}
 
 		return strconv.FormatFloat(float64(value), 'f', 6, 32)
-	case DataType.Decimal:
-		fallthrough
 	case DataType.Double:
 		value, null, err := dr.DoubleValue(index)
+
+		if invalid, result := checkState(null, err); invalid {
+			return result
+		}
+
+		return strconv.FormatFloat(value, 'f', 6, 64)
+	case DataType.Decimal:
+		value, null, err := dr.DecimalValue(index)
 
 		if invalid, result := checkState(null, err); invalid {
 			return result
@@ -653,7 +660,7 @@ func (dr *DataRow) GuidValueByName(columnName string) (guid.Guid, bool, error) {
 	return dr.GuidValue(index)
 }
 
-// Int8Value gets the record value at the specified columnIndex cast as a int8.
+// Int8Value gets the record value at the specified columnIndex cast as an int8.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int8.
 func (dr *DataRow) Int8Value(columnIndex int) (int8, bool, error) {
@@ -686,7 +693,7 @@ func (dr *DataRow) Int8Value(columnIndex int) (int8, bool, error) {
 	return value.(int8), false, nil
 }
 
-// Int8ValueByName gets the record value for the specified columnName cast as a int8.
+// Int8ValueByName gets the record value for the specified columnName cast as an int8.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int8.
 func (dr *DataRow) Int8ValueByName(columnName string) (int8, bool, error) {
@@ -699,7 +706,7 @@ func (dr *DataRow) Int8ValueByName(columnName string) (int8, bool, error) {
 	return dr.Int8Value(index)
 }
 
-// Int16Value gets the record value at the specified columnIndex cast as a int16.
+// Int16Value gets the record value at the specified columnIndex cast as an int16.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int16.
 func (dr *DataRow) Int16Value(columnIndex int) (int16, bool, error) {
@@ -732,7 +739,7 @@ func (dr *DataRow) Int16Value(columnIndex int) (int16, bool, error) {
 	return value.(int16), false, nil
 }
 
-// Int16ValueByName gets the record value for the specified columnName cast as a int16.
+// Int16ValueByName gets the record value for the specified columnName cast as an int16.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int16.
 func (dr *DataRow) Int16ValueByName(columnName string) (int16, bool, error) {
@@ -745,7 +752,7 @@ func (dr *DataRow) Int16ValueByName(columnName string) (int16, bool, error) {
 	return dr.Int16Value(index)
 }
 
-// Int32Value gets the record value at the specified columnIndex cast as a int32.
+// Int32Value gets the record value at the specified columnIndex cast as an int32.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int32.
 func (dr *DataRow) Int32Value(columnIndex int) (int32, bool, error) {
@@ -778,7 +785,7 @@ func (dr *DataRow) Int32Value(columnIndex int) (int32, bool, error) {
 	return value.(int32), false, nil
 }
 
-// Int32ValueByName gets the record value for the specified columnName cast as a int32.
+// Int32ValueByName gets the record value for the specified columnName cast as an int32.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int32.
 func (dr *DataRow) Int32ValueByName(columnName string) (int32, bool, error) {
@@ -791,7 +798,7 @@ func (dr *DataRow) Int32ValueByName(columnName string) (int32, bool, error) {
 	return dr.Int32Value(index)
 }
 
-// Int64Value gets the record value at the specified columnIndex cast as a int64.
+// Int64Value gets the record value at the specified columnIndex cast as an int64.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int64.
 func (dr *DataRow) Int64Value(columnIndex int) (int64, bool, error) {
@@ -824,7 +831,7 @@ func (dr *DataRow) Int64Value(columnIndex int) (int64, bool, error) {
 	return value.(int64), false, nil
 }
 
-// Int64ValueByName gets the record value for the specified columnName cast as a int64.
+// Int64ValueByName gets the record value for the specified columnName cast as an int64.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Int64.
 func (dr *DataRow) Int64ValueByName(columnName string) (int64, bool, error) {
@@ -837,7 +844,7 @@ func (dr *DataRow) Int64ValueByName(columnName string) (int64, bool, error) {
 	return dr.Int64Value(index)
 }
 
-// UInt8Value gets the record value at the specified columnIndex cast as a uint8.
+// UInt8Value gets the record value at the specified columnIndex cast as an uint8.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt8.
 func (dr *DataRow) UInt8Value(columnIndex int) (uint8, bool, error) {
@@ -870,7 +877,7 @@ func (dr *DataRow) UInt8Value(columnIndex int) (uint8, bool, error) {
 	return value.(uint8), false, nil
 }
 
-// UInt8ValueByName gets the record value for the specified columnName cast as a uint8.
+// UInt8ValueByName gets the record value for the specified columnName cast as an uint8.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt8.
 func (dr *DataRow) UInt8ValueByName(columnName string) (uint8, bool, error) {
@@ -883,7 +890,7 @@ func (dr *DataRow) UInt8ValueByName(columnName string) (uint8, bool, error) {
 	return dr.UInt8Value(index)
 }
 
-// UInt16Value gets the record value at the specified columnIndex cast as a uint16.
+// UInt16Value gets the record value at the specified columnIndex cast as an uint16.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt16.
 func (dr *DataRow) UInt16Value(columnIndex int) (uint16, bool, error) {
@@ -916,7 +923,7 @@ func (dr *DataRow) UInt16Value(columnIndex int) (uint16, bool, error) {
 	return value.(uint16), false, nil
 }
 
-// UInt16ValueByName gets the record value for the specified columnName cast as a uint16.
+// UInt16ValueByName gets the record value for the specified columnName cast as an uint16.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt16.
 func (dr *DataRow) UInt16ValueByName(columnName string) (uint16, bool, error) {
@@ -929,7 +936,7 @@ func (dr *DataRow) UInt16ValueByName(columnName string) (uint16, bool, error) {
 	return dr.UInt16Value(index)
 }
 
-// UInt32Value gets the record value at the specified columnIndex cast as a uint32.
+// UInt32Value gets the record value at the specified columnIndex cast as an uint32.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt32.
 func (dr *DataRow) UInt32Value(columnIndex int) (uint32, bool, error) {
@@ -962,7 +969,7 @@ func (dr *DataRow) UInt32Value(columnIndex int) (uint32, bool, error) {
 	return value.(uint32), false, nil
 }
 
-// UInt32ValueByName gets the record value for the specified columnName cast as a uint32.
+// UInt32ValueByName gets the record value for the specified columnName cast as an uint32.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt32.
 func (dr *DataRow) UInt32ValueByName(columnName string) (uint32, bool, error) {
@@ -975,7 +982,7 @@ func (dr *DataRow) UInt32ValueByName(columnName string) (uint32, bool, error) {
 	return dr.UInt32Value(index)
 }
 
-// UInt64Value gets the record value at the specified columnIndex cast as a uint64.
+// UInt64Value gets the record value at the specified columnIndex cast as an uint64.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt64.
 func (dr *DataRow) UInt64Value(columnIndex int) (uint64, bool, error) {
@@ -1008,7 +1015,7 @@ func (dr *DataRow) UInt64Value(columnIndex int) (uint64, bool, error) {
 	return value.(uint64), false, nil
 }
 
-// UInt64ValueByName gets the record value for the specified columnName cast as a uint64.
+// UInt64ValueByName gets the record value for the specified columnName cast as an uint64.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.UInt64.
 func (dr *DataRow) UInt64ValueByName(columnName string) (uint64, bool, error) {

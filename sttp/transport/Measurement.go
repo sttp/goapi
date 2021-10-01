@@ -60,17 +60,9 @@ func (m *Measurement) DateTime() time.Time {
 
 // String returns the string form of a Measurement value.
 func (m *Measurement) String() string {
-	var state string
-
-	if m.Flags == StateFlags.Normal {
-		state = "Norm"
-	} else {
-		state = "Off Norm"
-	}
-
 	return fmt.Sprintf("%s @ %s = %s (%s)",
 		m.SignalID.String(),
 		m.Timestamp.ShortTime(),
 		strconv.FormatFloat(m.Value, 'f', 3, 64),
-		state)
+		m.Flags.String())
 }

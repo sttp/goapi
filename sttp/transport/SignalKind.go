@@ -24,6 +24,7 @@
 package transport
 
 import (
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -97,8 +98,10 @@ func (ske SignalKindEnum) String() string {
 		return "Alarm"
 	case SignalKind.Quality:
 		return "Quality"
-	default:
+	case SignalKind.Unknown:
 		return "Unknown"
+	default:
+		return "0x" + strconv.FormatInt(int64(ske), 16)
 	}
 }
 

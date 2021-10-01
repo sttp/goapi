@@ -646,10 +646,7 @@ func (ds *DataSubscriber) processServerResponse(buffer []byte) {
 	case ServerResponse.NoOP:
 		// NoOP handled
 	default:
-		var message strings.Builder
-		message.WriteString("Encountered unexpected server response code: 0x")
-		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
-		ds.dispatchErrorMessage(message.String())
+		ds.dispatchErrorMessage("Encountered unexpected server response code: " + responseCode.String())
 	}
 }
 
@@ -666,11 +663,11 @@ func (ds *DataSubscriber) handleSucceeded(commandCode ServerCommandEnum, data []
 		// Each of these responses come with a message that will
 		// be delivered to the user via the status message callback.
 		var message strings.Builder
-		message.WriteString("Received success code in response to server command 0x")
-		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
-		message.WriteRune('\n')
+		message.WriteString("Received success code in response to server command: ")
+		message.WriteString(commandCode.String())
 
 		if data != nil {
+			message.WriteRune('\n')
 			message.Write(data)
 		}
 
@@ -679,11 +676,7 @@ func (ds *DataSubscriber) handleSucceeded(commandCode ServerCommandEnum, data []
 		// If we don't know what the message is, we can't interpret
 		// the data sent with the packet. Deliver an error message
 		// to the user via the error message callback.
-		var message strings.Builder
-		message.WriteString("Received success code in response to unknown server command 0x")
-		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
-		message.WriteRune('\n')
-		ds.dispatchErrorMessage(message.String())
+		ds.dispatchErrorMessage("Received success code in response to unknown server command: " + commandCode.String())
 	}
 }
 
@@ -697,12 +690,15 @@ func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byt
 	if commandCode == ServerCommand.Connect {
 		ds.connector.connectionRefused = true
 	} else {
-		message.WriteString("Received failure code in response to server command 0x")
-		message.WriteString(strconv.FormatInt(int64(commandCode), 16))
-		message.WriteRune('\n')
+		message.WriteString("Received failure code in response to server command: ")
+		message.WriteString(commandCode.String())
 	}
 
 	if data != nil {
+		if message.Len() > 0 {
+			message.WriteRune('\n')
+		}
+
 		message.Write(data)
 	}
 

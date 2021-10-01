@@ -1,2 +1,4 @@
+github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20210930093333-01de314d7883 h1:BW7yRyTdwK1X0ct2OFNr8HLgZBp98nY+El57KZfDHYo=
+github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20210930093333-01de314d7883/go.mod h1:F7bn7fEU90QkQ3tnmaTx3LTKLEDqnwWODIYppRQ5hnY=
 github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
 github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=

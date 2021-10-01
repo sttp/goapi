@@ -23,6 +23,11 @@
 
 package transport
 
+import (
+	"strconv"
+	"strings"
+)
+
 const (
 	maxPacketSize               = 32768
 	payloadHeaderSize           = 4
@@ -144,6 +149,60 @@ var StateFlags = struct {
 	MeasurementError:    0x80000000,
 }
 
+// String gets the StateFlags enumeration bit values as a string.
+func (sfe StateFlagsEnum) String() string {
+	if sfe == StateFlags.Normal {
+		return "Normal"
+	}
+
+	var image strings.Builder
+
+	addFlag := func(flag StateFlagsEnum, name string) {
+		if flag&sfe > 0 {
+			if image.Len() > 0 {
+				image.WriteRune(',')
+			}
+
+			image.WriteString(name)
+		}
+	}
+
+	addFlag(StateFlags.BadData, "BadData")
+	addFlag(StateFlags.SuspectData, "SuspectData")
+	addFlag(StateFlags.OverRangeError, "OverRangeError")
+	addFlag(StateFlags.UnderRangeError, "UnderRangeError")
+	addFlag(StateFlags.AlarmHigh, "AlarmHigh")
+	addFlag(StateFlags.AlarmLow, "AlarmLow")
+	addFlag(StateFlags.WarningHigh, "WarningHigh")
+	addFlag(StateFlags.WarningLow, "WarningLow")
+	addFlag(StateFlags.FlatlineAlarm, "FlatlineAlarm")
+	addFlag(StateFlags.ComparisonAlarm, "ComparisonAlarm")
+	addFlag(StateFlags.ROCAlarm, "ROCAlarm")
+	addFlag(StateFlags.ReceivedAsBad, "ReceivedAsBad")
+	addFlag(StateFlags.CalculatedValue, "CalculatedValue")
+	addFlag(StateFlags.CalculationError, "CalculationError")
+	addFlag(StateFlags.CalculationWarning, "CalculationWarning")
+	addFlag(StateFlags.ReservedQualityFlag, "ReservedQualityFlag")
+	addFlag(StateFlags.BadTime, "BadTime")
+	addFlag(StateFlags.SuspectTime, "SuspectTime")
+	addFlag(StateFlags.LateTimeAlarm, "LateTimeAlarm")
+	addFlag(StateFlags.FutureTimeAlarm, "FutureTimeAlarm")
+	addFlag(StateFlags.UpSampled, "UpSampled")
+	addFlag(StateFlags.DownSampled, "DownSampled")
+	addFlag(StateFlags.DiscardedValue, "DiscardedValue")
+	addFlag(StateFlags.ReservedTimeFlag, "ReservedTimeFlag")
+	addFlag(StateFlags.UserDefinedFlag1, "UserDefinedFlag1")
+	addFlag(StateFlags.UserDefinedFlag2, "UserDefinedFlag2")
+	addFlag(StateFlags.UserDefinedFlag3, "UserDefinedFlag3")
+	addFlag(StateFlags.UserDefinedFlag4, "UserDefinedFlag4")
+	addFlag(StateFlags.UserDefinedFlag5, "UserDefinedFlag5")
+	addFlag(StateFlags.SystemError, "SystemError")
+	addFlag(StateFlags.SystemWarning, "SystemWarning")
+	addFlag(StateFlags.MeasurementError, "MeasurementError")
+
+	return image.String()
+}
+
 // DataPacketFlagsEnum defines the type for the DataPacketFlags enumeration.
 type DataPacketFlagsEnum byte
 
@@ -261,6 +320,66 @@ var ServerCommand = struct {
 	UserCommand15:            0xDF,
 }
 
+// String gets the ServerCommand enumeration value as a string.
+func (sce ServerCommandEnum) String() string {
+	switch sce {
+	case ServerCommand.Connect:
+		return "Connect"
+	case ServerCommand.MetadataRefresh:
+		return "MetadataRefresh"
+	case ServerCommand.Subscribe:
+		return "Subscribe"
+	case ServerCommand.Unsubscribe:
+		return "Unsubscribe"
+	case ServerCommand.RotateCipherKeys:
+		return "RotateCipherKeys"
+	case ServerCommand.UpdateProcessingInterval:
+		return "UpdateProcessingInterval"
+	case ServerCommand.DefineOperationalModes:
+		return "DefineOperationalModes"
+	case ServerCommand.ConfirmNotification:
+		return "ConfirmNotification"
+	case ServerCommand.ConfirmBufferBlock:
+		return "ConfirmBufferBlock"
+	case ServerCommand.ConfirmSignalIndexCache:
+		return "ConfirmSignalIndexCache"
+	case ServerCommand.UserCommand00:
+		return "UserCommand00"
+	case ServerCommand.UserCommand01:
+		return "UserCommand01"
+	case ServerCommand.UserCommand02:
+		return "UserCommand02"
+	case ServerCommand.UserCommand03:
+		return "UserCommand03"
+	case ServerCommand.UserCommand04:
+		return "UserCommand04"
+	case ServerCommand.UserCommand05:
+		return "UserCommand05"
+	case ServerCommand.UserCommand06:
+		return "UserCommand06"
+	case ServerCommand.UserCommand07:
+		return "UserCommand07"
+	case ServerCommand.UserCommand08:
+		return "UserCommand08"
+	case ServerCommand.UserCommand09:
+		return "UserCommand09"
+	case ServerCommand.UserCommand10:
+		return "UserCommand10"
+	case ServerCommand.UserCommand11:
+		return "UserCommand11"
+	case ServerCommand.UserCommand12:
+		return "UserCommand12"
+	case ServerCommand.UserCommand13:
+		return "UserCommand13"
+	case ServerCommand.UserCommand14:
+		return "UserCommand14"
+	case ServerCommand.UserCommand15:
+		return "UserCommand15"
+	default:
+		return "0x" + strconv.FormatInt(int64(sce), 16)
+	}
+}
+
 // ServerResponseEnum defines the type for the ServerResponse enumeration.
 type ServerResponseEnum byte
 
@@ -356,6 +475,70 @@ var ServerResponse = struct {
 	UserResponse14:         0xEE,
 	UserResponse15:         0xEF,
 	NoOP:                   0xFF,
+}
+
+// String gets the ServerResponse enumeration value as a string.
+func (sre ServerResponseEnum) String() string {
+	switch sre {
+	case ServerResponse.Succeeded:
+		return "Succeeded"
+	case ServerResponse.Failed:
+		return "Failed"
+	case ServerResponse.DataPacket:
+		return "DataPacket"
+	case ServerResponse.UpdateSignalIndexCache:
+		return "UpdateSignalIndexCache"
+	case ServerResponse.UpdateBaseTimes:
+		return "UpdateBaseTimes"
+	case ServerResponse.UpdateCipherKeys:
+		return "UpdateCipherKeys"
+	case ServerResponse.DataStartTime:
+		return "DataStartTime"
+	case ServerResponse.ProcessingComplete:
+		return "ProcessingComplete"
+	case ServerResponse.BufferBlock:
+		return "BufferBlock"
+	case ServerResponse.Notification:
+		return "Notification"
+	case ServerResponse.ConfigurationChanged:
+		return "ConfigurationChanged"
+	case ServerResponse.UserResponse00:
+		return "UserResponse00"
+	case ServerResponse.UserResponse01:
+		return "UserResponse01"
+	case ServerResponse.UserResponse02:
+		return "UserResponse02"
+	case ServerResponse.UserResponse03:
+		return "UserResponse03"
+	case ServerResponse.UserResponse04:
+		return "UserResponse04"
+	case ServerResponse.UserResponse05:
+		return "UserResponse05"
+	case ServerResponse.UserResponse06:
+		return "UserResponse06"
+	case ServerResponse.UserResponse07:
+		return "UserResponse07"
+	case ServerResponse.UserResponse08:
+		return "UserResponse08"
+	case ServerResponse.UserResponse09:
+		return "UserResponse09"
+	case ServerResponse.UserResponse10:
+		return "UserResponse10"
+	case ServerResponse.UserResponse11:
+		return "UserResponse11"
+	case ServerResponse.UserResponse12:
+		return "UserResponse12"
+	case ServerResponse.UserResponse13:
+		return "UserResponse13"
+	case ServerResponse.UserResponse14:
+		return "UserResponse14"
+	case ServerResponse.UserResponse15:
+		return "UserResponse15"
+	case ServerResponse.NoOP:
+		return "NoOP"
+	default:
+		return "0x" + strconv.FormatInt(int64(sre), 16)
+	}
 }
 
 /*

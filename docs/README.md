@@ -62,28 +62,24 @@ Example Output:
 Connection to localhost:7175 established.
 Received 28,323 bytes of metadata in 0.020 seconds. Decompressing...
 Decompressed 251,898 bytes of metadata in 0.001 seconds. Parsing...
-Parsed 532 metadata records in 0.038 seconds.
+Parsed 532 metadata records in 0.023 seconds.
     Discovered:
         4 DeviceDetail records
         434 MeasurementDetail records
         93 PhasorDetail records
         1 SchemaVersion records
 Metadata schema version: 14
-Received success code in response to server command 0x2
+Received success code in response to server command: Subscribe
 Client subscribed as compact with 20 signals.
 Receiving measurements...
-2986 measurements received so far. Current measurement:
-    {c84fcf2f-d83a-4cd8-9dc8-7c5292c4a068} @ 18:21:42.766 = 60.019 (Norm)
-5924 measurements received so far. Current measurement:
-    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 18:21:42.766 = 1.397 (Norm)
-8892 measurements received so far. Current measurement:
-    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 18:21:47.766 = -1.739 (Norm)
-11880 measurements received so far. Current measurement:
-    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 18:21:52.766 = -4.064 (Norm)
-14866 measurements received so far. Current measurement:
-    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 18:21:57.766 = -2.472 (Norm)
-17846 measurements received so far. Current measurement:
-    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 18:22:02.766 = 0.569 (Norm)
+2980 measurements received so far. Current measurement:
+    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 16:08:14.366 = 0.036 (Normal)
+5960 measurements received so far. Current measurement:
+    {76cf5782-72f3-4312-ab92-d1e04bfd0e80} @ 16:08:19.366 = 155.645 (Normal)
+8922 measurements received so far. Current measurement:
+    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 16:08:24.4 = -3.473 (Normal)
+11896 measurements received so far. Current measurement:
+    {bcc6b18e-ed62-4c93-bc55-c7060ff58d5e} @ 16:08:29.366 = -0.434 (Normal)
 
 Connection to localhost:7175 terminated.
 ```
