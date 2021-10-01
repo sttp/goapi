@@ -21,12 +21,13 @@
 //
 //******************************************************************************************************
 
-package metadata
+package data
 
 import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sttp/goapi/sttp/guid"
@@ -80,7 +81,7 @@ func (dr *DataRow) validateColumnType(columnIndex int, targetType int, read bool
 			preposition = "to"
 		}
 
-		return nil, fmt.Errorf("cannot %s \"%s\" value %s DataColumn \"%s\" for table \"%s\", column data type is \"%s\"", action, DataTypeEnum(targetType).Name(), preposition, column.Name(), dr.parent.Name(), column.Type().Name())
+		return nil, fmt.Errorf("cannot %s \"%s\" value %s DataColumn \"%s\" for table \"%s\", column data type is \"%s\"", action, DataTypeEnum(targetType).String(), preposition, column.Name(), dr.parent.Name(), column.Type().String())
 	}
 
 	if !read && column.Computed() {
@@ -1018,4 +1019,33 @@ func (dr *DataRow) UInt64ValueByName(columnName string) (uint64, bool, error) {
 	}
 
 	return dr.UInt64Value(index)
+}
+
+// String get a representation of the DataRow as a string.
+func (dr *DataRow) String() string {
+	var image strings.Builder
+
+	image.WriteRune('[')
+
+	for i := 0; i < dr.parent.ColumnCount(); i++ {
+		if i > 0 {
+			image.WriteString(", ")
+		}
+
+		stringColumn := dr.parent.Column(i).Type() == DataType.String
+
+		if stringColumn {
+			image.WriteRune('"')
+		}
+
+		image.WriteString(dr.ValueAsString(i))
+
+		if stringColumn {
+			image.WriteRune('"')
+		}
+	}
+
+	image.WriteRune(']')
+
+	return image.String()
 }

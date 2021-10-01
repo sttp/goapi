@@ -21,7 +21,9 @@
 //
 //******************************************************************************************************
 
-package metadata
+package data
+
+import "fmt"
 
 // DataColumn represents a column, i.e., a field, in a DataTable defining a name and a data type.
 // Data columns can also be computed where its value would be derived from other columns and
@@ -75,4 +77,15 @@ func (dc *DataColumn) Computed() bool {
 // Index gets the index of the DataColumn within its parent DataTable columns collection.
 func (dc *DataColumn) Index() int {
 	return dc.index
+}
+
+// String gets a representation of the DataColumn as a string.
+func (dc *DataColumn) String() string {
+	dataType := dc.dataType.String()
+
+	if dc.computed {
+		dataType = "Computed " + dataType
+	}
+
+	return fmt.Sprintf("%s (%s)", dc.name, dataType)
 }

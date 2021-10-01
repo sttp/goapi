@@ -21,9 +21,13 @@
 //
 //******************************************************************************************************
 
-package metadata
+package data
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/sttp/goapi/sttp/format"
+)
 
 // DataTable represents a collection of DataColumn objects where each data column defines a name and
 // a data type. Data columns can also be computed where its value would be derived from other columns
@@ -184,4 +188,26 @@ func (dt *DataTable) RowValueAsStringByName(rowIndex int, columnName string) str
 	}
 
 	return row.ValueAsStringByName(columnName)
+}
+
+// String get a representation of the DataTable as a string.
+func (dt *DataTable) String() string {
+	var image strings.Builder
+
+	image.WriteString(dt.name)
+	image.WriteString(" [")
+
+	for i := 0; i < len(dt.columns); i++ {
+		if i > 0 {
+			image.WriteString(", ")
+		}
+
+		image.WriteString(dt.columns[i].String())
+	}
+
+	image.WriteString("] x ")
+	image.WriteString(format.Int(len(dt.rows)))
+	image.WriteString(" rows")
+
+	return image.String()
 }

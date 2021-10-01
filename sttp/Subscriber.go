@@ -34,9 +34,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sttp/goapi/sttp/data"
 	"github.com/sttp/goapi/sttp/format"
 	"github.com/sttp/goapi/sttp/guid"
-	"github.com/sttp/goapi/sttp/metadata"
 	"github.com/sttp/goapi/sttp/ticks"
 	"github.com/sttp/goapi/sttp/transport"
 )
@@ -52,7 +52,7 @@ type Subscriber struct {
 	// Callback references
 	statusMessageLogger            func(message string)
 	errorMessageLogger             func(message string)
-	metadataReceiver               func(dataSet *metadata.DataSet)
+	metadataReceiver               func(dataSet *data.DataSet)
 	dataStartTimeReceiver          func(startTime time.Time)
 	configurationChangedReceiver   func()
 	historicalReadCompleteReceiver func()
@@ -365,10 +365,10 @@ func (sb *Subscriber) handleReconnect(ds *transport.DataSubscriber) {
 	}
 }
 
-func (sb *Subscriber) handleMetadataReceived(data []byte) {
+func (sb *Subscriber) handleMetadataReceived(metadata []byte) {
 	parseStarted := time.Now()
-	dataSet := metadata.NewDataSet()
-	err := dataSet.ParseXml(data)
+	dataSet := data.NewDataSet()
+	err := dataSet.ParseXml(metadata)
 
 	if err == nil {
 		sb.loadMeasurementMetadata(dataSet)
@@ -387,7 +387,7 @@ func (sb *Subscriber) handleMetadataReceived(data []byte) {
 	}
 }
 
-func (sb *Subscriber) loadMeasurementMetadata(dataSet *metadata.DataSet) {
+func (sb *Subscriber) loadMeasurementMetadata(dataSet *data.DataSet) {
 	measurements := dataSet.Table("MeasurementDetail")
 
 	if measurements != nil {
@@ -455,7 +455,7 @@ func (sb *Subscriber) loadMeasurementMetadata(dataSet *metadata.DataSet) {
 	}
 }
 
-func (sb *Subscriber) showMetadataSummary(dataSet *metadata.DataSet, parseStarted time.Time) {
+func (sb *Subscriber) showMetadataSummary(dataSet *data.DataSet, parseStarted time.Time) {
 	getRowCount := func(tableName string) int {
 		table := dataSet.Table(tableName)
 
@@ -565,7 +565,7 @@ func (sb *Subscriber) SetErrorMessageLogger(callback func(message string)) {
 }
 
 // SetMetadataReceiver defines the callback that handles reception of the metadata response.
-func (sb *Subscriber) SetMetadataReceiver(callback func(dataSet *metadata.DataSet)) {
+func (sb *Subscriber) SetMetadataReceiver(callback func(dataSet *data.DataSet)) {
 	sb.metadataReceiver = callback
 }
 

@@ -21,7 +21,7 @@
 //
 //******************************************************************************************************
 
-package metadata
+package data
 
 import "strings"
 
@@ -79,8 +79,8 @@ var DataType = struct {
 	UInt64:   14,
 }
 
-// Name gets the DataType enumeration name as a string.
-func (dte DataTypeEnum) Name() string {
+// String gets the DataType enumeration name as a string.
+func (dte DataTypeEnum) String() string {
 	switch dte {
 	case DataType.String:
 		return "String"

@@ -21,7 +21,7 @@
 //
 //******************************************************************************************************
 
-package metadata
+package data
 
 import (
 	"errors"
@@ -122,6 +122,28 @@ func (ds *DataSet) RemoveTable(tableName string) bool {
 	}
 
 	return false
+}
+
+// String get a representation of the DataSet as a string.
+func (ds *DataSet) String() string {
+	var image strings.Builder
+
+	image.WriteString(ds.Name)
+	image.WriteString(" [")
+	i := 0
+
+	for _, table := range ds.tables {
+		if i > 0 {
+			image.WriteString(", ")
+		}
+
+		image.WriteString(table.Name())
+		i++
+	}
+
+	image.WriteRune(']')
+
+	return image.String()
 }
 
 // ParseXml loads the DataSet from the XML in the specified buffer.
