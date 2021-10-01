@@ -72,8 +72,8 @@ var SignalKind = struct {
 	Unknown:     11,
 }
 
-// Name gets the SignalKind enumeration name as a string.
-func (ske SignalKindEnum) Name() string {
+// String gets the SignalKind enumeration value as a string.
+func (ske SignalKindEnum) String() string {
 	switch ske {
 	case SignalKind.Angle:
 		return "Angle"
