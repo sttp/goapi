@@ -23,6 +23,8 @@
 
 package filterexpressions
 
+import "errors"
+
 // UnaryExpression represents a unary expression.
 type UnaryExpression struct {
 	value     Expression
@@ -50,4 +52,99 @@ func (ue *UnaryExpression) Value() Expression {
 // UnaryType gets unary type of the UnaryExpression.
 func (ue *UnaryExpression) UnaryType() ExpressionUnaryTypeEnum {
 	return ue.unaryType
+}
+
+func (ue *UnaryExpression) unaryBoolean(value bool, err error) (*ValueExpression, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	switch ue.unaryType {
+	case ExpressionUnaryType.Not:
+		value = !value
+	case ExpressionUnaryType.Plus:
+		return nil, errors.New("cannot apply unary \"+\" operator to \"Boolean\"")
+	case ExpressionUnaryType.Minus:
+		return nil, errors.New("cannot apply unary \"-\" operator to \"Boolean\"")
+	default:
+		return nil, errors.New("unexpected unary type encountered")
+	}
+
+	return NewValueExpression(ExpressionValueType.Boolean, value), nil
+}
+
+func (ue *UnaryExpression) unaryInt32(value int32, err error) (*ValueExpression, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	switch ue.unaryType {
+	case ExpressionUnaryType.Plus:
+		value = +value
+	case ExpressionUnaryType.Minus:
+		value = -value
+	case ExpressionUnaryType.Not:
+		value = ^value
+	default:
+		return nil, errors.New("unexpected unary type encountered")
+	}
+
+	return NewValueExpression(ExpressionValueType.Int32, value), nil
+}
+
+func (ue *UnaryExpression) unaryInt64(value int64, err error) (*ValueExpression, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	switch ue.unaryType {
+	case ExpressionUnaryType.Plus:
+		value = +value
+	case ExpressionUnaryType.Minus:
+		value = -value
+	case ExpressionUnaryType.Not:
+		value = ^value
+	default:
+		return nil, errors.New("unexpected unary type encountered")
+	}
+
+	return NewValueExpression(ExpressionValueType.Int64, value), nil
+}
+
+func (ue *UnaryExpression) unaryDecimal(value float64, err error) (*ValueExpression, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	switch ue.unaryType {
+	case ExpressionUnaryType.Plus:
+		value = +value
+	case ExpressionUnaryType.Minus:
+		value = -value
+	case ExpressionUnaryType.Not:
+		return nil, errors.New("cannot apply unary \"~\" operator to \"Decimal\"")
+	default:
+		return nil, errors.New("unexpected unary type encountered")
+	}
+
+	return NewValueExpression(ExpressionValueType.Decimal, value), nil
+}
+
+func (ue *UnaryExpression) unaryDouble(value float64, err error) (*ValueExpression, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	switch ue.unaryType {
+	case ExpressionUnaryType.Plus:
+		value = +value
+	case ExpressionUnaryType.Minus:
+		value = -value
+	case ExpressionUnaryType.Not:
+		return nil, errors.New("cannot apply unary \"~\" operator to \"Double\"")
+	default:
+		return nil, errors.New("unexpected unary type encountered")
+	}
+
+	return NewValueExpression(ExpressionValueType.Double, value), nil
 }
