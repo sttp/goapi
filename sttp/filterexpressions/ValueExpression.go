@@ -65,7 +65,7 @@ func (ve *ValueExpression) ValueType() ExpressionValueTypeEnum {
 func (ve *ValueExpression) String() string {
 	switch ve.valueType {
 	case ExpressionValueType.Boolean:
-		value, err := ve.BoolValue()
+		value, err := ve.BooleanValue()
 
 		if err != nil {
 			return ""
@@ -104,6 +104,14 @@ func (ve *ValueExpression) String() string {
 		}
 
 		return strconv.FormatFloat(value, 'f', 6, 64)
+	case ExpressionValueType.String:
+		value, err := ve.StringValue()
+
+		if err != nil {
+			return ""
+		}
+
+		return value
 	case ExpressionValueType.Guid:
 		value, err := ve.GuidValue()
 
@@ -138,9 +146,9 @@ func (ve *ValueExpression) validateValueType(valueType ExpressionValueTypeEnum) 
 	return nil
 }
 
-// BoolValue gets the ValueExpression value cast as a bool.
+// BooleanValue gets the ValueExpression value cast as a bool.
 // An error will be returned if value type is not ExpressionValueType.Boolean.
-func (ve *ValueExpression) BoolValue() (bool, error) {
+func (ve *ValueExpression) BooleanValue() (bool, error) {
 	err := ve.validateValueType(ExpressionValueType.Boolean)
 
 	if err != nil {
@@ -264,4 +272,37 @@ func (ve *ValueExpression) DateTimeValue() (time.Time, error) {
 	}
 
 	return ve.value.(time.Time), nil
+}
+
+// True is a value expression of type boolean with a true value.
+var True *ValueExpression = NewValueExpression(ExpressionValueType.Boolean, true)
+
+// False is a value expression of type boolean with a false value.
+var False *ValueExpression = NewValueExpression(ExpressionValueType.Boolean, false)
+
+// EmptyString is a value expression of type string with a value of an empty string.
+var EmptyString *ValueExpression = NewValueExpression(ExpressionValueType.String, "")
+
+// NullValue gets the target expression value type with a value of nil.
+func NullValue(targetValueType ExpressionValueTypeEnum) *ValueExpression {
+	switch targetValueType {
+	case ExpressionValueType.Boolean:
+		return NewValueExpression(ExpressionValueType.Boolean, nil)
+	case ExpressionValueType.Int32:
+		return NewValueExpression(ExpressionValueType.Int32, nil)
+	case ExpressionValueType.Int64:
+		return NewValueExpression(ExpressionValueType.Int64, nil)
+	case ExpressionValueType.Decimal:
+		return NewValueExpression(ExpressionValueType.Decimal, nil)
+	case ExpressionValueType.Double:
+		return NewValueExpression(ExpressionValueType.Double, nil)
+	case ExpressionValueType.String:
+		return NewValueExpression(ExpressionValueType.String, nil)
+	case ExpressionValueType.Guid:
+		return NewValueExpression(ExpressionValueType.Guid, nil)
+	case ExpressionValueType.DateTime:
+		return NewValueExpression(ExpressionValueType.DateTime, nil)
+	default:
+		return NewValueExpression(ExpressionValueType.Undefined, nil)
+	}
 }
