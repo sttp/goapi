@@ -25,7 +25,7 @@ package data
 
 import "strings"
 
-// DataTypeEnum defines the type for the DataType enumeration.
+// DataTypeEnum defines the type of the DataType enumeration.
 type DataTypeEnum int
 
 // DataType is an enumeration of the possible data types for a DataColumn.

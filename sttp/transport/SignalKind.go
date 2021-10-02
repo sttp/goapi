@@ -29,7 +29,7 @@ import (
 	"unicode"
 )
 
-// SignalKindEnum defines the type for the SignalKind enumeration.
+// SignalKindEnum defines the type of the SignalKind enumeration.
 type SignalKindEnum uint16
 
 // SignalKind is an enumeration of the possible kinds of signals a Measurement can represent.

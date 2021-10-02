@@ -42,7 +42,7 @@ const (
 	defaultPublishInterval      = 1.0
 )
 
-// StateFlagsEnum defines the type for the StateFlags enumeration.
+// StateFlagsEnum defines the type of the StateFlags enumeration.
 type StateFlagsEnum uint32
 
 // StateFlags is an enumeration of the possible quality states of a Measurement value.
@@ -203,7 +203,7 @@ func (sfe StateFlagsEnum) String() string {
 	return image.String()
 }
 
-// DataPacketFlagsEnum defines the type for the DataPacketFlags enumeration.
+// DataPacketFlagsEnum defines the type of the DataPacketFlags enumeration.
 type DataPacketFlagsEnum byte
 
 // DataPacketFlags is an enumeration of the possible flags for a data packet.
@@ -226,7 +226,7 @@ var DataPacketFlags = struct {
 	NoFlags:     0x0,
 }
 
-// ServerCommandEnum defines the type for the ServerCommand enumeration.
+// ServerCommandEnum defines the type of the ServerCommand enumeration.
 type ServerCommandEnum byte
 
 // ServerCommand is an enumeration of the possible server commands received
@@ -380,7 +380,7 @@ func (sce ServerCommandEnum) String() string {
 	}
 }
 
-// ServerResponseEnum defines the type for the ServerResponse enumeration.
+// ServerResponseEnum defines the type of the ServerResponse enumeration.
 type ServerResponseEnum byte
 
 // ServerResponse is an enumeration of the possible server responses received sent
@@ -548,7 +548,7 @@ func (sre ServerResponseEnum) String() string {
    apply to fundamental protocol control.
 */
 
-// OperationalModesEnum defines the type for the OperationalModes enumeration.
+// OperationalModesEnum defines the type of the OperationalModes enumeration.
 type OperationalModesEnum uint32
 
 // OperationalModes is an enumeration of the possible modes that affect how DataPublisher and DataSubscriber
@@ -584,7 +584,7 @@ var OperationalModes = struct {
 	NoFlags:                  0x00000000,
 }
 
-// OperationalEncodingEnum defines the type for the OperationalEncoding enumeration.
+// OperationalEncodingEnum defines the type of the OperationalEncoding enumeration.
 type OperationalEncodingEnum uint32
 
 // OperationalEncoding is an enumeration of the possible string encoding options of an STTP session.
@@ -601,7 +601,7 @@ var OperationalEncoding = struct {
 	UTF8:    0x00000200,
 }
 
-// CompressionModesEnum defines the type for the CompressionModes enumeration.
+// CompressionModesEnum defines the type of the CompressionModes enumeration.
 type CompressionModesEnum uint32
 
 // CompressionModes is an enumeration of the possible compression modes supported by STTP.
@@ -618,7 +618,7 @@ var CompressionModes = struct {
 	None: 0x00000000,
 }
 
-// SecurityModeEnum defines the type for the SecurityMode enumeration.
+// SecurityModeEnum defines the type of the SecurityMode enumeration.
 type SecurityModeEnum int
 
 // SecurityMode is an enumeration of the possible security modes used by the DataPublisher
@@ -633,7 +633,7 @@ var SecurityMode = struct {
 	TLS:  1,
 }
 
-// ConnectStatusEnum defines the type for the ConnectStatus enumeration.
+// ConnectStatusEnum defines the type of the ConnectStatus enumeration.
 type ConnectStatusEnum int
 
 // ConnectStatus is an enumeration of the possible connection status results used
