@@ -210,7 +210,7 @@ func (dr *DataRow) ColumnValueAsString(column *DataColumn) string {
 
 		return value
 	case DataType.Boolean:
-		value, null, err := dr.BoolValue(index)
+		value, null, err := dr.BooleanValue(index)
 
 		if invalid, result := checkState(null, err); invalid {
 			return result
@@ -384,10 +384,10 @@ func (dr *DataRow) StringValueByName(columnName string) (string, bool, error) {
 	return dr.StringValue(index)
 }
 
-// BoolValue gets the record value at the specified columnIndex cast as a bool.
+// BooleanValue gets the record value at the specified columnIndex cast as a bool.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Boolean.
-func (dr *DataRow) BoolValue(columnIndex int) (bool, bool, error) {
+func (dr *DataRow) BooleanValue(columnIndex int) (bool, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Boolean), true)
 
 	if err != nil {
@@ -417,17 +417,17 @@ func (dr *DataRow) BoolValue(columnIndex int) (bool, bool, error) {
 	return value.(bool), false, nil
 }
 
-// BoolValueByName gets the record value for the specified columnName cast as a bool.
+// BooleanValueByName gets the record value for the specified columnName cast as a bool.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Boolean.
-func (dr *DataRow) BoolValueByName(columnName string) (bool, bool, error) {
+func (dr *DataRow) BooleanValueByName(columnName string) (bool, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
 		return false, false, err
 	}
 
-	return dr.BoolValue(index)
+	return dr.BooleanValue(index)
 }
 
 // DateTimeValue gets the record value at the specified columnIndex cast as a time.Time.
