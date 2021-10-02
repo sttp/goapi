@@ -23,7 +23,26 @@
 
 package filterexpressions
 
+import "github.com/sttp/goapi/sttp/data"
+
 // ColumnExpression represents a column expression.
 type ColumnExpression struct {
-	Expression
+	dataColumn *data.DataColumn
+}
+
+// NewColumnExpression creates a new column expression.
+func NewColumnExpression(dataColumn *data.DataColumn) *ColumnExpression {
+	return &ColumnExpression{
+		dataColumn: dataColumn,
+	}
+}
+
+// Type gets expression type of the ColumnExpression.
+func (*ColumnExpression) Type() ExpressionTypeEnum {
+	return ExpressionType.Column
+}
+
+// DataColumn gets the data column of the ColumnExpression.
+func (ce *ColumnExpression) DataColumn() *data.DataColumn {
+	return ce.dataColumn
 }

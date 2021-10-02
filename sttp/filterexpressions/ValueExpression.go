@@ -34,8 +34,6 @@ import (
 
 // ValueExpression represents a value expression.
 type ValueExpression struct {
-	Expression
-
 	value     interface{}
 	valueType ExpressionValueTypeEnum
 }
@@ -43,10 +41,14 @@ type ValueExpression struct {
 // NewValueExpression creates a new value expression.
 func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
 	return &ValueExpression{
-		Expression: newExpression(ExpressionType.Value),
-		value:      value,
-		valueType:  valueType,
+		value:     value,
+		valueType: valueType,
 	}
+}
+
+// Type gets expression type of the ValueExpression.
+func (*ValueExpression) Type() ExpressionTypeEnum {
+	return ExpressionType.Value
 }
 
 // Value gets the value of a ValueExpression.

@@ -23,9 +23,13 @@
 
 package filterexpressions
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
-// ExpressionTypeEnum defines the type for the ExpressionType enumeration.
+// ExpressionTypeEnum defines the type of the ExpressionType enumeration.
 type ExpressionTypeEnum int
 
 // ExpressionType is an enumeration of possible expression types.
@@ -71,10 +75,10 @@ func (ete ExpressionTypeEnum) String() string {
 	}
 }
 
-// ExpressionValueTypeEnum defines the type for the ExpressionValueType enumeration.
+// ExpressionValueTypeEnum defines the type of the ExpressionValueType enumeration.
 type ExpressionValueTypeEnum int
 
-// ExpressionValueTypeEnum is an enumeration of possible expression value data types.
+// ExpressionValueType is an enumeration of possible expression value data types.
 // These expression value data types are reduced to a reasonable set of possible types
 // that can be represented in a filter expression. All data table column values will be
 // mapped to these types.
@@ -172,7 +176,7 @@ func (evte ExpressionValueTypeEnum) IsNumericType() bool {
 	}
 }
 
-// ExpressionUnaryTypeEnum defines the type for the ExpressionUnaryType enumeration.
+// ExpressionUnaryTypeEnum defines the type of the ExpressionUnaryType enumeration.
 type ExpressionUnaryTypeEnum int
 
 // ExpressionUnaryType is an enumeration of the possible expression unary types.
@@ -203,7 +207,7 @@ func (eute ExpressionUnaryTypeEnum) String() string {
 	}
 }
 
-// ExpressionFunctionTypeEnum defines the type for the ExpressionFunctionType enumeration.
+// ExpressionFunctionTypeEnum defines the type of the ExpressionFunctionType enumeration.
 type ExpressionFunctionTypeEnum int
 
 // ExpressionFunctionType is an enumeration of possible expression function types.
@@ -424,10 +428,10 @@ func (efte ExpressionFunctionTypeEnum) String() string {
 	}
 }
 
-// ExpressionOperatorTypeEnum defines the type for the ExpressionOperatorType enumeration.
+// ExpressionOperatorTypeEnum defines the type of the ExpressionOperatorType enumeration.
 type ExpressionOperatorTypeEnum int
 
-// ExpressionOperatorTypeEnum is an enumeration of possible expression operator types.
+// ExpressionOperatorType is an enumeration of possible expression operator types.
 var ExpressionOperatorType = struct {
 	// Multiply defines a "*" operator type.
 	Multiply ExpressionOperatorTypeEnum
@@ -567,5 +571,73 @@ func (eote ExpressionOperatorTypeEnum) String() string {
 		return "OR"
 	default:
 		return "0x" + strconv.FormatInt(int64(eote), 16)
+	}
+}
+
+// TimeIntervalEnum defines the type of the TimeInterval enumeration.
+type TimeIntervalEnum int
+
+// TimeInterval is an enumeration of possible DateTime intervals.
+var TimeInterval = struct {
+	// Year represents the year part of a DateTime.
+	Year TimeIntervalEnum
+	// Month represents the month part (1-12) of a DateTime.
+	Month TimeIntervalEnum
+	// DayOfYear represents the day of the year (1-366) of a DateTime.
+	DayOfYear TimeIntervalEnum
+	// Day represents the of of the month (1-31) of a DateTime.
+	Day TimeIntervalEnum
+	// Week represents the week of the year (1-53) of a DateTime.
+	Week TimeIntervalEnum
+	// WeekDay represents the day of the week (1-7) of a DateTime.
+	WeekDay TimeIntervalEnum
+	// Hour represents the hour of the day (0-23) of a DateTime.
+	Hour TimeIntervalEnum
+	// Minute represents the minute of the hour (0-59) of a DateTime.
+	Minute TimeIntervalEnum
+	// Second represents the second of the minute (0-59) of a DateTime.
+	Second TimeIntervalEnum
+	// Millisecond represents the millisecond of the second (0-999) of a DateTime.
+	Millisecond TimeIntervalEnum
+}{
+	Year:        0,
+	Month:       1,
+	DayOfYear:   2,
+	Day:         3,
+	Week:        4,
+	WeekDay:     5,
+	Hour:        6,
+	Minute:      7,
+	Second:      8,
+	Millisecond: 9,
+}
+
+// ParseTimeInterval gets the TimeInterval parsed from the specified name. Case insensitive.
+func ParseTimeInterval(name string) (TimeIntervalEnum, error) {
+	name = strings.ToUpper(strings.TrimSpace(name))
+
+	switch name {
+	case "YEAR":
+		return TimeInterval.Year, nil
+	case "MONTH":
+		return TimeInterval.Month, nil
+	case "DAYOFYEAR":
+		return TimeInterval.DayOfYear, nil
+	case "DAY":
+		return TimeInterval.Day, nil
+	case "WEEK":
+		return TimeInterval.Week, nil
+	case "WEEKDAY":
+		return TimeInterval.WeekDay, nil
+	case "HOUR":
+		return TimeInterval.Hour, nil
+	case "MINUTE":
+		return TimeInterval.Minute, nil
+	case "SECOND":
+		return TimeInterval.Second, nil
+	case "MILLISECOND":
+		return TimeInterval.Millisecond, nil
+	default:
+		return TimeInterval.Year, fmt.Errorf("specified time interval \"%s\" is unrecognized", name)
 	}
 }

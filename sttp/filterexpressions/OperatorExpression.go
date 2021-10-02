@@ -23,7 +23,38 @@
 
 package filterexpressions
 
-// OperatorExpression represents a operator expression.
+// OperatorExpression represents an operator expression.
 type OperatorExpression struct {
-	Expression
+	operatorType ExpressionOperatorTypeEnum
+	leftValue    Expression
+	rightValue   Expression
+}
+
+// NewOperatorExpression creates a new operator expression.
+func NewOperatorExpression(operatorType ExpressionOperatorTypeEnum, leftValue Expression, rightValue Expression) *OperatorExpression {
+	return &OperatorExpression{
+		operatorType: operatorType,
+		leftValue:    leftValue,
+		rightValue:   rightValue,
+	}
+}
+
+// Type gets expression type of the OperatorExpression.
+func (*OperatorExpression) Type() ExpressionTypeEnum {
+	return ExpressionType.Operator
+}
+
+// OperatorType gets operator type of the OperatorExpression.
+func (oe *OperatorExpression) OperatorType() ExpressionOperatorTypeEnum {
+	return oe.operatorType
+}
+
+// LeftValue gets the left value expression of the OperatorExpression.
+func (oe *OperatorExpression) LeftValue() Expression {
+	return oe.leftValue
+}
+
+// RightValue gets the right value expression of the OperatorExpression.
+func (oe *OperatorExpression) RightValue() Expression {
+	return oe.rightValue
 }

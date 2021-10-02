@@ -25,5 +25,29 @@ package filterexpressions
 
 // FunctionExpression represents a function expression.
 type FunctionExpression struct {
-	Expression
+	functionType ExpressionFunctionTypeEnum
+	arguments    []Expression
+}
+
+// NewFunctionExpression creates a new function expression.
+func NewFunctionExpression(functionType ExpressionFunctionTypeEnum, arguments []Expression) *FunctionExpression {
+	return &FunctionExpression{
+		functionType: functionType,
+		arguments:    arguments,
+	}
+}
+
+// Type gets expression type of the FunctionExpression.
+func (*FunctionExpression) Type() ExpressionTypeEnum {
+	return ExpressionType.Function
+}
+
+// FunctionType gets function type of the FunctionExpression.
+func (fe *FunctionExpression) FunctionType() ExpressionFunctionTypeEnum {
+	return fe.functionType
+}
+
+// Arguments gets the expression arguments of the FunctionExpression.
+func (fe *FunctionExpression) Arguments() []Expression {
+	return fe.arguments
 }

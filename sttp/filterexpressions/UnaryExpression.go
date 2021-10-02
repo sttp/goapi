@@ -25,18 +25,29 @@ package filterexpressions
 
 // UnaryExpression represents a unary expression.
 type UnaryExpression struct {
-	Expression
-
-	value     interface{}
+	value     Expression
 	unaryType ExpressionUnaryTypeEnum
 }
 
-// Value gets the expression value of a UnaryExpression.
-func (ue *UnaryExpression) Value() interface{} {
+// NewUnaryExpression creates a new unary expression.
+func NewUnaryExpression(unaryType ExpressionUnaryTypeEnum, value Expression) *UnaryExpression {
+	return &UnaryExpression{
+		value:     value,
+		unaryType: unaryType,
+	}
+}
+
+// Type gets expression type of the UnaryExpression.
+func (*UnaryExpression) Type() ExpressionTypeEnum {
+	return ExpressionType.Unary
+}
+
+// Value gets the expression value of the UnaryExpression.
+func (ue *UnaryExpression) Value() Expression {
 	return ue.value
 }
 
-// UnaryType gets data type of the value of a UnaryExpression.
+// UnaryType gets unary type of the UnaryExpression.
 func (ue *UnaryExpression) UnaryType() ExpressionUnaryTypeEnum {
 	return ue.unaryType
 }

@@ -27,70 +27,86 @@ import (
 	"errors"
 )
 
-// Expression represents the fundamental type for all expression types
-type Expression struct {
-	expressionType ExpressionTypeEnum
+// Expression is the interface that can represent all expression types
+type Expression interface {
+	// Type gets the type of the expression.
+	Type() ExpressionTypeEnum
 }
 
-func newExpression(expressionType ExpressionTypeEnum) Expression {
-	return Expression{expressionType: expressionType}
-}
-
-// Type gets the type of the expression, e.g., ExpressionType.Unary or ExpressionType.Operator.
-func (e *Expression) Type() ExpressionTypeEnum {
-	return e.expressionType
-}
-
-// ValueExpression gets the expression cast to a ValueExpression.
-func GetValueExpression(expression interface{}) (*ValueExpression, error) {
-	if ve, ok := expression.(*ValueExpression); ok {
-		return ve, nil
+// GetValueExpression gets the expression cast to a ValueExpression.
+func GetValueExpression(expression Expression) (*ValueExpression, error) {
+	if expression == nil {
+		return nil, errors.New("cannot get ValueExpression, expression is nil")
 	}
 
-	return nil, errors.New("expression is not a ValueExpression")
-}
-
-// UnaryExpression gets the expression cast to a UnaryExpression.
-func GetUnaryExpression(expression interface{}) (*UnaryExpression, error) {
-	if ue, ok := expression.(*UnaryExpression); ok {
-		return ue, nil
+	if expression.Type() != ExpressionType.Value {
+		return nil, errors.New("expression is not a ValueExpression")
 	}
 
-	return nil, errors.New("expression is not a UnaryExpression")
+	return expression.(*ValueExpression), nil
 }
 
-// ColumnExpression gets the expression cast to a ColumnExpression.
-func GetColumnExpression(expression interface{}) (*ColumnExpression, error) {
-	if ce, ok := expression.(*ColumnExpression); ok {
-		return ce, nil
+// GetUnaryExpression gets the expression cast to a UnaryExpression.
+func GetUnaryExpression(expression Expression) (*UnaryExpression, error) {
+	if expression == nil {
+		return nil, errors.New("cannot get UnaryExpression, expression is nil")
 	}
 
-	return nil, errors.New("expression is not a ColumnExpression")
+	if expression.Type() != ExpressionType.Unary {
+		return nil, errors.New("expression is not a UnaryExpression")
+	}
+
+	return expression.(*UnaryExpression), nil
 }
 
-// InListExpression gets the expression cast to a InListExpression.
-func GetInListExpression(expression interface{}) (*InListExpression, error) {
-	if ine, ok := expression.(*InListExpression); ok {
-		return ine, nil
+// GetColumnExpression gets the expression cast to a ColumnExpression.
+func GetColumnExpression(expression Expression) (*ColumnExpression, error) {
+	if expression == nil {
+		return nil, errors.New("cannot get ColumnExpression, expression is nil")
 	}
 
-	return nil, errors.New("expression is not a InListExpression")
+	if expression.Type() != ExpressionType.Column {
+		return nil, errors.New("expression is not a ColumnExpression")
+	}
+
+	return expression.(*ColumnExpression), nil
 }
 
-// FunctionExpression gets the expression cast to a FunctionExpression.
-func GetFunctionExpression(expression interface{}) (*FunctionExpression, error) {
-	if fe, ok := expression.(*FunctionExpression); ok {
-		return fe, nil
+// GetInListExpression gets the expression cast to a InListExpression.
+func GetInListExpression(expression Expression) (*InListExpression, error) {
+	if expression == nil {
+		return nil, errors.New("cannot get InListExpression, expression is nil")
 	}
 
-	return nil, errors.New("expression is not a FunctionExpression")
+	if expression.Type() != ExpressionType.InList {
+		return nil, errors.New("expression is not a InListExpression")
+	}
+
+	return expression.(*InListExpression), nil
 }
 
-// OperatorExpression gets the expression cast to a OperatorExpression.
-func GetOperatorExpression(expression interface{}) (*OperatorExpression, error) {
-	if oe, ok := expression.(*OperatorExpression); ok {
-		return oe, nil
+// GetFunctionExpression gets the expression cast to a FunctionExpression.
+func GetFunctionExpression(expression Expression) (*FunctionExpression, error) {
+	if expression == nil {
+		return nil, errors.New("cannot get FunctionExpression, expression is nil")
 	}
 
-	return nil, errors.New("expression is not a OperatorExpression")
+	if expression.Type() != ExpressionType.Function {
+		return nil, errors.New("expression is not a FunctionExpression")
+	}
+
+	return expression.(*FunctionExpression), nil
+}
+
+// GetOperatorExpression gets the expression cast to a OperatorExpression.
+func GetOperatorExpression(expression Expression) (*OperatorExpression, error) {
+	if expression == nil {
+		return nil, errors.New("cannot get OperatorExpression, expression is nil")
+	}
+
+	if expression.Type() != ExpressionType.Operator {
+		return nil, errors.New("expression is not a OperatorExpression")
+	}
+
+	return expression.(*OperatorExpression), nil
 }

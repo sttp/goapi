@@ -25,5 +25,43 @@ package filterexpressions
 
 // InListExpression represents an in-list expression.
 type InListExpression struct {
-	Expression
+	value         Expression
+	arguments     []Expression
+	hasNotkeyWord bool
+	exactMatch    bool
+}
+
+// NewInListExpression creates a new in-list expression.
+func NewInListExpression(value Expression, arguments []Expression, hasNotkeyWord bool, exactMatch bool) *InListExpression {
+	return &InListExpression{
+		value:         value,
+		arguments:     arguments,
+		hasNotkeyWord: hasNotkeyWord,
+		exactMatch:    exactMatch,
+	}
+}
+
+// Type gets expression type of the InListExpression.
+func (*InListExpression) Type() ExpressionTypeEnum {
+	return ExpressionType.InList
+}
+
+// Value gets the expression value of the InListExpression.
+func (ile *InListExpression) Value() Expression {
+	return ile.value
+}
+
+// Arguments gets the expression arguments of the InListExpression.
+func (ile *InListExpression) Arguments() []Expression {
+	return ile.arguments
+}
+
+// HasNotKeyword gets a flag that determines if the InListExpression has the "NOT" keyword.
+func (ile *InListExpression) HasNotKeyword() bool {
+	return ile.hasNotkeyWord
+}
+
+// ExactMatch gets a flags that determines if the InListExpression has the "BINARY" or "===" keyword.
+func (ile *InListExpression) ExtactMatch() bool {
+	return ile.exactMatch
 }
