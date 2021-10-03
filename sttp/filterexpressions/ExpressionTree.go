@@ -25,7 +25,6 @@ package filterexpressions
 
 import (
 	"errors"
-	"fmt"
 	"math"
 
 	"github.com/sttp/goapi/sttp/data"
@@ -77,9 +76,10 @@ func (et *ExpressionTree) evaluateAs(expression Expression, targetValueType Expr
 
 	switch expression.Type() {
 	case ExpressionType.Value:
-		valueExpression, err := GetValueExpression(expression)
+		var valueExpression *ValueExpression
+		var err error
 
-		if err != nil {
+		if valueExpression, err = GetValueExpression(expression); err != nil {
 			return nil, err
 		}
 
@@ -105,15 +105,16 @@ func (et *ExpressionTree) evaluateAs(expression Expression, targetValueType Expr
 }
 
 func (et *ExpressionTree) evaluateUnary(expression Expression) (*ValueExpression, error) {
-	unaryExpression, err := GetUnaryExpression(expression)
+	var unaryExpression *UnaryExpression
+	var err error
 
-	if err != nil {
+	if unaryExpression, err = GetUnaryExpression(expression); err != nil {
 		return nil, err
 	}
 
-	unaryValue, err := et.evaluate(unaryExpression.Value())
+	var unaryValue *ValueExpression
 
-	if err != nil {
+	if unaryValue, err = et.evaluate(unaryExpression.Value()); err != nil {
 		return nil, err
 	}
 
@@ -142,22 +143,23 @@ func (et *ExpressionTree) evaluateUnary(expression Expression) (*ValueExpression
 	case ExpressionValueType.DateTime:
 		fallthrough
 	case ExpressionValueType.Undefined:
-		return nil, fmt.Errorf("cannot apply unary \"%s\" operator to \"%s\"", unaryExpression.UnaryType().String(), unaryValueType.String())
+		return nil, errors.New("cannot apply unary \"" + unaryExpression.UnaryType().String() + "\" operator to \"" + unaryValueType.String() + "\"")
 	default:
 		return nil, errors.New("unexpected expression value type encountered")
 	}
 }
 
 func (et *ExpressionTree) evaluateColumn(expression Expression) (*ValueExpression, error) {
-	columnExpression, err := GetColumnExpression(expression)
+	var columnExpression *ColumnExpression
+	var err error
 
-	if err != nil {
+	if columnExpression, err = GetColumnExpression(expression); err != nil {
 		return nil, err
 	}
 
-	column := columnExpression.DataColumn()
+	var column *data.DataColumn
 
-	if column == nil {
+	if column = columnExpression.DataColumn(); column == nil {
 		return nil, errors.New("encountered column expression with undefined data column reference")
 	}
 
@@ -249,15 +251,16 @@ func (et *ExpressionTree) evaluateColumn(expression Expression) (*ValueExpressio
 }
 
 func (et *ExpressionTree) evaluateInList(expression Expression) (*ValueExpression, error) {
-	inListExpression, err := GetInListExpression(expression)
+	var inListExpression *InListExpression
+	var err error
 
-	if err != nil {
+	if inListExpression, err = GetInListExpression(expression); err != nil {
 		return nil, err
 	}
 
-	inListValue, err := et.evaluate(inListExpression.Value())
+	var inListValue *ValueExpression
 
-	if err != nil {
+	if inListValue, err = et.evaluate(inListExpression.Value()); err != nil {
 		return nil, err
 	}
 
@@ -270,23 +273,24 @@ func (et *ExpressionTree) evaluateInList(expression Expression) (*ValueExpressio
 	exactMatch := inListExpression.ExtactMatch()
 	arguments := inListExpression.Arguments()
 
+	var argumentValue, result *ValueExpression
+	var valueType ExpressionValueTypeEnum
+	var resultVal bool
+
 	for i := 0; i < len(arguments); i++ {
-		argumentValue, err := et.evaluate(arguments[i])
-
-		if err != nil {
+		if argumentValue, err = et.evaluate(arguments[i]); err != nil {
 			return nil, err
 		}
 
-		valueType, err := et.deriveComparisonOperationValueType(ExpressionOperatorType.Equal, inListValue.ValueType(), argumentValue.ValueType())
-
-		if err != nil {
+		if valueType, err = et.deriveComparisonOperationValueType(ExpressionOperatorType.Equal, inListValue.ValueType(), argumentValue.ValueType()); err != nil {
 			return nil, err
 		}
 
-		result := et.equalOp(inListValue, argumentValue, valueType, exactMatch)
-		resultVal, err := result.BooleanValue()
+		if result, err = et.equalOp(inListValue, argumentValue, valueType, exactMatch); err != nil {
+			return nil, err
+		}
 
-		if err != nil {
+		if resultVal, err = result.BooleanValue(); err != nil {
 			return nil, err
 		}
 
@@ -311,7 +315,87 @@ func (et *ExpressionTree) evaluateFunction(expression Expression) (*ValueExpress
 }
 
 func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpression, error) {
-	return nil, nil
+	var operatorExpression *OperatorExpression
+	var err error
+
+	if operatorExpression, err = GetOperatorExpression(expression); err != nil {
+		return nil, err
+	}
+
+	var leftValue *ValueExpression
+
+	if leftValue, err = et.evaluate(operatorExpression.LeftValue()); err != nil {
+		return nil, err
+	}
+
+	var rightValue *ValueExpression
+
+	if rightValue, err = et.evaluate(operatorExpression.RightValue()); err != nil {
+		return nil, err
+	}
+
+	var valueType ExpressionValueTypeEnum
+
+	if valueType, err = et.deriveOperationValueType(ExpressionOperatorType.Equal, leftValue.ValueType(), rightValue.ValueType()); err != nil {
+		return nil, err
+	}
+
+	switch operatorExpression.OperatorType() {
+	case ExpressionOperatorType.Multiply:
+		return et.multiplyOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.Divide:
+		return et.divideOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.Modulus:
+		return et.modulusOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.Add:
+		return et.addOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.Subtract:
+		return et.subtractOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.BitShiftLeft:
+		return et.bitShiftLeftOp(leftValue, rightValue)
+	case ExpressionOperatorType.BitShiftRight:
+		return et.bitShiftRightOp(leftValue, rightValue)
+	case ExpressionOperatorType.BitwiseAnd:
+		return et.bitwiseAndOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.BitwiseOr:
+		return et.bitwiseOrOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.BitwiseXor:
+		return et.bitwiseXorOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.LessThan:
+		return et.lessThanOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.LessThanOrEqual:
+		return et.lessThanOrEqualOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.GreaterThan:
+		return et.greaterThanOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.GreaterThanOrEqual:
+		return et.greaterThanOrEqualOp(leftValue, rightValue, valueType)
+	case ExpressionOperatorType.Equal:
+		return et.equalOp(leftValue, rightValue, valueType, false)
+	case ExpressionOperatorType.EqualExactMatch:
+		return et.equalOp(leftValue, rightValue, valueType, true)
+	case ExpressionOperatorType.NotEqual:
+		return et.notEqualOp(leftValue, rightValue, valueType, false)
+	case ExpressionOperatorType.NotEqualExactMatch:
+		return et.notEqualOp(leftValue, rightValue, valueType, true)
+	case ExpressionOperatorType.IsNull:
+		return et.isNullOp(leftValue)
+	case ExpressionOperatorType.IsNotNull:
+		return et.isNotNullOp(leftValue)
+	case ExpressionOperatorType.Like:
+		return et.likeOp(leftValue, rightValue, false)
+	case ExpressionOperatorType.LikeExactMatch:
+		return et.likeOp(leftValue, rightValue, true)
+	case ExpressionOperatorType.NotLike:
+		return et.notLikeOp(leftValue, rightValue, false)
+	case ExpressionOperatorType.NotLikeExactMatch:
+		return et.notLikeOp(leftValue, rightValue, true)
+	case ExpressionOperatorType.And:
+		return et.andOp(leftValue, rightValue)
+	case ExpressionOperatorType.Or:
+		return et.orOp(leftValue, rightValue)
+	default:
+		return nil, errors.New("unexpected operator type encountered")
+	}
 }
 
 // Operation Value Type Selectors
@@ -757,256 +841,310 @@ func (et *ExpressionTree) deriveBooleanOperationValueType(operationType Expressi
 
 // Filter Expression Function Implementations
 
-func (et *ExpressionTree) abs(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) abs(sourceValue *ValueExpression) (*ValueExpression, error) {
+	if !sourceValue.ValueType().IsNumericType() {
+		return nil, errors.New("\"Abs\" function argument must be numeric")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(sourceValue.ValueType()), nil
+	}
+
+	var err error
+
+	switch sourceValue.ValueType() {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, sourceValue.booleanValue())
+	case ExpressionValueType.Int32:
+		var i32 int32
+		if i32, err = sourceValue.Int32Value(); err != nil {
+			return nil, err
+		}
+		return NewValueExpression(ExpressionValueType.Int32, abs32(i32)), nil
+	case ExpressionValueType.Int64:
+		var i64 int64
+		if i64, err = sourceValue.Int64Value(); err != nil {
+			return nil, err
+		}
+		return NewValueExpression(ExpressionValueType.Int64, abs64(i64)), nil
+	case ExpressionValueType.Decimal:
+		var f64 float64
+		if f64, err = sourceValue.DecimalValue(); err != nil {
+			return nil, err
+		}
+		return NewValueExpression(ExpressionValueType.Decimal, math.Abs(f64)), nil
+	case ExpressionValueType.Double:
+		var f64 float64
+		if f64, err = sourceValue.DoubleValue(); err != nil {
+			return nil, err
+		}
+		return NewValueExpression(ExpressionValueType.Double, math.Abs(f64)), nil
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
-func (et *ExpressionTree) ceiling(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func abs32(value int32) int32 {
+	if value < 0 {
+		return -value
+	}
+	return value
 }
 
-func (et *ExpressionTree) coalesce(arguments []*ValueExpression) *ValueExpression {
-	return nil
+func abs64(value int64) int64 {
+	if value < 0 {
+		return -value
+	}
+	return value
 }
 
-func (et *ExpressionTree) convert(sourceValue *ValueExpression, targetType *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) ceiling(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) contains(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) coalesce(arguments []*ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueExpression, intervalType *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) convert(sourceValue *ValueExpression, targetType *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) dateDiff(leftValue *ValueExpression, rightValue *ValueExpression, intervalType *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) contains(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) datePart(sourceValue *ValueExpression, intervalType *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) endsWith(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) dateDiff(leftValue *ValueExpression, rightValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) floor(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) datePart(sourceValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) iIf(testValue *ValueExpression, leftResultValue Expression, rightResultValue Expression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) endsWith(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) indexOf(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) floor(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) isDate(testValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) iIf(testValue *ValueExpression, leftResultValue Expression, rightResultValue Expression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) isInteger(testValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) indexOf(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) isGuid(testValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) isDate(testValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) isNull(testValue *ValueExpression, defaultValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) isInteger(testValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) isNumeric(testValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) isGuid(testValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) lastIndexOf(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) isNull(testValue *ValueExpression, defaultValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) len(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) isNumeric(testValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) lower(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) lastIndexOf(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) maxOf(arguments []*ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) len(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) minOf(arguments []*ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) lower(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) now() *ValueExpression {
-	return nil
+func (et *ExpressionTree) maxOf(arguments []*ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) nthIndexOf(sourceValue *ValueExpression, testValue *ValueExpression, indexValue *ValueExpression, ignoreCase *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) minOf(arguments []*ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) power(sourceValue *ValueExpression, exponentValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) now() (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) regExMatch(regexValue *ValueExpression, testValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) nthIndexOf(sourceValue *ValueExpression, testValue *ValueExpression, indexValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) regExVal(regexValue *ValueExpression, testValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) power(sourceValue *ValueExpression, exponentValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) replace(sourceValue *ValueExpression, testValue *ValueExpression, replaceValue *ValueExpression, ignoreCase *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) regExMatch(regexValue *ValueExpression, testValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) reverse(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) regExVal(regexValue *ValueExpression, testValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) round(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) replace(sourceValue *ValueExpression, testValue *ValueExpression, replaceValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) split(sourceValue *ValueExpression, delimiterValue *ValueExpression, indexValue *ValueExpression, ignoreCase *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) reverse(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) sqrt(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) round(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) startsWith(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) split(sourceValue *ValueExpression, delimiterValue *ValueExpression, indexValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) strCount(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) sqrt(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) strCmp(leftValue *ValueExpression, rightValue *ValueExpression, ignoreCase *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) startsWith(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) subStr(sourceValue *ValueExpression, indexValue *ValueExpression, lengthValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) strCount(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) trim(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) strCmp(leftValue *ValueExpression, rightValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) trimLeft(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) subStr(sourceValue *ValueExpression, indexValue *ValueExpression, lengthValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) trimRight(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) trim(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) upper(sourceValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) trimLeft(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) utcNow() *ValueExpression {
-	return nil
+func (et *ExpressionTree) trimRight(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
+}
+
+func (et *ExpressionTree) upper(sourceValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
+}
+
+func (et *ExpressionTree) utcNow() (*ValueExpression, error) {
+	return nil, nil
 }
 
 // Filter Expression Operator Implementations
 
-func (et *ExpressionTree) multiplyOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) multiplyOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) divideOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) divideOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) modulusOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) modulusOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) addOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) addOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) subtractOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) subtractOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) bitShiftLeftOp(leftValue *ValueExpression, rightValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) bitShiftLeftOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) bitShiftRightOp(leftValue *ValueExpression, rightValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) bitShiftRightOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) bitwiseAndOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) bitwiseAndOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) bitwiseOrOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) bitwiseOrOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) bitwiseXorOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) bitwiseXorOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) lessThanOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) lessThanOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) lessThanOrEqualOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) lessThanOrEqualOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) greaterThanOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) greaterThanOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) greaterThanOrEqualOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) *ValueExpression {
-	return nil
+func (et *ExpressionTree) greaterThanOrEqualOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) equalOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum, exactMatch bool) *ValueExpression {
-	return nil
+func (et *ExpressionTree) equalOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum, exactMatch bool) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) notEqualOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum, exactMatch bool) *ValueExpression {
-	return nil
+func (et *ExpressionTree) notEqualOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum, exactMatch bool) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) isNullOp(leftValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) isNullOp(leftValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) isNotNullOp(leftValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) isNotNullOp(leftValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) likeOp(leftValue *ValueExpression, rightValue *ValueExpression, exactMatch bool) *ValueExpression {
-	return nil
+func (et *ExpressionTree) likeOp(leftValue *ValueExpression, rightValue *ValueExpression, exactMatch bool) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) notLikeOp(leftValue *ValueExpression, rightValue *ValueExpression, exactMatch bool) *ValueExpression {
-	return nil
+func (et *ExpressionTree) notLikeOp(leftValue *ValueExpression, rightValue *ValueExpression, exactMatch bool) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) andOp(leftValue *ValueExpression, rightValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) andOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }
 
-func (et *ExpressionTree) orOp(leftValue *ValueExpression, rightValue *ValueExpression) *ValueExpression {
-	return nil
+func (et *ExpressionTree) orOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
+	return nil, nil
 }

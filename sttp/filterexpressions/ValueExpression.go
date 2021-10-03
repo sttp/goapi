@@ -87,7 +87,7 @@ func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *V
 	}
 }
 
-// newValueExpression takes parameter array to allow for single-lined, less cluttered, more readable code
+// newValueExpression takes parameter array to allow for single-lined, more compact code
 func newValueExpression(valueType ExpressionValueTypeEnum, params []interface{}) (*ValueExpression, error) {
 	if len(params) != 2 {
 		return nil, errors.New("unexpected newValueExpression parameter count")
