@@ -113,6 +113,9 @@ var ExpressionValueType = struct {
 	Undefined: 8,
 }
 
+// ZeroExpressionValueType defines the zero value for the ExpressionValueType enumeration
+var ZeroExpressionValueType ExpressionValueTypeEnum = 0
+
 // ExpressionValueTypeLen gets the number of elements in the ExpressionValueType enumeration.
 func ExpressionValueTypeLen() int {
 	return int(ExpressionValueType.Undefined) + 1
