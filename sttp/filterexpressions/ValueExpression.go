@@ -24,6 +24,7 @@
 package filterexpressions
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -40,10 +41,69 @@ type ValueExpression struct {
 
 // NewValueExpression creates a new value expression.
 func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
+	if value != nil {
+		// TODO: debug validation code - consider removing for production:
+		switch valueType {
+		case ExpressionValueType.Boolean:
+			if _, ok := value.(bool); !ok {
+				panic("cannot create Boolean value expression; value is not bool")
+			}
+		case ExpressionValueType.Int32:
+			if _, ok := value.(int32); !ok {
+				panic("cannot create Int32 value expression; value is not int32")
+			}
+		case ExpressionValueType.Int64:
+			if _, ok := value.(int64); !ok {
+				panic("cannot create Int64 value expression; value is not int64")
+			}
+		case ExpressionValueType.Decimal:
+			if _, ok := value.(float64); !ok {
+				panic("cannot create Decimal value expression; value is not float64")
+			}
+		case ExpressionValueType.Double:
+			if _, ok := value.(float64); !ok {
+				panic("cannot create Double value expression; value is not float64")
+			}
+		case ExpressionValueType.String:
+			if _, ok := value.(string); !ok {
+				panic("cannot create String value expression; value is not string")
+			}
+		case ExpressionValueType.Guid:
+			if _, ok := value.(guid.Guid); !ok {
+				panic("cannot create Guid value expression; value is not guid.Guid")
+			}
+		case ExpressionValueType.DateTime:
+			if _, ok := value.(time.Time); !ok {
+				panic("cannot create DateTime value expression; value is not time.Time")
+			}
+		default:
+			panic("cannot create Boolean value expression; unexpected expression value type: 0x" + strconv.FormatInt(int64(valueType), 16))
+		}
+	}
+
 	return &ValueExpression{
 		value:     value,
 		valueType: valueType,
 	}
+}
+
+// newValueExpression takes parameter array to allow for single-lined, less cluttered, more readable code
+func newValueExpression(valueType ExpressionValueTypeEnum, params []interface{}) (*ValueExpression, error) {
+	if len(params) != 2 {
+		return nil, errors.New("unexpected newValueExpression parameter count")
+	}
+
+	if params[1] != nil {
+		err, ok := params[1].(error)
+
+		if !ok {
+			return nil, errors.New("second newValueExpression was not an error")
+		}
+
+		return nil, err
+	}
+
+	return NewValueExpression(valueType, params[0]), nil
 }
 
 // Type gets expression type of the ValueExpression.
@@ -146,6 +206,10 @@ func (ve *ValueExpression) validateValueType(valueType ExpressionValueTypeEnum) 
 	return nil
 }
 
+func paramArray(value interface{}, err error) []interface{} {
+	return []interface{}{value, err}
+}
+
 // BooleanValue gets the ValueExpression value cast as a bool.
 // An error will be returned if value type is not ExpressionValueType.Boolean.
 func (ve *ValueExpression) BooleanValue() (bool, error) {
@@ -160,6 +224,10 @@ func (ve *ValueExpression) BooleanValue() (bool, error) {
 	}
 
 	return ve.value.(bool), nil
+}
+
+func (ve *ValueExpression) booleanValue() []interface{} {
+	return paramArray(ve.BooleanValue())
 }
 
 // Int32Value gets the ValueExpression value cast as an int32.
@@ -178,6 +246,10 @@ func (ve *ValueExpression) Int32Value() (int32, error) {
 	return ve.value.(int32), nil
 }
 
+func (ve *ValueExpression) int32Value() []interface{} {
+	return paramArray(ve.Int32Value())
+}
+
 // Int64Value gets the ValueExpression value cast as an int64.
 // An error will be returned if value type is not ExpressionValueType.Int64.
 func (ve *ValueExpression) Int64Value() (int64, error) {
@@ -192,6 +264,10 @@ func (ve *ValueExpression) Int64Value() (int64, error) {
 	}
 
 	return ve.value.(int64), nil
+}
+
+func (ve *ValueExpression) int64Value() []interface{} {
+	return paramArray(ve.Int64Value())
 }
 
 // DecimalValue gets the ValueExpression value cast as a float64.
@@ -210,6 +286,10 @@ func (ve *ValueExpression) DecimalValue() (float64, error) {
 	return ve.value.(float64), nil
 }
 
+func (ve *ValueExpression) decimalValue() []interface{} {
+	return paramArray(ve.DecimalValue())
+}
+
 // DoubleValue gets the ValueExpression value cast as a float64.
 // An error will be returned if value type is not ExpressionValueType.Double.
 func (ve *ValueExpression) DoubleValue() (float64, error) {
@@ -224,6 +304,10 @@ func (ve *ValueExpression) DoubleValue() (float64, error) {
 	}
 
 	return ve.value.(float64), nil
+}
+
+func (ve *ValueExpression) doubleValue() []interface{} {
+	return paramArray(ve.DoubleValue())
 }
 
 // StringValue gets the ValueExpression value cast as a string.
@@ -242,6 +326,10 @@ func (ve *ValueExpression) StringValue() (string, error) {
 	return ve.value.(string), nil
 }
 
+func (ve *ValueExpression) stringValue() []interface{} {
+	return paramArray(ve.StringValue())
+}
+
 // GuidValue gets the ValueExpression value cast as a guid.Guid.
 // An error will be returned if value type is not ExpressionValueType.Guid.
 func (ve *ValueExpression) GuidValue() (guid.Guid, error) {
@@ -258,6 +346,10 @@ func (ve *ValueExpression) GuidValue() (guid.Guid, error) {
 	return ve.value.(guid.Guid), nil
 }
 
+func (ve *ValueExpression) guidValue() []interface{} {
+	return paramArray(ve.GuidValue())
+}
+
 // DateTimeValue gets the ValueExpression value cast as a time.Time.
 // An error will be returned if value type is not ExpressionValueType.DateTime.
 func (ve *ValueExpression) DateTimeValue() (time.Time, error) {
@@ -272,6 +364,10 @@ func (ve *ValueExpression) DateTimeValue() (time.Time, error) {
 	}
 
 	return ve.value.(time.Time), nil
+}
+
+func (ve *ValueExpression) dateTimeValue() []interface{} {
+	return paramArray(ve.DateTimeValue())
 }
 
 // True is a value expression of type boolean with a true value.
