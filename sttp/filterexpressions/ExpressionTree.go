@@ -1262,9 +1262,23 @@ func (et *ExpressionTree) abs(sourceValue *ValueExpression) (*ValueExpression, e
 	case ExpressionValueType.Boolean:
 		return newValueExpression(ExpressionValueType.Boolean, sourceValue.booleanValue()), nil
 	case ExpressionValueType.Int32:
-		return newValueExpression(ExpressionValueType.Int32, abs32(sourceValue.int32Value())), nil
+		abs := func(value int32) int32 {
+			if value < 0 {
+				return -value
+			}
+			return value
+		}
+
+		return newValueExpression(ExpressionValueType.Int32, abs(sourceValue.int32Value())), nil
 	case ExpressionValueType.Int64:
-		return newValueExpression(ExpressionValueType.Int64, abs64(sourceValue.int64Value())), nil
+		abs := func(value int64) int64 {
+			if value < 0 {
+				return -value
+			}
+			return value
+		}
+
+		return newValueExpression(ExpressionValueType.Int64, abs(sourceValue.int64Value())), nil
 	case ExpressionValueType.Decimal:
 		return newValueExpression(ExpressionValueType.Decimal, math.Abs(sourceValue.decimalValue())), nil
 	case ExpressionValueType.Double:
@@ -1272,20 +1286,6 @@ func (et *ExpressionTree) abs(sourceValue *ValueExpression) (*ValueExpression, e
 	default:
 		return nil, errors.New("unexpected expression value type encountered")
 	}
-}
-
-func abs32(value int32) int32 {
-	if value < 0 {
-		return -value
-	}
-	return value
-}
-
-func abs64(value int64) int64 {
-	if value < 0 {
-		return -value
-	}
-	return value
 }
 
 func (et *ExpressionTree) ceiling(sourceValue *ValueExpression) (*ValueExpression, error) {
@@ -1302,21 +1302,11 @@ func (et *ExpressionTree) ceiling(sourceValue *ValueExpression) (*ValueExpressio
 		return sourceValue, nil
 	}
 
-	var err error
-
 	switch sourceValue.ValueType() {
 	case ExpressionValueType.Decimal:
-		var f64 float64
-		if f64, err = sourceValue.DoubleValue(); err != nil {
-			return nil, err
-		}
-		return NewValueExpression(ExpressionValueType.Decimal, math.Ceil(f64)), nil
+		return newValueExpression(ExpressionValueType.Decimal, math.Ceil(sourceValue.decimalValue())), nil
 	case ExpressionValueType.Double:
-		var f64 float64
-		if f64, err = sourceValue.DoubleValue(); err != nil {
-			return nil, err
-		}
-		return NewValueExpression(ExpressionValueType.Double, math.Ceil(f64)), nil
+		return newValueExpression(ExpressionValueType.Double, math.Ceil(sourceValue.doubleValue())), nil
 	default:
 		return nil, errors.New("unexpected expression value type encountered")
 	}
