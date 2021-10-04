@@ -710,125 +710,15 @@ func (eote ExpressionOperatorTypeEnum) deriveOperationValueType(leftValueType Ex
 func (eote ExpressionOperatorTypeEnum) deriveArithmeticOperationValueType(leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
 	switch leftValueType {
 	case ExpressionValueType.Boolean:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			return ExpressionValueType.Boolean, nil
-		case ExpressionValueType.Int32:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.String:
-			if eote == ExpressionOperatorType.Add {
-				return ExpressionValueType.String, nil
-			}
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Boolean\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveArithmeticOperationValueTypeFromBoolean(rightValueType)
 	case ExpressionValueType.Int32:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.String:
-			if eote == ExpressionOperatorType.Add {
-				return ExpressionValueType.String, nil
-			}
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int32\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveArithmeticOperationValueTypeFromInt32(rightValueType)
 	case ExpressionValueType.Int64:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.String:
-			if eote == ExpressionOperatorType.Add {
-				return ExpressionValueType.String, nil
-			}
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int64\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveArithmeticOperationValueTypeFromInt64(rightValueType)
 	case ExpressionValueType.Decimal:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.String:
-			if eote == ExpressionOperatorType.Add {
-				return ExpressionValueType.String, nil
-			}
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Decimal\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveArithmeticOperationValueTypeFromDecimal(rightValueType)
 	case ExpressionValueType.Double:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.String:
-			if eote == ExpressionOperatorType.Add {
-				return ExpressionValueType.String, nil
-			}
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Double\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveArithmeticOperationValueTypeFromDouble(rightValueType)
 	case ExpressionValueType.String:
 		if eote == ExpressionOperatorType.Add {
 			return ExpressionValueType.String, nil
@@ -843,71 +733,144 @@ func (eote ExpressionOperatorTypeEnum) deriveArithmeticOperationValueType(leftVa
 	}
 }
 
+func (eote ExpressionOperatorTypeEnum) deriveArithmeticOperationValueTypeFromBoolean(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		return ExpressionValueType.Boolean, nil
+	case ExpressionValueType.Int32:
+		return ExpressionValueType.Int32, nil
+	case ExpressionValueType.Int64:
+		return ExpressionValueType.Int64, nil
+	case ExpressionValueType.Decimal:
+		return ExpressionValueType.Decimal, nil
+	case ExpressionValueType.Double:
+		return ExpressionValueType.Double, nil
+	case ExpressionValueType.String:
+		if eote == ExpressionOperatorType.Add {
+			return ExpressionValueType.String, nil
+		}
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Boolean\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveArithmeticOperationValueTypeFromInt32(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		return ExpressionValueType.Int32, nil
+	case ExpressionValueType.Int64:
+		return ExpressionValueType.Int64, nil
+	case ExpressionValueType.Decimal:
+		return ExpressionValueType.Decimal, nil
+	case ExpressionValueType.Double:
+		return ExpressionValueType.Double, nil
+	case ExpressionValueType.String:
+		if eote == ExpressionOperatorType.Add {
+			return ExpressionValueType.String, nil
+		}
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int32\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveArithmeticOperationValueTypeFromInt64(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		fallthrough
+	case ExpressionValueType.Int64:
+		return ExpressionValueType.Int64, nil
+	case ExpressionValueType.Decimal:
+		return ExpressionValueType.Decimal, nil
+	case ExpressionValueType.Double:
+		return ExpressionValueType.Double, nil
+	case ExpressionValueType.String:
+		if eote == ExpressionOperatorType.Add {
+			return ExpressionValueType.String, nil
+		}
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int64\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveArithmeticOperationValueTypeFromDecimal(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		fallthrough
+	case ExpressionValueType.Int64:
+		fallthrough
+	case ExpressionValueType.Decimal:
+		return ExpressionValueType.Decimal, nil
+	case ExpressionValueType.Double:
+		return ExpressionValueType.Double, nil
+	case ExpressionValueType.String:
+		if eote == ExpressionOperatorType.Add {
+			return ExpressionValueType.String, nil
+		}
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Decimal\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveArithmeticOperationValueTypeFromDouble(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		fallthrough
+	case ExpressionValueType.Int64:
+		fallthrough
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.Double:
+		return ExpressionValueType.Double, nil
+	case ExpressionValueType.String:
+		if eote == ExpressionOperatorType.Add {
+			return ExpressionValueType.String, nil
+		}
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Double\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
 func (eote ExpressionOperatorTypeEnum) deriveIntegerOperationValueType(leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
 	switch leftValueType {
 	case ExpressionValueType.Boolean:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			return ExpressionValueType.Boolean, nil
-		case ExpressionValueType.Int32:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.String:
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Boolean\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveIntegerOperationValueTypeFromBoolean(rightValueType)
 	case ExpressionValueType.Int32:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.String:
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int32\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveIntegerOperationValueTypeFromInt32(rightValueType)
 	case ExpressionValueType.Int64:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.String:
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int64\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveIntegerOperationValueTypeFromInt64(rightValueType)
 	case ExpressionValueType.Decimal:
 		fallthrough
 	case ExpressionValueType.Double:
@@ -923,157 +886,254 @@ func (eote ExpressionOperatorTypeEnum) deriveIntegerOperationValueType(leftValue
 	}
 }
 
+func (eote ExpressionOperatorTypeEnum) deriveIntegerOperationValueTypeFromBoolean(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		return ExpressionValueType.Boolean, nil
+	case ExpressionValueType.Int32:
+		return ExpressionValueType.Int32, nil
+	case ExpressionValueType.Int64:
+		return ExpressionValueType.Int64, nil
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.Double:
+		fallthrough
+	case ExpressionValueType.String:
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Boolean\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveIntegerOperationValueTypeFromInt32(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		return ExpressionValueType.Int32, nil
+	case ExpressionValueType.Int64:
+		return ExpressionValueType.Int64, nil
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.Double:
+		fallthrough
+	case ExpressionValueType.String:
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int32\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveIntegerOperationValueTypeFromInt64(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		fallthrough
+	case ExpressionValueType.Int64:
+		return ExpressionValueType.Int64, nil
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.Double:
+		fallthrough
+	case ExpressionValueType.String:
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int64\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
 func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueType(leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
 	switch leftValueType {
 	case ExpressionValueType.Boolean:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Boolean, nil
-		case ExpressionValueType.Int32:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Boolean\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveComparisonOperationValueTypeFromBoolean(rightValueType)
 	case ExpressionValueType.Int32:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int32\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveComparisonOperationValueTypeFromInt32(rightValueType)
 	case ExpressionValueType.Int64:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int64\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveComparisonOperationValueTypeFromInt64(rightValueType)
 	case ExpressionValueType.Decimal:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Decimal\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveComparisonOperationValueTypeFromDecimal(rightValueType)
 	case ExpressionValueType.Double:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Double\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveComparisonOperationValueTypeFromDouble(rightValueType)
 	case ExpressionValueType.String:
 		return leftValueType, nil
 	case ExpressionValueType.Guid:
-		switch rightValueType {
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Guid, nil
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Guid\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveComparisonOperationValueTypeFromGuid(rightValueType)
 	case ExpressionValueType.DateTime:
-		switch rightValueType {
-		case ExpressionValueType.DateTime:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.DateTime, nil
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.Guid:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"DateTime\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
+		return eote.deriveComparisonOperationValueTypeFromDateTime(rightValueType)
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueTypeFromBoolean(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.String:
+		return ExpressionValueType.Boolean, nil
+	case ExpressionValueType.Int32:
+		return ExpressionValueType.Int32, nil
+	case ExpressionValueType.Int64:
+		return ExpressionValueType.Int64, nil
+	case ExpressionValueType.Decimal:
+		return ExpressionValueType.Decimal, nil
+	case ExpressionValueType.Double:
+		return ExpressionValueType.Double, nil
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Boolean\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueTypeFromInt32(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		fallthrough
+	case ExpressionValueType.String:
+		return ExpressionValueType.Int32, nil
+	case ExpressionValueType.Int64:
+		return ExpressionValueType.Int64, nil
+	case ExpressionValueType.Decimal:
+		return ExpressionValueType.Decimal, nil
+	case ExpressionValueType.Double:
+		return ExpressionValueType.Double, nil
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int32\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueTypeFromInt64(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		fallthrough
+	case ExpressionValueType.Int64:
+		fallthrough
+	case ExpressionValueType.String:
+		return ExpressionValueType.Int64, nil
+	case ExpressionValueType.Decimal:
+		return ExpressionValueType.Decimal, nil
+	case ExpressionValueType.Double:
+		return ExpressionValueType.Double, nil
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Int64\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueTypeFromDecimal(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		fallthrough
+	case ExpressionValueType.Int64:
+		fallthrough
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.String:
+		return ExpressionValueType.Decimal, nil
+	case ExpressionValueType.Double:
+		return ExpressionValueType.Double, nil
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Decimal\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueTypeFromDouble(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		fallthrough
+	case ExpressionValueType.Int64:
+		fallthrough
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.Double:
+		fallthrough
+	case ExpressionValueType.String:
+		return ExpressionValueType.Double, nil
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Double\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueTypeFromGuid(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.String:
+		return ExpressionValueType.Guid, nil
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		fallthrough
+	case ExpressionValueType.Int64:
+		fallthrough
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.Double:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"Guid\" and \"" + rightValueType.String() + "\"")
+	default:
+		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueTypeFromDateTime(rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+	switch rightValueType {
+	case ExpressionValueType.DateTime:
+		fallthrough
+	case ExpressionValueType.String:
+		return ExpressionValueType.DateTime, nil
+	case ExpressionValueType.Boolean:
+		fallthrough
+	case ExpressionValueType.Int32:
+		fallthrough
+	case ExpressionValueType.Int64:
+		fallthrough
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.Double:
+		fallthrough
+	case ExpressionValueType.Guid:
+		return ZeroExpressionValueType, errors.New("cannot perform \"" + eote.String() + "\" operation on \"DateTime\" and \"" + rightValueType.String() + "\"")
 	default:
 		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
 	}

@@ -1184,7 +1184,7 @@ func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpress
 
 	var valueType ExpressionValueTypeEnum
 
-	if valueType, err = ExpressionOperatorType.Equal.deriveOperationValueType(leftValue.ValueType(), rightValue.ValueType()); err != nil {
+	if valueType, err = operatorExpression.OperatorType().deriveOperationValueType(leftValue.ValueType(), rightValue.ValueType()); err != nil {
 		return nil, err
 	}
 
