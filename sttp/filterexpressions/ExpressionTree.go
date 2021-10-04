@@ -1653,7 +1653,34 @@ func (et *ExpressionTree) datePart(sourceValue *ValueExpression, intervalType *V
 }
 
 func (et *ExpressionTree) endsWith(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"EndsWith\" function source value, first argument, must be a string")
+	}
+
+	if testValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"EndsWith\" function test value, second argument, must be a string")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.Boolean), nil
+	}
+
+	if testValue.IsNull() {
+		return False, nil
+	}
+
+	var err error
+
+	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	if ignoreCase.booleanValue() {
+		return newValueExpression(ExpressionValueType.Boolean, strings.HasSuffix(strings.ToUpper(sourceValue.stringValue()), strings.ToUpper(testValue.stringValue()))), nil
+	}
+
+	return newValueExpression(ExpressionValueType.Boolean, strings.HasSuffix(sourceValue.stringValue(), testValue.stringValue())), nil
 }
 
 func (et *ExpressionTree) floor(sourceValue *ValueExpression) (*ValueExpression, error) {
