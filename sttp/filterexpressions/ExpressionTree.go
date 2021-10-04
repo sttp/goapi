@@ -702,7 +702,7 @@ func (et *ExpressionTree) evaluateIsNumeric(arguments []Expression) (*ValueExpre
 		return nil, err
 	}
 
-	return et.isNumeric(sourceValue)
+	return et.isNumeric(sourceValue), nil
 }
 
 func (et *ExpressionTree) evaluateLastIndexOf(arguments []Expression) (*ValueExpression, error) {
@@ -1819,8 +1819,22 @@ func (et *ExpressionTree) isNull(testValue *ValueExpression, defaultValue *Value
 	return testValue, nil
 }
 
-func (et *ExpressionTree) isNumeric(testValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+func (et *ExpressionTree) isNumeric(testValue *ValueExpression) *ValueExpression {
+	if testValue.IsNull() {
+		return False
+	}
+
+	if testValue.ValueType().IsNumericType() {
+		return True
+	}
+
+	if testValue.ValueType() == ExpressionValueType.String {
+		if _, err := strconv.ParseFloat(testValue.stringValue(), 64); err == nil {
+			return True
+		}
+	}
+
+	return False
 }
 
 func (et *ExpressionTree) lastIndexOf(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
