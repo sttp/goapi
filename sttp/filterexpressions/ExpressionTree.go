@@ -1449,16 +1449,15 @@ func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueE
 	}
 
 	var err error
-	var dateValue *ValueExpression
 
 	// DateTime parameters should support strings as well as literals
-	if dateValue, err = sourceValue.Convert(ExpressionValueType.DateTime); err != nil {
+	if sourceValue, err = sourceValue.Convert(ExpressionValueType.DateTime); err != nil {
 		return nil, err
 	}
 
 	// If source value is Null, result is Null
-	if dateValue.IsNull() {
-		return dateValue, nil
+	if sourceValue.IsNull() {
+		return sourceValue, nil
 	}
 
 	if addValue.IsNull() {
@@ -1492,36 +1491,165 @@ func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueE
 
 	switch interval {
 	case TimeInterval.Year:
-		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().AddDate(value, 0, 0)), nil
+		return newValueExpression(ExpressionValueType.DateTime, sourceValue.dateTimeValue().AddDate(value, 0, 0)), nil
 	case TimeInterval.Month:
-		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().AddDate(0, value, 0)), nil
+		return newValueExpression(ExpressionValueType.DateTime, sourceValue.dateTimeValue().AddDate(0, value, 0)), nil
 	case TimeInterval.DayOfYear:
 		fallthrough
 	case TimeInterval.Day:
 		fallthrough
 	case TimeInterval.WeekDay:
-		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().AddDate(0, 0, value)), nil
+		return newValueExpression(ExpressionValueType.DateTime, sourceValue.dateTimeValue().AddDate(0, 0, value)), nil
 	case TimeInterval.Week:
-		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().AddDate(0, 0, value*7)), nil
+		return newValueExpression(ExpressionValueType.DateTime, sourceValue.dateTimeValue().AddDate(0, 0, value*7)), nil
 	case TimeInterval.Hour:
-		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().Add(time.Hour*time.Duration(value))), nil
+		return newValueExpression(ExpressionValueType.DateTime, sourceValue.dateTimeValue().Add(time.Hour*time.Duration(value))), nil
 	case TimeInterval.Minute:
-		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().Add(time.Minute*time.Duration(value))), nil
+		return newValueExpression(ExpressionValueType.DateTime, sourceValue.dateTimeValue().Add(time.Minute*time.Duration(value))), nil
 	case TimeInterval.Second:
-		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().Add(time.Second*time.Duration(value))), nil
+		return newValueExpression(ExpressionValueType.DateTime, sourceValue.dateTimeValue().Add(time.Second*time.Duration(value))), nil
 	case TimeInterval.Millisecond:
-		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().Add(time.Millisecond*time.Duration(value))), nil
+		return newValueExpression(ExpressionValueType.DateTime, sourceValue.dateTimeValue().Add(time.Millisecond*time.Duration(value))), nil
 	default:
 		return nil, errors.New("unexpected time interval encountered")
 	}
 }
 
 func (et *ExpressionTree) dateDiff(leftValue *ValueExpression, rightValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if leftValue.ValueType() != ExpressionValueType.DateTime && leftValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"DateDiff\" left value, first argument, must be a date-time")
+	}
+
+	if rightValue.ValueType() != ExpressionValueType.DateTime && rightValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"DateDiff\" right value, second argument, must be a date-time")
+	}
+
+	if intervalType.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"DateDiff\" function interval type, third argument, must be a string")
+	}
+
+	if intervalType.IsNull() {
+		return nil, errors.New("\"DateDiff\" function interval type, third argument, is null")
+	}
+
+	var err error
+
+	// DateTime parameters should support strings as well as literals
+	if leftValue, err = leftValue.Convert(ExpressionValueType.DateTime); err != nil {
+		return nil, err
+	}
+
+	if rightValue, err = rightValue.Convert(ExpressionValueType.DateTime); err != nil {
+		return nil, err
+	}
+
+	// If either test value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(ExpressionValueType.Int32), nil
+	}
+
+	var interval TimeIntervalEnum
+
+	if interval, err = ParseTimeInterval(intervalType.stringValue()); err != nil {
+		return nil, err
+	}
+
+	rightDate := rightValue.dateTimeValue()
+	leftDate := leftValue.dateTimeValue()
+
+	if interval < TimeInterval.DayOfYear {
+		switch interval {
+		case TimeInterval.Year:
+			return newValueExpression(ExpressionValueType.Int32, int32(rightDate.Year()-leftDate.Year())), nil
+		case TimeInterval.Month:
+			months := (rightDate.Year() - leftDate.Year()) * 12
+			months += int(rightDate.Month() - leftDate.Month())
+			return newValueExpression(ExpressionValueType.Int32, int32(months)), nil
+		default:
+			return nil, errors.New("unexpected time interval encountered")
+		}
+	}
+
+	delta := rightDate.Sub(leftDate)
+
+	switch interval {
+	case TimeInterval.DayOfYear:
+		fallthrough
+	case TimeInterval.Day:
+		fallthrough
+	case TimeInterval.WeekDay:
+		return newValueExpression(ExpressionValueType.Int32, int32(delta.Hours()/24.0)), nil
+	case TimeInterval.Week:
+		return newValueExpression(ExpressionValueType.Int32, int32(delta.Hours()/24.0/7.0)), nil
+	case TimeInterval.Hour:
+		return newValueExpression(ExpressionValueType.Int32, int32(delta.Hours())), nil
+	case TimeInterval.Minute:
+		return newValueExpression(ExpressionValueType.Int32, int32(delta.Minutes())), nil
+	case TimeInterval.Second:
+		return newValueExpression(ExpressionValueType.Int32, int32(delta.Seconds())), nil
+	case TimeInterval.Millisecond:
+		return newValueExpression(ExpressionValueType.Int32, int32(delta.Milliseconds())), nil
+	default:
+		return nil, errors.New("unexpected time interval encountered")
+	}
 }
 
 func (et *ExpressionTree) datePart(sourceValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.DateTime && sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"DatePart\" source value, first argument, must be a date-time")
+	}
+
+	if intervalType.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"DatePart\" function interval type, second argument, must be a string")
+	}
+
+	var err error
+
+	// DateTime parameters should support strings as well as literals
+	if sourceValue, err = sourceValue.Convert(ExpressionValueType.DateTime); err != nil {
+		return nil, err
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.Int32), nil
+	}
+
+	if intervalType.IsNull() {
+		return nil, errors.New("\"DatePart\" function interval type, second argument, is null")
+	}
+
+	var interval TimeIntervalEnum
+
+	if interval, err = ParseTimeInterval(intervalType.stringValue()); err != nil {
+		return nil, err
+	}
+
+	switch interval {
+	case TimeInterval.Year:
+		return newValueExpression(ExpressionValueType.Int32, int32(sourceValue.dateTimeValue().Year())), nil
+	case TimeInterval.Month:
+		return newValueExpression(ExpressionValueType.Int32, int32(sourceValue.dateTimeValue().Month())), nil
+	case TimeInterval.DayOfYear:
+		return newValueExpression(ExpressionValueType.Int32, int32(sourceValue.dateTimeValue().YearDay())), nil
+	case TimeInterval.Day:
+		return newValueExpression(ExpressionValueType.Int32, int32(sourceValue.dateTimeValue().Day())), nil
+	case TimeInterval.WeekDay:
+		return newValueExpression(ExpressionValueType.Int32, int32(sourceValue.dateTimeValue().Weekday()+1)), nil
+	case TimeInterval.Week:
+		_, week := sourceValue.dateTimeValue().ISOWeek()
+		return newValueExpression(ExpressionValueType.Int32, int32(week)), nil
+	case TimeInterval.Hour:
+		return newValueExpression(ExpressionValueType.Int32, int32(sourceValue.dateTimeValue().Hour())), nil
+	case TimeInterval.Minute:
+		return newValueExpression(ExpressionValueType.Int32, int32(sourceValue.dateTimeValue().Minute())), nil
+	case TimeInterval.Second:
+		return newValueExpression(ExpressionValueType.Int32, int32(sourceValue.dateTimeValue().Second())), nil
+	case TimeInterval.Millisecond:
+		return newValueExpression(ExpressionValueType.Int32, int32(sourceValue.dateTimeValue().Nanosecond()/1e6)), nil
+	default:
+		return nil, errors.New("unexpected time interval encountered")
+	}
 }
 
 func (et *ExpressionTree) endsWith(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
