@@ -29,6 +29,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/araddon/dateparse"
 	"github.com/sttp/goapi/sttp/data"
 	"github.com/sttp/goapi/sttp/guid"
 )
@@ -535,7 +536,7 @@ func (ve *ValueExpression) convertFromString(targetValueType ExpressionValueType
 		targetValue, _ := guid.Parse(value)
 		return newValueExpression(targetValueType, targetValue), nil
 	case ExpressionValueType.DateTime:
-		targetValue, _ := time.Parse(data.DateTimeFormat, value)
+		targetValue, _ := dateparse.ParseAny(value)
 		return newValueExpression(targetValueType, targetValue), nil
 	default:
 		return nil, errors.New("unexpected expression value type encountered")
