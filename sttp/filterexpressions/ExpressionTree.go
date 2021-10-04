@@ -43,8 +43,9 @@ type ExpressionTree struct {
 	// OrderByTerms represents the order by elements parsed from the "ORDER BY" keyword.
 	OrderByTerms []OrderByTerm
 
-	// Root is the starting Expression from the parsed expression evaluation, or nil if there is not one.
-	// This is the root expression of the ExpressionTree.
+	// Root is the starting Expression for evaluation of the expression tree, or nil if
+	// there is not one. This is the root expression of the ExpressionTree. Assign root
+	// value before calling Evaluate.
 	Root Expression
 }
 
@@ -56,12 +57,13 @@ func NewExpressionTree(table *data.DataTable) *ExpressionTree {
 	}
 }
 
-// Table gets the reference to the data table associated with the ExpressionTree.
+// Table gets reference to the data table associated with the ExpressionTree.
 func (et *ExpressionTree) Table() *data.DataTable {
 	return et.table
 }
 
 // Evaluate executes the filter expression parser for the specified row for the ExpressionTree.
+// Root expression should be assigned before calling Evaluate.
 func (et *ExpressionTree) Evaluate(row *data.DataRow) (*ValueExpression, error) {
 	et.currentRow = row
 	return et.evaluate(et.Root)
@@ -1402,7 +1404,34 @@ func (et *ExpressionTree) convert(sourceValue *ValueExpression, targetType *Valu
 }
 
 func (et *ExpressionTree) contains(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Contains\" function source value, first argument, must be a string")
+	}
+
+	if testValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Contains\" function test value, second argument, must be a string")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.Boolean), nil
+	}
+
+	if testValue.IsNull() {
+		return False, nil
+	}
+
+	var err error
+
+	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	if ignoreCase.booleanValue() {
+		return newValueExpression(ExpressionValueType.Boolean, strings.Contains(strings.ToUpper(sourceValue.stringValue()), strings.ToUpper(testValue.stringValue()))), nil
+	}
+
+	return newValueExpression(ExpressionValueType.Boolean, strings.Contains(sourceValue.stringValue(), testValue.stringValue())), nil
 }
 
 func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
