@@ -28,6 +28,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sttp/goapi/sttp/data"
 )
@@ -1435,7 +1436,84 @@ func (et *ExpressionTree) contains(sourceValue *ValueExpression, testValue *Valu
 }
 
 func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.DateTime && sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"DateAdd\" source value, first argument, must be a date-time")
+	}
+
+	if !addValue.ValueType().IsIntegerType() {
+		return nil, errors.New("\"DateAdd\" function add value, second argument, must be an integer type")
+	}
+
+	if intervalType.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"DateAdd\" function interval type, third argument, must be a string")
+	}
+
+	var err error
+	var dateValue *ValueExpression
+
+	// DateTime parameters should support strings as well as literals
+	if dateValue, err = sourceValue.Convert(ExpressionValueType.DateTime); err != nil {
+		return nil, err
+	}
+
+	// If source value is Null, result is Null
+	if dateValue.IsNull() {
+		return dateValue, nil
+	}
+
+	if addValue.IsNull() {
+		return nil, errors.New("\"DateAdd\" function add value, second argument, is null")
+	}
+
+	if intervalType.IsNull() {
+		return nil, errors.New("\"DateAdd\" function interval type, third argument, is null")
+	}
+
+	var interval TimeIntervalEnum
+
+	if interval, err = ParseTimeInterval(intervalType.stringValue()); err != nil {
+		return nil, err
+	}
+
+	var value int
+
+	switch addValue.ValueType() {
+	case ExpressionValueType.Boolean:
+		if addValue.booleanValue() {
+			value = 1
+		}
+	case ExpressionValueType.Int32:
+		value = int(addValue.int32Value())
+	case ExpressionValueType.Int64:
+		value = int(addValue.int64Value())
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
+
+	switch interval {
+	case TimeInterval.Year:
+		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().AddDate(value, 0, 0)), nil
+	case TimeInterval.Month:
+		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().AddDate(0, value, 0)), nil
+	case TimeInterval.DayOfYear:
+		fallthrough
+	case TimeInterval.Day:
+		fallthrough
+	case TimeInterval.WeekDay:
+		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().AddDate(0, 0, value)), nil
+	case TimeInterval.Week:
+		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().AddDate(0, 0, value*7)), nil
+	case TimeInterval.Hour:
+		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().Add(time.Hour*time.Duration(value))), nil
+	case TimeInterval.Minute:
+		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().Add(time.Minute*time.Duration(value))), nil
+	case TimeInterval.Second:
+		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().Add(time.Second*time.Duration(value))), nil
+	case TimeInterval.Millisecond:
+		return newValueExpression(ExpressionValueType.DateTime, dateValue.dateTimeValue().Add(time.Millisecond*time.Duration(value))), nil
+	default:
+		return nil, errors.New("unexpected time interval encountered")
+	}
 }
 
 func (et *ExpressionTree) dateDiff(leftValue *ValueExpression, rightValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
