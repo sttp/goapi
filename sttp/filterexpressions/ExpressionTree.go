@@ -1684,7 +1684,27 @@ func (et *ExpressionTree) endsWith(sourceValue *ValueExpression, testValue *Valu
 }
 
 func (et *ExpressionTree) floor(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if !sourceValue.ValueType().IsNumericType() {
+		return nil, errors.New("\"Floor\" function argument must be numeric")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(sourceValue.ValueType()), nil
+	}
+
+	if sourceValue.ValueType().IsIntegerType() {
+		return sourceValue, nil
+	}
+
+	switch sourceValue.ValueType() {
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Decimal, math.Floor(sourceValue.decimalValue())), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Double, math.Floor(sourceValue.doubleValue())), nil
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) iif(testValue *ValueExpression, leftResultValue Expression, rightResultValue Expression) (*ValueExpression, error) {
