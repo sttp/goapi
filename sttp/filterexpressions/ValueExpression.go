@@ -39,6 +39,8 @@ type ValueExpression struct {
 	valueType ExpressionValueTypeEnum
 }
 
+const debug bool = true
+
 // NewValueExpression creates a new value expression.
 func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
 	if value != nil {
@@ -80,20 +82,24 @@ func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *V
 		}
 	}
 
-	// TODO: DEBUG: Change call to "newValueExpression" in production
-	return _newValueExpression(valueType, value)
+	if debug {
+		return &ValueExpression{
+			value:     value,
+			valueType: valueType,
+		}
+	} else {
+		return newValueExpression(valueType, value)
+	}
 }
 
-// TODO: DEBUG: Alias to "NewValueExpression" for debugging, remove for production
 func newValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
-	return NewValueExpression(valueType, value)
-}
-
-// TODO: DEBUG: rename to "newValueExpression" for production
-func _newValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
-	return &ValueExpression{
-		value:     value,
-		valueType: valueType,
+	if debug {
+		return NewValueExpression(valueType, value)
+	} else {
+		return &ValueExpression{
+			value:     value,
+			valueType: valueType,
+		}
 	}
 }
 
