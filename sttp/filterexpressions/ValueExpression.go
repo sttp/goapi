@@ -80,10 +80,17 @@ func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *V
 		}
 	}
 
-	return newValueExpression(valueType, value)
+	// TODO: DEBUG: Change call to "newValueExpression" in production
+	return _newValueExpression(valueType, value)
 }
 
+// TODO: DEBUG: Alias to "NewValueExpression" for debugging, remove for production
 func newValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
+	return NewValueExpression(valueType, value)
+}
+
+// TODO: DEBUG: rename to "newValueExpression" for production
+func _newValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
 	return &ValueExpression{
 		value:     value,
 		valueType: valueType,
