@@ -500,7 +500,7 @@ func (et *ExpressionTree) evaluateFunction(expression Expression) (*ValueExpress
 		}
 
 		// Not pre-evaluating IIf result value arguments - only evaluating desired path
-		return et.iIf(testValue, arguments[1], arguments[2])
+		return et.iif(testValue, arguments[1], arguments[2])
 	case ExpressionFunctionType.IndexOf:
 		if len(arguments) < 2 || len(arguments) > 3 {
 			return nil, errors.New("\"IndexOf\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
@@ -1535,7 +1535,11 @@ func (et *ExpressionTree) abs(sourceValue *ValueExpression) (*ValueExpression, e
 
 	switch sourceValue.ValueType() {
 	case ExpressionValueType.Boolean:
-		return newValueExpression(ExpressionValueType.Boolean, sourceValue.booleanValue())
+		var b bool
+		if b, err = sourceValue.BooleanValue(); err != nil {
+			return nil, err
+		}
+		return NewValueExpression(ExpressionValueType.Boolean, b), nil
 	case ExpressionValueType.Int32:
 		var i32 int32
 		if i32, err = sourceValue.Int32Value(); err != nil {
@@ -1580,11 +1584,63 @@ func abs64(value int64) int64 {
 }
 
 func (et *ExpressionTree) ceiling(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if !sourceValue.ValueType().IsNumericType() {
+		return nil, errors.New("\"Ceiling\" function argument must be numeric")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(sourceValue.ValueType()), nil
+	}
+
+	if sourceValue.ValueType().IsIntegerType() {
+		return sourceValue, nil
+	}
+
+	var err error
+
+	switch sourceValue.ValueType() {
+	case ExpressionValueType.Decimal:
+		var f64 float64
+		if f64, err = sourceValue.DoubleValue(); err != nil {
+			return nil, err
+		}
+		return NewValueExpression(ExpressionValueType.Decimal, math.Ceil(f64)), nil
+	case ExpressionValueType.Double:
+		var f64 float64
+		if f64, err = sourceValue.DoubleValue(); err != nil {
+			return nil, err
+		}
+		return NewValueExpression(ExpressionValueType.Double, math.Ceil(f64)), nil
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) coalesce(arguments []Expression) (*ValueExpression, error) {
-	return nil, nil
+	testValue, err := et.evaluate(arguments[0])
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !testValue.IsNull() {
+		return testValue, nil
+	}
+
+	for i := 1; i < len(arguments); i++ {
+		listValue, err := et.evaluate(arguments[i])
+
+		if err != nil {
+			return nil, err
+		}
+
+		if !listValue.IsNull() {
+			return listValue, nil
+		}
+	}
+
+	return testValue, nil
 }
 
 func (et *ExpressionTree) convert(sourceValue *ValueExpression, targetType *ValueExpression) (*ValueExpression, error) {
@@ -1615,7 +1671,7 @@ func (et *ExpressionTree) floor(sourceValue *ValueExpression) (*ValueExpression,
 	return nil, nil
 }
 
-func (et *ExpressionTree) iIf(testValue *ValueExpression, leftResultValue Expression, rightResultValue Expression) (*ValueExpression, error) {
+func (et *ExpressionTree) iif(testValue *ValueExpression, leftResultValue Expression, rightResultValue Expression) (*ValueExpression, error) {
 	return nil, nil
 }
 
