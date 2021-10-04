@@ -1258,39 +1258,17 @@ func (et *ExpressionTree) abs(sourceValue *ValueExpression) (*ValueExpression, e
 		return NullValue(sourceValue.ValueType()), nil
 	}
 
-	var err error
-
 	switch sourceValue.ValueType() {
 	case ExpressionValueType.Boolean:
-		var b bool
-		if b, err = sourceValue.BooleanValue(); err != nil {
-			return nil, err
-		}
-		return NewValueExpression(ExpressionValueType.Boolean, b), nil
+		return newValueExpression(ExpressionValueType.Boolean, sourceValue.booleanValue()), nil
 	case ExpressionValueType.Int32:
-		var i32 int32
-		if i32, err = sourceValue.Int32Value(); err != nil {
-			return nil, err
-		}
-		return NewValueExpression(ExpressionValueType.Int32, abs32(i32)), nil
+		return newValueExpression(ExpressionValueType.Int32, abs32(sourceValue.int32Value())), nil
 	case ExpressionValueType.Int64:
-		var i64 int64
-		if i64, err = sourceValue.Int64Value(); err != nil {
-			return nil, err
-		}
-		return NewValueExpression(ExpressionValueType.Int64, abs64(i64)), nil
+		return newValueExpression(ExpressionValueType.Int64, abs64(sourceValue.int64Value())), nil
 	case ExpressionValueType.Decimal:
-		var f64 float64
-		if f64, err = sourceValue.DecimalValue(); err != nil {
-			return nil, err
-		}
-		return NewValueExpression(ExpressionValueType.Decimal, math.Abs(f64)), nil
+		return newValueExpression(ExpressionValueType.Decimal, math.Abs(sourceValue.decimalValue())), nil
 	case ExpressionValueType.Double:
-		var f64 float64
-		if f64, err = sourceValue.DoubleValue(); err != nil {
-			return nil, err
-		}
-		return NewValueExpression(ExpressionValueType.Double, math.Abs(f64)), nil
+		return newValueExpression(ExpressionValueType.Double, math.Abs(sourceValue.doubleValue())), nil
 	default:
 		return nil, errors.New("unexpected expression value type encountered")
 	}
