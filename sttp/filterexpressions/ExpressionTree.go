@@ -1708,7 +1708,16 @@ func (et *ExpressionTree) floor(sourceValue *ValueExpression) (*ValueExpression,
 }
 
 func (et *ExpressionTree) iif(testValue *ValueExpression, leftResultValue Expression, rightResultValue Expression) (*ValueExpression, error) {
-	return nil, nil
+	if testValue.ValueType() != ExpressionValueType.Boolean {
+		return nil, errors.New("\"IIf\" function test value, first argument, must be a boolean")
+	}
+
+	// Null test expression evaluates to false, that is, right expression
+	if testValue.booleanValue() {
+		return et.evaluate(leftResultValue)
+	}
+
+	return et.evaluate(rightResultValue)
 }
 
 func (et *ExpressionTree) indexOf(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
