@@ -30,6 +30,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/araddon/dateparse"
 	"github.com/sttp/goapi/sttp/data"
 )
 
@@ -636,7 +637,7 @@ func (et *ExpressionTree) evaluateIsDate(arguments []Expression) (*ValueExpressi
 		return nil, err
 	}
 
-	return et.isDate(sourceValue)
+	return et.isDate(sourceValue), nil
 }
 
 func (et *ExpressionTree) evaluateIsInteger(arguments []Expression) (*ValueExpression, error) {
@@ -1751,8 +1752,22 @@ func (et *ExpressionTree) indexOf(sourceValue *ValueExpression, testValue *Value
 	return newValueExpression(ExpressionValueType.Int32, int32(strings.Index(sourceValue.stringValue(), testValue.stringValue()))), nil
 }
 
-func (et *ExpressionTree) isDate(testValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+func (et *ExpressionTree) isDate(testValue *ValueExpression) *ValueExpression {
+	if testValue.IsNull() {
+		return False
+	}
+
+	if testValue.ValueType() == ExpressionValueType.DateTime {
+		return True
+	}
+
+	if testValue.ValueType() == ExpressionValueType.String {
+		if _, err := dateparse.ParseAny(testValue.stringValue()); err == nil {
+			return True
+		}
+	}
+
+	return False
 }
 
 func (et *ExpressionTree) isInteger(testValue *ValueExpression) (*ValueExpression, error) {
