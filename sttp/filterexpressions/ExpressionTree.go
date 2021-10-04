@@ -32,6 +32,7 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/sttp/goapi/sttp/data"
+	"github.com/sttp/goapi/sttp/guid"
 )
 
 // ExpressionTree represents a tree of expressions for evaluation.
@@ -652,7 +653,7 @@ func (et *ExpressionTree) evaluateIsInteger(arguments []Expression) (*ValueExpre
 		return nil, err
 	}
 
-	return et.isInteger(sourceValue)
+	return et.isInteger(sourceValue), nil
 }
 
 func (et *ExpressionTree) evaluateIsGuid(arguments []Expression) (*ValueExpression, error) {
@@ -667,7 +668,7 @@ func (et *ExpressionTree) evaluateIsGuid(arguments []Expression) (*ValueExpressi
 		return nil, err
 	}
 
-	return et.isGuid(sourceValue)
+	return et.isGuid(sourceValue), nil
 }
 
 func (et *ExpressionTree) evaluateIsNull(arguments []Expression) (*ValueExpression, error) {
@@ -1770,12 +1771,40 @@ func (et *ExpressionTree) isDate(testValue *ValueExpression) *ValueExpression {
 	return False
 }
 
-func (et *ExpressionTree) isInteger(testValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+func (et *ExpressionTree) isInteger(testValue *ValueExpression) *ValueExpression {
+	if testValue.IsNull() {
+		return False
+	}
+
+	if testValue.ValueType().IsIntegerType() {
+		return True
+	}
+
+	if testValue.ValueType() == ExpressionValueType.String {
+		if _, err := strconv.Atoi(testValue.stringValue()); err == nil {
+			return True
+		}
+	}
+
+	return False
 }
 
-func (et *ExpressionTree) isGuid(testValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+func (et *ExpressionTree) isGuid(testValue *ValueExpression) *ValueExpression {
+	if testValue.IsNull() {
+		return False
+	}
+
+	if testValue.ValueType() == ExpressionValueType.Guid {
+		return True
+	}
+
+	if testValue.ValueType() == ExpressionValueType.String {
+		if _, err := guid.Parse(testValue.stringValue()); err == nil {
+			return True
+		}
+	}
+
+	return False
 }
 
 func (et *ExpressionTree) isNull(testValue *ValueExpression, defaultValue *ValueExpression) (*ValueExpression, error) {
