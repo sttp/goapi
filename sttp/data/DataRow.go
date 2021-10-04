@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"github.com/sttp/goapi/sttp/guid"
-	"github.com/sttp/goapi/sttp/ticks"
 )
 
 // DataRow represents a row, i.e., a record, in a DataTable defining a set of values for each
@@ -186,144 +185,204 @@ func (dr *DataRow) ColumnValueAsString(column *DataColumn) string {
 		return ""
 	}
 
-	checkState := func(null bool, err error) (bool, string) {
-		if err != nil {
-			return true, ""
-		}
-
-		if null {
-			return true, "<NULL>"
-		}
-
-		return false, ""
-	}
-
 	index := column.Index()
 
 	switch column.Type() {
 	case DataType.String:
-		value, null, err := dr.StringValue(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return value
+		return dr.stringValueFromString(index)
 	case DataType.Boolean:
-		value, null, err := dr.BooleanValue(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatBool(value)
+		return dr.stringValueFromBoolean(index)
 	case DataType.DateTime:
-		value, null, err := dr.DateTimeValue(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return value.Format(ticks.TimeFormat)
+		return dr.stringValueFromDateTime(index)
 	case DataType.Single:
-		value, null, err := dr.SingleValue(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatFloat(float64(value), 'f', 6, 32)
+		return dr.stringValueFromSingle(index)
 	case DataType.Double:
-		value, null, err := dr.DoubleValue(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatFloat(value, 'f', 6, 64)
+		return dr.stringValueFromDouble(index)
 	case DataType.Decimal:
-		value, null, err := dr.DecimalValue(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatFloat(value, 'f', 6, 64)
+		return dr.stringValueFromDecimal(index)
 	case DataType.Guid:
-		value, null, err := dr.GuidValue(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return value.String()
+		return dr.stringValueFromGuid(index)
 	case DataType.Int8:
-		value, null, err := dr.Int8Value(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatInt(int64(value), 10)
+		return dr.stringValueFromInt8(index)
 	case DataType.Int16:
-		value, null, err := dr.Int16Value(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatInt(int64(value), 10)
+		return dr.stringValueFromInt16(index)
 	case DataType.Int32:
-		value, null, err := dr.Int32Value(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatInt(int64(value), 10)
+		return dr.stringValueFromInt32(index)
 	case DataType.Int64:
-		value, null, err := dr.Int64Value(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatInt(value, 10)
+		return dr.stringValueFromInt64(index)
 	case DataType.UInt8:
-		value, null, err := dr.UInt8Value(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatUint(uint64(value), 10)
+		return dr.stringValueFromUInt8(index)
 	case DataType.UInt16:
-		value, null, err := dr.UInt16Value(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatUint(uint64(value), 10)
+		return dr.stringValueFromUInt16(index)
 	case DataType.UInt32:
-		value, null, err := dr.UInt32Value(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatUint(uint64(value), 10)
+		return dr.stringValueFromUInt32(index)
 	case DataType.UInt64:
-		value, null, err := dr.UInt64Value(index)
-
-		if invalid, result := checkState(null, err); invalid {
-			return result
-		}
-
-		return strconv.FormatUint(value, 10)
+		return dr.stringValueFromUInt64(index)
 	default:
 		return ""
 	}
+}
+
+func checkState(null bool, err error) (bool, string) {
+	if err != nil {
+		return true, ""
+	}
+
+	if null {
+		return true, "<NULL>"
+	}
+
+	return false, ""
+}
+
+func (dr *DataRow) stringValueFromString(index int) string {
+	value, null, err := dr.StringValue(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return value
+}
+
+func (dr *DataRow) stringValueFromBoolean(index int) string {
+	value, null, err := dr.BooleanValue(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatBool(value)
+}
+
+func (dr *DataRow) stringValueFromDateTime(index int) string {
+	value, null, err := dr.DateTimeValue(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return value.Format(DateTimeFormat)
+}
+
+func (dr *DataRow) stringValueFromSingle(index int) string {
+	value, null, err := dr.SingleValue(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatFloat(float64(value), 'f', 6, 32)
+}
+
+func (dr *DataRow) stringValueFromDouble(index int) string {
+	value, null, err := dr.DoubleValue(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatFloat(value, 'f', 6, 64)
+}
+
+func (dr *DataRow) stringValueFromDecimal(index int) string {
+	value, null, err := dr.DecimalValue(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatFloat(value, 'f', 6, 64)
+}
+
+func (dr *DataRow) stringValueFromGuid(index int) string {
+	value, null, err := dr.GuidValue(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return value.String()
+}
+
+func (dr *DataRow) stringValueFromInt8(index int) string {
+	value, null, err := dr.Int8Value(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatInt(int64(value), 10)
+}
+
+func (dr *DataRow) stringValueFromInt16(index int) string {
+	value, null, err := dr.Int16Value(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatInt(int64(value), 10)
+}
+
+func (dr *DataRow) stringValueFromInt32(index int) string {
+	value, null, err := dr.Int32Value(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatInt(int64(value), 10)
+}
+
+func (dr *DataRow) stringValueFromInt64(index int) string {
+	value, null, err := dr.Int64Value(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatInt(value, 10)
+}
+
+func (dr *DataRow) stringValueFromUInt8(index int) string {
+	value, null, err := dr.UInt8Value(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatUint(uint64(value), 10)
+}
+
+func (dr *DataRow) stringValueFromUInt16(index int) string {
+	value, null, err := dr.UInt16Value(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatUint(uint64(value), 10)
+}
+
+func (dr *DataRow) stringValueFromUInt32(index int) string {
+	value, null, err := dr.UInt32Value(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatUint(uint64(value), 10)
+}
+
+func (dr *DataRow) stringValueFromUInt64(index int) string {
+	value, null, err := dr.UInt64Value(index)
+
+	if invalid, result := checkState(null, err); invalid {
+		return result
+	}
+
+	return strconv.FormatUint(value, 10)
 }
 
 // ValueAsString reads the record value at the specified columnIndex converted to a string.
