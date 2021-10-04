@@ -42,7 +42,6 @@ type ValueExpression struct {
 // NewValueExpression creates a new value expression.
 func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
 	if value != nil {
-		// TODO: debug validation code - consider removing for production:
 		switch valueType {
 		case ExpressionValueType.Boolean:
 			if _, ok := value.(bool); !ok {
@@ -77,10 +76,14 @@ func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *V
 				panic("cannot create DateTime value expression; value is not time.Time")
 			}
 		default:
-			panic("cannot create Boolean value expression; unexpected expression value type: 0x" + strconv.FormatInt(int64(valueType), 16))
+			panic("cannot create new value expression; unexpected expression value type: 0x" + strconv.FormatInt(int64(valueType), 16))
 		}
 	}
 
+	return newValueExpression(valueType, value)
+}
+
+func newValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
 	return &ValueExpression{
 		value:     value,
 		valueType: valueType,
@@ -106,69 +109,21 @@ func (ve *ValueExpression) ValueType() ExpressionValueTypeEnum {
 func (ve *ValueExpression) String() string {
 	switch ve.valueType {
 	case ExpressionValueType.Boolean:
-		value, err := ve.BooleanValue()
-
-		if err != nil {
-			return ""
-		}
-
-		return strconv.FormatBool(value)
+		return strconv.FormatBool(ve.booleanValue())
 	case ExpressionValueType.Int32:
-		value, err := ve.Int32Value()
-
-		if err != nil {
-			return ""
-		}
-
-		return strconv.FormatInt(int64(value), 10)
+		return strconv.FormatInt(int64(ve.int32Value()), 10)
 	case ExpressionValueType.Int64:
-		value, err := ve.Int64Value()
-
-		if err != nil {
-			return ""
-		}
-
-		return strconv.FormatInt(value, 10)
+		return strconv.FormatInt(ve.int64Value(), 10)
 	case ExpressionValueType.Decimal:
-		value, err := ve.DecimalValue()
-
-		if err != nil {
-			return ""
-		}
-
-		return strconv.FormatFloat(value, 'f', 6, 64)
+		return strconv.FormatFloat(ve.decimalValue(), 'f', 6, 64)
 	case ExpressionValueType.Double:
-		value, err := ve.DoubleValue()
-
-		if err != nil {
-			return ""
-		}
-
-		return strconv.FormatFloat(value, 'f', 6, 64)
+		return strconv.FormatFloat(ve.doubleValue(), 'f', 6, 64)
 	case ExpressionValueType.String:
-		value, err := ve.StringValue()
-
-		if err != nil {
-			return ""
-		}
-
-		return value
+		return ve.stringValue()
 	case ExpressionValueType.Guid:
-		value, err := ve.GuidValue()
-
-		if err != nil {
-			return ""
-		}
-
-		return value.String()
+		return ve.guidValue().String()
 	case ExpressionValueType.DateTime:
-		value, err := ve.DateTimeValue()
-
-		if err != nil {
-			return ""
-		}
-
-		return value.Format(data.DateTimeFormat)
+		return ve.dateTimeValue().Format(data.DateTimeFormat)
 	default:
 		return ""
 	}
@@ -180,35 +135,35 @@ func (ve *ValueExpression) IsNull() bool {
 }
 
 // True is a value expression of type boolean with a true value.
-var True *ValueExpression = NewValueExpression(ExpressionValueType.Boolean, true)
+var True *ValueExpression = newValueExpression(ExpressionValueType.Boolean, true)
 
 // False is a value expression of type boolean with a false value.
-var False *ValueExpression = NewValueExpression(ExpressionValueType.Boolean, false)
+var False *ValueExpression = newValueExpression(ExpressionValueType.Boolean, false)
 
 // EmptyString is a value expression of type string with a value of an empty string.
-var EmptyString *ValueExpression = NewValueExpression(ExpressionValueType.String, "")
+var EmptyString *ValueExpression = newValueExpression(ExpressionValueType.String, "")
 
 // NullValue gets the target expression value type with a value of nil.
 func NullValue(targetValueType ExpressionValueTypeEnum) *ValueExpression {
 	switch targetValueType {
 	case ExpressionValueType.Boolean:
-		return NewValueExpression(ExpressionValueType.Boolean, nil)
+		return newValueExpression(ExpressionValueType.Boolean, nil)
 	case ExpressionValueType.Int32:
-		return NewValueExpression(ExpressionValueType.Int32, nil)
+		return newValueExpression(ExpressionValueType.Int32, nil)
 	case ExpressionValueType.Int64:
-		return NewValueExpression(ExpressionValueType.Int64, nil)
+		return newValueExpression(ExpressionValueType.Int64, nil)
 	case ExpressionValueType.Decimal:
-		return NewValueExpression(ExpressionValueType.Decimal, nil)
+		return newValueExpression(ExpressionValueType.Decimal, nil)
 	case ExpressionValueType.Double:
-		return NewValueExpression(ExpressionValueType.Double, nil)
+		return newValueExpression(ExpressionValueType.Double, nil)
 	case ExpressionValueType.String:
-		return NewValueExpression(ExpressionValueType.String, nil)
+		return newValueExpression(ExpressionValueType.String, nil)
 	case ExpressionValueType.Guid:
-		return NewValueExpression(ExpressionValueType.Guid, nil)
+		return newValueExpression(ExpressionValueType.Guid, nil)
 	case ExpressionValueType.DateTime:
-		return NewValueExpression(ExpressionValueType.DateTime, nil)
+		return newValueExpression(ExpressionValueType.DateTime, nil)
 	default:
-		return NewValueExpression(ExpressionValueType.Undefined, nil)
+		return newValueExpression(ExpressionValueType.Undefined, nil)
 	}
 }
 
@@ -229,11 +184,15 @@ func (ve *ValueExpression) BooleanValue() (bool, error) {
 		return false, err
 	}
 
+	return ve.booleanValue(), nil
+}
+
+func (ve *ValueExpression) booleanValue() bool {
 	if ve.value == nil {
-		return false, nil
+		return false
 	}
 
-	return ve.value.(bool), nil
+	return ve.value.(bool)
 }
 
 // Int32Value gets the ValueExpression value cast as an int32.
@@ -245,11 +204,15 @@ func (ve *ValueExpression) Int32Value() (int32, error) {
 		return 0, err
 	}
 
+	return ve.int32Value(), nil
+}
+
+func (ve *ValueExpression) int32Value() int32 {
 	if ve.value == nil {
-		return 0, nil
+		return 0
 	}
 
-	return ve.value.(int32), nil
+	return ve.value.(int32)
 }
 
 // Int64Value gets the ValueExpression value cast as an int64.
@@ -261,11 +224,15 @@ func (ve *ValueExpression) Int64Value() (int64, error) {
 		return 0, err
 	}
 
+	return ve.int64Value(), nil
+}
+
+func (ve *ValueExpression) int64Value() int64 {
 	if ve.value == nil {
-		return 0, nil
+		return 0
 	}
 
-	return ve.value.(int64), nil
+	return ve.value.(int64)
 }
 
 // DecimalValue gets the ValueExpression value cast as a float64.
@@ -277,11 +244,15 @@ func (ve *ValueExpression) DecimalValue() (float64, error) {
 		return 0.0, err
 	}
 
+	return ve.decimalValue(), nil
+}
+
+func (ve *ValueExpression) decimalValue() float64 {
 	if ve.value == nil {
-		return 0.0, nil
+		return 0.0
 	}
 
-	return ve.value.(float64), nil
+	return ve.value.(float64)
 }
 
 // DoubleValue gets the ValueExpression value cast as a float64.
@@ -293,11 +264,15 @@ func (ve *ValueExpression) DoubleValue() (float64, error) {
 		return 0.0, err
 	}
 
+	return ve.doubleValue(), nil
+}
+
+func (ve *ValueExpression) doubleValue() float64 {
 	if ve.value == nil {
-		return 0.0, nil
+		return 0.0
 	}
 
-	return ve.value.(float64), nil
+	return ve.value.(float64)
 }
 
 // StringValue gets the ValueExpression value cast as a string.
@@ -309,11 +284,15 @@ func (ve *ValueExpression) StringValue() (string, error) {
 		return "", err
 	}
 
+	return ve.stringValue(), nil
+}
+
+func (ve *ValueExpression) stringValue() string {
 	if ve.value == nil {
-		return "", nil
+		return ""
 	}
 
-	return ve.value.(string), nil
+	return ve.value.(string)
 }
 
 // GuidValue gets the ValueExpression value cast as a guid.Guid.
@@ -325,11 +304,15 @@ func (ve *ValueExpression) GuidValue() (guid.Guid, error) {
 		return guid.Guid{}, err
 	}
 
+	return ve.guidValue(), nil
+}
+
+func (ve *ValueExpression) guidValue() guid.Guid {
 	if ve.value == nil {
-		return guid.Guid{}, nil
+		return guid.Guid{}
 	}
 
-	return ve.value.(guid.Guid), nil
+	return ve.value.(guid.Guid)
 }
 
 // DateTimeValue gets the ValueExpression value cast as a time.Time.
@@ -341,11 +324,15 @@ func (ve *ValueExpression) DateTimeValue() (time.Time, error) {
 		return time.Time{}, err
 	}
 
+	return ve.dateTimeValue(), nil
+}
+
+func (ve *ValueExpression) dateTimeValue() time.Time {
 	if ve.value == nil {
-		return time.Time{}, nil
+		return time.Time{}
 	}
 
-	return ve.value.(time.Time), nil
+	return ve.value.(time.Time)
 }
 
 // Convert attempts to convert the ValueExpression to the specified targetValueType.
@@ -356,16 +343,10 @@ func (ve *ValueExpression) Convert(targetValueType ExpressionValueTypeEnum) (*Va
 	}
 
 	var targetValue interface{}
-	var err error
 
 	switch ve.ValueType() {
 	case ExpressionValueType.Boolean:
-		var result bool
-
-		if result, err = ve.BooleanValue(); err != nil {
-			return nil, err
-		}
-
+		result := ve.booleanValue()
 		var value int
 
 		if result {
@@ -393,11 +374,7 @@ func (ve *ValueExpression) Convert(targetValueType ExpressionValueTypeEnum) (*Va
 			return nil, errors.New("unexpected expression value type encountered")
 		}
 	case ExpressionValueType.Int32:
-		var value int32
-
-		if value, err = ve.Int32Value(); err != nil {
-			return nil, err
-		}
+		value := ve.int32Value()
 
 		switch targetValueType {
 		case ExpressionValueType.Boolean:
@@ -420,11 +397,7 @@ func (ve *ValueExpression) Convert(targetValueType ExpressionValueTypeEnum) (*Va
 			return nil, errors.New("unexpected expression value type encountered")
 		}
 	case ExpressionValueType.Int64:
-		var value int64
-
-		if value, err = ve.Int64Value(); err != nil {
-			return nil, err
-		}
+		value := ve.int64Value()
 
 		switch targetValueType {
 		case ExpressionValueType.Boolean:
@@ -447,11 +420,7 @@ func (ve *ValueExpression) Convert(targetValueType ExpressionValueTypeEnum) (*Va
 			return nil, errors.New("unexpected expression value type encountered")
 		}
 	case ExpressionValueType.Decimal:
-		var value float64
-
-		if value, err = ve.DecimalValue(); err != nil {
-			return nil, err
-		}
+		value := ve.decimalValue()
 
 		switch targetValueType {
 		case ExpressionValueType.Boolean:
@@ -474,11 +443,7 @@ func (ve *ValueExpression) Convert(targetValueType ExpressionValueTypeEnum) (*Va
 			return nil, errors.New("unexpected expression value type encountered")
 		}
 	case ExpressionValueType.Double:
-		var value float64
-
-		if value, err = ve.DoubleValue(); err != nil {
-			return nil, err
-		}
+		value := ve.doubleValue()
 
 		switch targetValueType {
 		case ExpressionValueType.Boolean:
@@ -501,11 +466,7 @@ func (ve *ValueExpression) Convert(targetValueType ExpressionValueTypeEnum) (*Va
 			return nil, errors.New("unexpected expression value type encountered")
 		}
 	case ExpressionValueType.String:
-		var value string
-
-		if value, err = ve.StringValue(); err != nil {
-			return nil, err
-		}
+		value := ve.stringValue()
 
 		switch targetValueType {
 		case ExpressionValueType.Boolean:
@@ -550,12 +511,7 @@ func (ve *ValueExpression) Convert(targetValueType ExpressionValueTypeEnum) (*Va
 			return nil, errors.New("unexpected expression value type encountered")
 		}
 	case ExpressionValueType.DateTime:
-		var result time.Time
-
-		if result, err = ve.DateTimeValue(); err != nil {
-			return nil, err
-		}
-
+		result := ve.dateTimeValue()
 		value := result.Unix()
 
 		switch targetValueType {

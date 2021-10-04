@@ -34,6 +34,7 @@ type Expression interface {
 }
 
 // GetValueExpression gets the expression cast to a ValueExpression.
+// An error will be returned if expression is nil or not ExpressionType.Value.
 func GetValueExpression(expression Expression) (*ValueExpression, error) {
 	if expression == nil {
 		return nil, errors.New("cannot get ValueExpression, expression is nil")
@@ -47,6 +48,7 @@ func GetValueExpression(expression Expression) (*ValueExpression, error) {
 }
 
 // GetUnaryExpression gets the expression cast to a UnaryExpression.
+// An error will be returned if expression is nil or not ExpressionType.Unary.
 func GetUnaryExpression(expression Expression) (*UnaryExpression, error) {
 	if expression == nil {
 		return nil, errors.New("cannot get UnaryExpression, expression is nil")
@@ -60,6 +62,7 @@ func GetUnaryExpression(expression Expression) (*UnaryExpression, error) {
 }
 
 // GetColumnExpression gets the expression cast to a ColumnExpression.
+// An error will be returned if expression is nil or not ExpressionType.Column.
 func GetColumnExpression(expression Expression) (*ColumnExpression, error) {
 	if expression == nil {
 		return nil, errors.New("cannot get ColumnExpression, expression is nil")
@@ -73,6 +76,7 @@ func GetColumnExpression(expression Expression) (*ColumnExpression, error) {
 }
 
 // GetInListExpression gets the expression cast to a InListExpression.
+// An error will be returned if expression is nil or not ExpressionType.InList.
 func GetInListExpression(expression Expression) (*InListExpression, error) {
 	if expression == nil {
 		return nil, errors.New("cannot get InListExpression, expression is nil")
@@ -86,6 +90,7 @@ func GetInListExpression(expression Expression) (*InListExpression, error) {
 }
 
 // GetFunctionExpression gets the expression cast to a FunctionExpression.
+// An error will be returned if expression is nil or not ExpressionType.Function.
 func GetFunctionExpression(expression Expression) (*FunctionExpression, error) {
 	if expression == nil {
 		return nil, errors.New("cannot get FunctionExpression, expression is nil")
@@ -99,6 +104,7 @@ func GetFunctionExpression(expression Expression) (*FunctionExpression, error) {
 }
 
 // GetOperatorExpression gets the expression cast to a OperatorExpression.
+// An error will be returned if expression is nil or not ExpressionType.Operator.
 func GetOperatorExpression(expression Expression) (*OperatorExpression, error) {
 	if expression == nil {
 		return nil, errors.New("cannot get OperatorExpression, expression is nil")

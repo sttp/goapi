@@ -78,12 +78,7 @@ func (et *ExpressionTree) evaluateAs(expression Expression, targetValueType Expr
 
 	switch expression.Type() {
 	case ExpressionType.Value:
-		var valueExpression *ValueExpression
-		var err error
-
-		if valueExpression, err = GetValueExpression(expression); err != nil {
-			return nil, err
-		}
+		valueExpression := expression.(*ValueExpression)
 
 		// Change Undefined NULL values to Nullable of target type
 		if valueExpression.ValueType() == ExpressionValueType.Undefined {
@@ -107,12 +102,8 @@ func (et *ExpressionTree) evaluateAs(expression Expression, targetValueType Expr
 }
 
 func (et *ExpressionTree) evaluateUnary(expression Expression) (*ValueExpression, error) {
-	var unaryExpression *UnaryExpression
+	unaryExpression := expression.(*UnaryExpression)
 	var err error
-
-	if unaryExpression, err = GetUnaryExpression(expression); err != nil {
-		return nil, err
-	}
 
 	var unaryValue *ValueExpression
 
@@ -129,15 +120,15 @@ func (et *ExpressionTree) evaluateUnary(expression Expression) (*ValueExpression
 
 	switch unaryValueType {
 	case ExpressionValueType.Boolean:
-		return unaryExpression.unaryBoolean(unaryValue.BooleanValue())
+		return unaryExpression.unaryBoolean(unaryValue.booleanValue())
 	case ExpressionValueType.Int32:
-		return unaryExpression.unaryInt32(unaryValue.Int32Value())
+		return unaryExpression.unaryInt32(unaryValue.int32Value())
 	case ExpressionValueType.Int64:
-		return unaryExpression.unaryInt64(unaryValue.Int64Value())
+		return unaryExpression.unaryInt64(unaryValue.int64Value())
 	case ExpressionValueType.Decimal:
-		return unaryExpression.unaryDecimal(unaryValue.DecimalValue())
+		return unaryExpression.unaryDecimal(unaryValue.decimalValue())
 	case ExpressionValueType.Double:
-		return unaryExpression.unaryDouble(unaryValue.DoubleValue())
+		return unaryExpression.unaryDouble(unaryValue.doubleValue())
 	case ExpressionValueType.String:
 		fallthrough
 	case ExpressionValueType.Guid:
@@ -152,14 +143,9 @@ func (et *ExpressionTree) evaluateUnary(expression Expression) (*ValueExpression
 }
 
 func (et *ExpressionTree) evaluateColumn(expression Expression) (*ValueExpression, error) {
-	var columnExpression *ColumnExpression
-	var err error
-
-	if columnExpression, err = GetColumnExpression(expression); err != nil {
-		return nil, err
-	}
-
+	columnExpression := expression.(*ColumnExpression)
 	var column *data.DataColumn
+	var err error
 
 	if column = columnExpression.DataColumn(); column == nil {
 		return nil, errors.New("encountered column expression with undefined data column reference")
@@ -246,21 +232,16 @@ func (et *ExpressionTree) evaluateColumn(expression Expression) (*ValueExpressio
 	}
 
 	if isNull {
-		return NewValueExpression(valueType, nil), nil
+		return NullValue(valueType), nil
 	}
 
-	return NewValueExpression(valueType, value), nil
+	return newValueExpression(valueType, value), nil
 }
 
 func (et *ExpressionTree) evaluateInList(expression Expression) (*ValueExpression, error) {
-	var inListExpression *InListExpression
-	var err error
-
-	if inListExpression, err = GetInListExpression(expression); err != nil {
-		return nil, err
-	}
-
+	inListExpression := expression.(*InListExpression)
 	var inListValue *ValueExpression
+	var err error
 
 	if inListValue, err = et.evaluate(inListExpression.Value()); err != nil {
 		return nil, err
@@ -277,14 +258,13 @@ func (et *ExpressionTree) evaluateInList(expression Expression) (*ValueExpressio
 
 	var argumentValue, result *ValueExpression
 	var valueType ExpressionValueTypeEnum
-	var resultVal bool
 
 	for i := 0; i < len(arguments); i++ {
 		if argumentValue, err = et.evaluate(arguments[i]); err != nil {
 			return nil, err
 		}
 
-		if valueType, err = et.deriveComparisonOperationValueType(ExpressionOperatorType.Equal, inListValue.ValueType(), argumentValue.ValueType()); err != nil {
+		if valueType, err = ExpressionOperatorType.Equal.deriveComparisonOperationValueType(inListValue.ValueType(), argumentValue.ValueType()); err != nil {
 			return nil, err
 		}
 
@@ -292,11 +272,7 @@ func (et *ExpressionTree) evaluateInList(expression Expression) (*ValueExpressio
 			return nil, err
 		}
 
-		if resultVal, err = result.BooleanValue(); err != nil {
-			return nil, err
-		}
-
-		if resultVal {
+		if result.booleanValue() {
 			if hasNotKeyWord {
 				return False, nil
 			}
@@ -313,695 +289,886 @@ func (et *ExpressionTree) evaluateInList(expression Expression) (*ValueExpressio
 }
 
 func (et *ExpressionTree) evaluateFunction(expression Expression) (*ValueExpression, error) {
-	var functionExpression *FunctionExpression
-	var err error
-
-	if functionExpression, err = GetFunctionExpression(expression); err != nil {
-		return nil, err
-	}
-
+	functionExpression := expression.(*FunctionExpression)
 	arguments := functionExpression.Arguments()
 
 	switch functionExpression.FunctionType() {
 	case ExpressionFunctionType.Abs:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"Abs\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-			return nil, err
-		}
-
-		return et.abs(sourceValue)
+		return et.evaluateAbs(arguments)
 	case ExpressionFunctionType.Ceiling:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"Ceiling\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-			return nil, err
-		}
-
-		return et.ceiling(sourceValue)
+		return et.evaluateCeiling(arguments)
 	case ExpressionFunctionType.Coalesce:
-		if len(arguments) < 2 {
-			return nil, errors.New("\"Coalesce\" function expects at least 2 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		// Not pre-evaluating Coalesce arguments - arguments will be evaluated only up to first non-null value
-		return et.coalesce(arguments)
+		return et.evaluateCoalesce(arguments)
 	case ExpressionFunctionType.Convert:
-		if len(arguments) != 2 {
-			return nil, errors.New("\"Convert\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, targetType *ValueExpression
-
-		if sourceValue, err = et.evaluate(arguments[0]); err != nil {
-			return nil, err
-		}
-
-		if targetType, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.convert(sourceValue, targetType)
+		return et.evaluateConvert(arguments)
 	case ExpressionFunctionType.Contains:
-		if len(arguments) < 2 || len(arguments) > 3 {
-			return nil, errors.New("\"Contains\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, testValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 2 {
-			return et.contains(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
-		}
-
-		var ignoreCase *ValueExpression
-
-		if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-			return nil, err
-		}
-
-		return et.contains(sourceValue, testValue, ignoreCase)
+		return et.evaluateContains(arguments)
 	case ExpressionFunctionType.DateAdd:
-		if len(arguments) != 3 {
-			return nil, errors.New("\"DateAdd\" function expects 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, addValue, intervalType *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.DateTime); err != nil {
-			return nil, err
-		}
-
-		if addValue, err = et.evaluateAs(arguments[1], ExpressionValueType.Int32); err != nil {
-			return nil, err
-		}
-
-		if intervalType, err = et.evaluateAs(arguments[2], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.dateAdd(sourceValue, addValue, intervalType)
+		return et.evaluateDateAdd(arguments)
 	case ExpressionFunctionType.DateDiff:
-		if len(arguments) != 3 {
-			return nil, errors.New("\"DateDiff\" function expects 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var leftValue, rightValue, intervalType *ValueExpression
-
-		if leftValue, err = et.evaluateAs(arguments[0], ExpressionValueType.DateTime); err != nil {
-			return nil, err
-		}
-
-		if rightValue, err = et.evaluateAs(arguments[1], ExpressionValueType.DateTime); err != nil {
-			return nil, err
-		}
-
-		if intervalType, err = et.evaluateAs(arguments[2], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.dateDiff(leftValue, rightValue, intervalType)
+		return et.evaluateDateDiff(arguments)
 	case ExpressionFunctionType.DatePart:
-		if len(arguments) != 2 {
-			return nil, errors.New("\"DatePart\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-		var sourceValue, intervalType *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.DateTime); err != nil {
-			return nil, err
-		}
-
-		if intervalType, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.datePart(sourceValue, intervalType)
+		return et.evaluateDatePart(arguments)
 	case ExpressionFunctionType.EndsWith:
-		if len(arguments) < 2 || len(arguments) > 3 {
-			return nil, errors.New("\"EndsWith\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, testValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 2 {
-			return et.endsWith(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
-		}
-
-		var ignoreCase *ValueExpression
-
-		if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-			return nil, err
-		}
-
-		return et.endsWith(sourceValue, testValue, ignoreCase)
+		return et.evaluateEndsWith(arguments)
 	case ExpressionFunctionType.Floor:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"Floor\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-			return nil, err
-		}
-
-		return et.floor(sourceValue)
+		return et.evaluateFloor(arguments)
 	case ExpressionFunctionType.IIf:
-		if len(arguments) != 3 {
-			return nil, errors.New("\"IIf\" function expects 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var testValue *ValueExpression
-
-		if testValue, err = et.evaluate(arguments[1]); err != nil {
-			return nil, err
-		}
-
-		// Not pre-evaluating IIf result value arguments - only evaluating desired path
-		return et.iif(testValue, arguments[1], arguments[2])
+		return et.evaluateIIf(arguments)
 	case ExpressionFunctionType.IndexOf:
-		if len(arguments) < 2 || len(arguments) > 3 {
-			return nil, errors.New("\"IndexOf\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, testValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 2 {
-			return et.indexOf(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
-		}
-
-		var ignoreCase *ValueExpression
-
-		if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-			return nil, err
-		}
-
-		return et.indexOf(sourceValue, testValue, ignoreCase)
+		return et.evaluateIndexOf(arguments)
 	case ExpressionFunctionType.IsDate:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"IsDate\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluate(arguments[0]); err != nil {
-			return nil, err
-		}
-
-		return et.isDate(sourceValue)
+		return et.evaluateIsDate(arguments)
 	case ExpressionFunctionType.IsInteger:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"IsInteger\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluate(arguments[0]); err != nil {
-			return nil, err
-		}
-
-		return et.isInteger(sourceValue)
+		return et.evaluateIsInteger(arguments)
 	case ExpressionFunctionType.IsGuid:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"IsGuid\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluate(arguments[0]); err != nil {
-			return nil, err
-		}
-
-		return et.isGuid(sourceValue)
+		return et.evaluateIsGuid(arguments)
 	case ExpressionFunctionType.IsNull:
-		if len(arguments) != 2 {
-			return nil, errors.New("\"IsNull\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var testValue, defaultValue *ValueExpression
-
-		if testValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if defaultValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.isNull(testValue, defaultValue)
+		return et.evaluateIsNull(arguments)
 	case ExpressionFunctionType.IsNumeric:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"IsNumeric\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluate(arguments[0]); err != nil {
-			return nil, err
-		}
-
-		return et.isNumeric(sourceValue)
+		return et.evaluateIsNumeric(arguments)
 	case ExpressionFunctionType.LastIndexOf:
-		if len(arguments) < 2 || len(arguments) > 3 {
-			return nil, errors.New("\"LastIndexOf\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, testValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 2 {
-			return et.lastIndexOf(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
-		}
-
-		var ignoreCase *ValueExpression
-
-		if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-			return nil, err
-		}
-
-		return et.lastIndexOf(sourceValue, testValue, ignoreCase)
+		return et.evaluateLastIndexOf(arguments)
 	case ExpressionFunctionType.Len:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"Len\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.len(sourceValue)
+		return et.evaluateLen(arguments)
 	case ExpressionFunctionType.Lower:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"Lower\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.lower(sourceValue)
+		return et.evaluateLower(arguments)
 	case ExpressionFunctionType.MaxOf:
-		if len(arguments) < 2 {
-			return nil, errors.New("\"MaxOf\" function expects at least 2 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		return et.maxOf(arguments)
+		return et.evaluateMaxOf(arguments)
 	case ExpressionFunctionType.MinOf:
-		if len(arguments) < 2 {
-			return nil, errors.New("\"MinOf\" function expects at least 2 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		return et.minOf(arguments)
+		return et.evaluateMinOf(arguments)
 	case ExpressionFunctionType.NthIndexOf:
-		if len(arguments) < 3 || len(arguments) > 4 {
-			return nil, errors.New("\"NthIndexOf\" function expects 3 or 4 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, testValue, indexValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if indexValue, err = et.evaluateAs(arguments[2], ExpressionValueType.Int32); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 3 {
-			return et.nthIndexOf(sourceValue, testValue, indexValue, NullValue(ExpressionValueType.Boolean))
-		}
-
-		var ignoreCase *ValueExpression
-
-		if ignoreCase, err = et.evaluateAs(arguments[3], ExpressionValueType.Boolean); err != nil {
-			return nil, err
-		}
-
-		return et.nthIndexOf(sourceValue, testValue, indexValue, ignoreCase)
+		return et.evaluateNthIndexOf(arguments)
 	case ExpressionFunctionType.Now:
-		if len(arguments) > 0 {
-			return nil, errors.New("\"Now\" function expects 0 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		return et.now()
+		return et.evaluateNow(arguments)
 	case ExpressionFunctionType.Power:
-		if len(arguments) != 2 {
-			return nil, errors.New("\"Power\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, exponentValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-			return nil, err
-		}
-
-		if exponentValue, err = et.evaluateAs(arguments[1], ExpressionValueType.Int32); err != nil {
-			return nil, err
-		}
-
-		return et.power(sourceValue, exponentValue)
+		return et.evaluatePower(arguments)
 	case ExpressionFunctionType.RegExMatch:
-		if len(arguments) != 2 {
-			return nil, errors.New("\"RegExMatch\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var regexValue, testValue *ValueExpression
-
-		if regexValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.regExMatch(regexValue, testValue)
+		return et.evaluateRegExMatch(arguments)
 	case ExpressionFunctionType.RegExVal:
-		if len(arguments) != 2 {
-			return nil, errors.New("\"RegExVal\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var regexValue, testValue *ValueExpression
-
-		if regexValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.regExVal(regexValue, testValue)
+		return et.evaluateRegExVal(arguments)
 	case ExpressionFunctionType.Replace:
-		if len(arguments) < 3 || len(arguments) > 4 {
-			return nil, errors.New("\"Replace\" function expects 3 or 4 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, testValue, replaceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if replaceValue, err = et.evaluateAs(arguments[2], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 2 {
-			return et.replace(sourceValue, testValue, replaceValue, NullValue(ExpressionValueType.Boolean))
-		}
-
-		var ignoreCase *ValueExpression
-
-		if ignoreCase, err = et.evaluateAs(arguments[3], ExpressionValueType.Boolean); err != nil {
-			return nil, err
-		}
-
-		return et.replace(sourceValue, testValue, replaceValue, ignoreCase)
+		return et.evaluateReplace(arguments)
 	case ExpressionFunctionType.Reverse:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"Reverse\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.reverse(sourceValue)
+		return et.evaluateReverse(arguments)
 	case ExpressionFunctionType.Round:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"Round\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-			return nil, err
-		}
-
-		return et.round(sourceValue)
+		return et.evaluateRound(arguments)
 	case ExpressionFunctionType.Split:
-		if len(arguments) < 3 || len(arguments) > 4 {
-			return nil, errors.New("\"Split\" function expects 3 or 4 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, delimeterValue, indexValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if delimeterValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if indexValue, err = et.evaluateAs(arguments[2], ExpressionValueType.Int32); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 3 {
-			return et.split(sourceValue, delimeterValue, indexValue, NullValue(ExpressionValueType.Boolean))
-		}
-
-		var ignoreCase *ValueExpression
-
-		if ignoreCase, err = et.evaluateAs(arguments[3], ExpressionValueType.Boolean); err != nil {
-			return nil, err
-		}
-
-		return et.split(sourceValue, delimeterValue, indexValue, ignoreCase)
+		return et.evaluateSplit(arguments)
 	case ExpressionFunctionType.Sqrt:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"Sqrt\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-			return nil, err
-		}
-
-		return et.sqrt(sourceValue)
+		return et.evaluateSqrt(arguments)
 	case ExpressionFunctionType.StartsWith:
-		if len(arguments) < 2 || len(arguments) > 3 {
-			return nil, errors.New("\"StartsWith\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, testValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 2 {
-			return et.startsWith(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
-		}
-
-		var ignoreCase *ValueExpression
-
-		if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-			return nil, err
-		}
-
-		return et.startsWith(sourceValue, testValue, ignoreCase)
+		return et.evaluateStartsWith(arguments)
 	case ExpressionFunctionType.StrCount:
-		if len(arguments) < 2 || len(arguments) > 3 {
-			return nil, errors.New("\"StrCount\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, testValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 2 {
-			return et.strCount(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
-		}
-
-		var ignoreCase *ValueExpression
-
-		if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-			return nil, err
-		}
-
-		return et.strCount(sourceValue, testValue, ignoreCase)
+		return et.evaluateStrCount(arguments)
 	case ExpressionFunctionType.StrCmp:
-		if len(arguments) < 2 || len(arguments) > 3 {
-			return nil, errors.New("\"StrCmp\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var leftValue, rightValue *ValueExpression
-
-		if leftValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if rightValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 2 {
-			return et.strCmp(leftValue, rightValue, NullValue(ExpressionValueType.Boolean))
-		}
-
-		var ignoreCase *ValueExpression
-
-		if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-			return nil, err
-		}
-
-		return et.strCmp(leftValue, rightValue, ignoreCase)
+		return et.evaluateStrCmp(arguments)
 	case ExpressionFunctionType.SubStr:
-		if len(arguments) < 2 || len(arguments) > 3 {
-			return nil, errors.New("\"SubStr\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue, indexValue, lengthValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		if indexValue, err = et.evaluateAs(arguments[1], ExpressionValueType.Int32); err != nil {
-			return nil, err
-		}
-
-		if len(arguments) == 2 {
-			return et.subStr(sourceValue, indexValue, NullValue(ExpressionValueType.Int32))
-		}
-
-		if lengthValue, err = et.evaluateAs(arguments[2], ExpressionValueType.Int32); err != nil {
-			return nil, err
-		}
-
-		return et.subStr(sourceValue, indexValue, lengthValue)
+		return et.evaluateSubStr(arguments)
 	case ExpressionFunctionType.Trim:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"Trim\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.trim(sourceValue)
+		return et.evaluateTrim(arguments)
 	case ExpressionFunctionType.TrimLeft:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"TrimLeft\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.trimLeft(sourceValue)
+		return et.evaluateTrimLeft(arguments)
 	case ExpressionFunctionType.TrimRight:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"TrimRight\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.trimRight(sourceValue)
+		return et.evaluateTrimRight(arguments)
 	case ExpressionFunctionType.Upper:
-		if len(arguments) != 1 {
-			return nil, errors.New("\"Upper\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
-		}
-
-		var sourceValue *ValueExpression
-
-		if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-			return nil, err
-		}
-
-		return et.upper(sourceValue)
+		return et.evaluateUpper(arguments)
 	case ExpressionFunctionType.UtcNow:
-		if len(arguments) > 0 {
-			return nil, errors.New("\"UtcNow\" function expects 0 arguments, received " + strconv.Itoa(len(arguments)))
-		}
-
-		return et.utcNow()
+		return et.evaluateUtcNow(arguments)
 	default:
 		return nil, errors.New("unexpected function type encountered")
 	}
 }
 
-func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpression, error) {
-	var operatorExpression *OperatorExpression
+func (et *ExpressionTree) evaluateAbs(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"Abs\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
 	var err error
 
-	if operatorExpression, err = GetOperatorExpression(expression); err != nil {
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
 		return nil, err
 	}
+
+	return et.abs(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateCeiling(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"Ceiling\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
+		return nil, err
+	}
+
+	return et.ceiling(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateCoalesce(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 {
+		return nil, errors.New("\"Coalesce\" function expects at least 2 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	// Not pre-evaluating Coalesce arguments - arguments will be evaluated only up to first non-null value
+	return et.coalesce(arguments)
+}
+
+func (et *ExpressionTree) evaluateConvert(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 2 {
+		return nil, errors.New("\"Convert\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, targetType *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluate(arguments[0]); err != nil {
+		return nil, err
+	}
+
+	if targetType, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.convert(sourceValue, targetType)
+}
+
+func (et *ExpressionTree) evaluateContains(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 || len(arguments) > 3 {
+		return nil, errors.New("\"Contains\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, testValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 2 {
+		return et.contains(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
+	}
+
+	var ignoreCase *ValueExpression
+
+	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	return et.contains(sourceValue, testValue, ignoreCase)
+}
+
+func (et *ExpressionTree) evaluateDateAdd(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 3 {
+		return nil, errors.New("\"DateAdd\" function expects 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, addValue, intervalType *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.DateTime); err != nil {
+		return nil, err
+	}
+
+	if addValue, err = et.evaluateAs(arguments[1], ExpressionValueType.Int32); err != nil {
+		return nil, err
+	}
+
+	if intervalType, err = et.evaluateAs(arguments[2], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.dateAdd(sourceValue, addValue, intervalType)
+}
+
+func (et *ExpressionTree) evaluateDateDiff(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 3 {
+		return nil, errors.New("\"DateDiff\" function expects 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var leftValue, rightValue, intervalType *ValueExpression
+	var err error
+
+	if leftValue, err = et.evaluateAs(arguments[0], ExpressionValueType.DateTime); err != nil {
+		return nil, err
+	}
+
+	if rightValue, err = et.evaluateAs(arguments[1], ExpressionValueType.DateTime); err != nil {
+		return nil, err
+	}
+
+	if intervalType, err = et.evaluateAs(arguments[2], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.dateDiff(leftValue, rightValue, intervalType)
+}
+
+func (et *ExpressionTree) evaluateDatePart(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 2 {
+		return nil, errors.New("\"DatePart\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, intervalType *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.DateTime); err != nil {
+		return nil, err
+	}
+
+	if intervalType, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.datePart(sourceValue, intervalType)
+}
+
+func (et *ExpressionTree) evaluateEndsWith(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 || len(arguments) > 3 {
+		return nil, errors.New("\"EndsWith\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, testValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 2 {
+		return et.endsWith(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
+	}
+
+	var ignoreCase *ValueExpression
+
+	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	return et.endsWith(sourceValue, testValue, ignoreCase)
+}
+
+func (et *ExpressionTree) evaluateFloor(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"Floor\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
+		return nil, err
+	}
+
+	return et.floor(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateIIf(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 3 {
+		return nil, errors.New("\"IIf\" function expects 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var testValue *ValueExpression
+	var err error
+
+	if testValue, err = et.evaluate(arguments[1]); err != nil {
+		return nil, err
+	}
+
+	// Not pre-evaluating IIf result value arguments - only evaluating desired path
+	return et.iif(testValue, arguments[1], arguments[2])
+}
+
+func (et *ExpressionTree) evaluateIndexOf(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 || len(arguments) > 3 {
+		return nil, errors.New("\"IndexOf\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, testValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 2 {
+		return et.indexOf(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
+	}
+
+	var ignoreCase *ValueExpression
+
+	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	return et.indexOf(sourceValue, testValue, ignoreCase)
+}
+
+func (et *ExpressionTree) evaluateIsDate(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"IsDate\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluate(arguments[0]); err != nil {
+		return nil, err
+	}
+
+	return et.isDate(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateIsInteger(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"IsInteger\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluate(arguments[0]); err != nil {
+		return nil, err
+	}
+
+	return et.isInteger(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateIsGuid(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"IsGuid\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluate(arguments[0]); err != nil {
+		return nil, err
+	}
+
+	return et.isGuid(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateIsNull(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 2 {
+		return nil, errors.New("\"IsNull\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var testValue, defaultValue *ValueExpression
+	var err error
+
+	if testValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if defaultValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.isNull(testValue, defaultValue)
+}
+
+func (et *ExpressionTree) evaluateIsNumeric(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"IsNumeric\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluate(arguments[0]); err != nil {
+		return nil, err
+	}
+
+	return et.isNumeric(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateLastIndexOf(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 || len(arguments) > 3 {
+		return nil, errors.New("\"LastIndexOf\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, testValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 2 {
+		return et.lastIndexOf(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
+	}
+
+	var ignoreCase *ValueExpression
+
+	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	return et.lastIndexOf(sourceValue, testValue, ignoreCase)
+}
+
+func (et *ExpressionTree) evaluateLen(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"Len\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.len(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateLower(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"Lower\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.lower(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateMaxOf(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 {
+		return nil, errors.New("\"MaxOf\" function expects at least 2 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	return et.maxOf(arguments)
+}
+
+func (et *ExpressionTree) evaluateMinOf(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 {
+		return nil, errors.New("\"MinOf\" function expects at least 2 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	return et.minOf(arguments)
+}
+
+func (et *ExpressionTree) evaluateNthIndexOf(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 3 || len(arguments) > 4 {
+		return nil, errors.New("\"NthIndexOf\" function expects 3 or 4 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, testValue, indexValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if indexValue, err = et.evaluateAs(arguments[2], ExpressionValueType.Int32); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 3 {
+		return et.nthIndexOf(sourceValue, testValue, indexValue, NullValue(ExpressionValueType.Boolean))
+	}
+
+	var ignoreCase *ValueExpression
+
+	if ignoreCase, err = et.evaluateAs(arguments[3], ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	return et.nthIndexOf(sourceValue, testValue, indexValue, ignoreCase)
+}
+
+func (et *ExpressionTree) evaluateNow(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) > 0 {
+		return nil, errors.New("\"Now\" function expects 0 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	return et.now()
+}
+
+func (et *ExpressionTree) evaluatePower(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 2 {
+		return nil, errors.New("\"Power\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, exponentValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
+		return nil, err
+	}
+
+	if exponentValue, err = et.evaluateAs(arguments[1], ExpressionValueType.Int32); err != nil {
+		return nil, err
+	}
+
+	return et.power(sourceValue, exponentValue)
+}
+
+func (et *ExpressionTree) evaluateRegExMatch(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 2 {
+		return nil, errors.New("\"RegExMatch\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var regexValue, testValue *ValueExpression
+	var err error
+
+	if regexValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.regExMatch(regexValue, testValue)
+}
+
+func (et *ExpressionTree) evaluateRegExVal(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 2 {
+		return nil, errors.New("\"RegExVal\" function expects 2 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var regexValue, testValue *ValueExpression
+	var err error
+
+	if regexValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.regExVal(regexValue, testValue)
+}
+
+func (et *ExpressionTree) evaluateReplace(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 3 || len(arguments) > 4 {
+		return nil, errors.New("\"Replace\" function expects 3 or 4 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, testValue, replaceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if replaceValue, err = et.evaluateAs(arguments[2], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 2 {
+		return et.replace(sourceValue, testValue, replaceValue, NullValue(ExpressionValueType.Boolean))
+	}
+
+	var ignoreCase *ValueExpression
+
+	if ignoreCase, err = et.evaluateAs(arguments[3], ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	return et.replace(sourceValue, testValue, replaceValue, ignoreCase)
+}
+
+func (et *ExpressionTree) evaluateReverse(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"Reverse\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.reverse(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateRound(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"Round\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
+		return nil, err
+	}
+
+	return et.round(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateSplit(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 3 || len(arguments) > 4 {
+		return nil, errors.New("\"Split\" function expects 3 or 4 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, delimeterValue, indexValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if delimeterValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if indexValue, err = et.evaluateAs(arguments[2], ExpressionValueType.Int32); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 3 {
+		return et.split(sourceValue, delimeterValue, indexValue, NullValue(ExpressionValueType.Boolean))
+	}
+
+	var ignoreCase *ValueExpression
+
+	if ignoreCase, err = et.evaluateAs(arguments[3], ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	return et.split(sourceValue, delimeterValue, indexValue, ignoreCase)
+}
+
+func (et *ExpressionTree) evaluateSqrt(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"Sqrt\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
+		return nil, err
+	}
+
+	return et.sqrt(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateStartsWith(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 || len(arguments) > 3 {
+		return nil, errors.New("\"StartsWith\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, testValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 2 {
+		return et.startsWith(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
+	}
+
+	var ignoreCase *ValueExpression
+
+	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	return et.startsWith(sourceValue, testValue, ignoreCase)
+}
+
+func (et *ExpressionTree) evaluateStrCount(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 || len(arguments) > 3 {
+		return nil, errors.New("\"StrCount\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, testValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 2 {
+		return et.strCount(sourceValue, testValue, NullValue(ExpressionValueType.Boolean))
+	}
+
+	var ignoreCase *ValueExpression
+
+	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	return et.strCount(sourceValue, testValue, ignoreCase)
+}
+
+func (et *ExpressionTree) evaluateStrCmp(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 || len(arguments) > 3 {
+		return nil, errors.New("\"StrCmp\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var leftValue, rightValue *ValueExpression
+	var err error
+
+	if leftValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if rightValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 2 {
+		return et.strCmp(leftValue, rightValue, NullValue(ExpressionValueType.Boolean))
+	}
+
+	var ignoreCase *ValueExpression
+
+	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	return et.strCmp(leftValue, rightValue, ignoreCase)
+}
+
+func (et *ExpressionTree) evaluateSubStr(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) < 2 || len(arguments) > 3 {
+		return nil, errors.New("\"SubStr\" function expects 2 or 3 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue, indexValue, lengthValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	if indexValue, err = et.evaluateAs(arguments[1], ExpressionValueType.Int32); err != nil {
+		return nil, err
+	}
+
+	if len(arguments) == 2 {
+		return et.subStr(sourceValue, indexValue, NullValue(ExpressionValueType.Int32))
+	}
+
+	if lengthValue, err = et.evaluateAs(arguments[2], ExpressionValueType.Int32); err != nil {
+		return nil, err
+	}
+
+	return et.subStr(sourceValue, indexValue, lengthValue)
+}
+
+func (et *ExpressionTree) evaluateTrim(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"Trim\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.trim(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateTrimLeft(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"TrimLeft\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.trimLeft(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateTrimRight(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"TrimRight\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.trimRight(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateUpper(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) != 1 {
+		return nil, errors.New("\"Upper\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
+	}
+
+	var sourceValue *ValueExpression
+	var err error
+
+	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
+		return nil, err
+	}
+
+	return et.upper(sourceValue)
+}
+
+func (et *ExpressionTree) evaluateUtcNow(arguments []Expression) (*ValueExpression, error) {
+	if len(arguments) > 0 {
+		return nil, errors.New("\"UtcNow\" function expects 0 arguments, received " + strconv.Itoa(len(arguments)))
+	}
+
+	return et.utcNow()
+}
+
+func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpression, error) {
+	operatorExpression := expression.(*OperatorExpression)
+	var err error
 
 	var leftValue *ValueExpression
 
@@ -1017,7 +1184,7 @@ func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpress
 
 	var valueType ExpressionValueTypeEnum
 
-	if valueType, err = et.deriveOperationValueType(ExpressionOperatorType.Equal, leftValue.ValueType(), rightValue.ValueType()); err != nil {
+	if valueType, err = ExpressionOperatorType.Equal.deriveOperationValueType(leftValue.ValueType(), rightValue.ValueType()); err != nil {
 		return nil, err
 	}
 
@@ -1077,447 +1244,6 @@ func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpress
 	default:
 		return nil, errors.New("unexpected operator type encountered")
 	}
-}
-
-// Operation Value Type Selectors
-
-func (et *ExpressionTree) deriveOperationValueType(operationType ExpressionOperatorTypeEnum, leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
-	switch operationType {
-	case ExpressionOperatorType.Multiply:
-		fallthrough
-	case ExpressionOperatorType.Divide:
-		fallthrough
-	case ExpressionOperatorType.Add:
-		fallthrough
-	case ExpressionOperatorType.Subtract:
-		return et.deriveArithmeticOperationValueType(operationType, leftValueType, rightValueType)
-	case ExpressionOperatorType.Modulus:
-		fallthrough
-	case ExpressionOperatorType.BitwiseAnd:
-		fallthrough
-	case ExpressionOperatorType.BitwiseOr:
-		fallthrough
-	case ExpressionOperatorType.BitwiseXor:
-		return et.deriveIntegerOperationValueType(operationType, leftValueType, rightValueType)
-	case ExpressionOperatorType.LessThan:
-		fallthrough
-	case ExpressionOperatorType.LessThanOrEqual:
-		fallthrough
-	case ExpressionOperatorType.GreaterThan:
-		fallthrough
-	case ExpressionOperatorType.GreaterThanOrEqual:
-		fallthrough
-	case ExpressionOperatorType.Equal:
-		fallthrough
-	case ExpressionOperatorType.EqualExactMatch:
-		fallthrough
-	case ExpressionOperatorType.NotEqual:
-		fallthrough
-	case ExpressionOperatorType.NotEqualExactMatch:
-		return et.deriveComparisonOperationValueType(operationType, leftValueType, rightValueType)
-	case ExpressionOperatorType.And:
-		fallthrough
-	case ExpressionOperatorType.Or:
-		return et.deriveBooleanOperationValueType(operationType, leftValueType, rightValueType)
-	case ExpressionOperatorType.BitShiftLeft:
-		fallthrough
-	case ExpressionOperatorType.BitShiftRight:
-		fallthrough
-	case ExpressionOperatorType.IsNull:
-		fallthrough
-	case ExpressionOperatorType.IsNotNull:
-		fallthrough
-	case ExpressionOperatorType.Like:
-		fallthrough
-	case ExpressionOperatorType.LikeExactMatch:
-		fallthrough
-	case ExpressionOperatorType.NotLike:
-		fallthrough
-	case ExpressionOperatorType.NotLikeExactMatch:
-		return leftValueType, nil
-	default:
-		return ZeroExpressionValueType, errors.New("unexpected expression operator type encountered")
-	}
-}
-
-func (et *ExpressionTree) deriveArithmeticOperationValueType(operationType ExpressionOperatorTypeEnum, leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
-	switch leftValueType {
-	case ExpressionValueType.Boolean:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			return ExpressionValueType.Boolean, nil
-		case ExpressionValueType.Int32:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.String:
-			if operationType == ExpressionOperatorType.Add {
-				return ExpressionValueType.String, nil
-			}
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Boolean\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Int32:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.String:
-			if operationType == ExpressionOperatorType.Add {
-				return ExpressionValueType.String, nil
-			}
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Int32\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Int64:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.String:
-			if operationType == ExpressionOperatorType.Add {
-				return ExpressionValueType.String, nil
-			}
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Int64\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Decimal:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.String:
-			if operationType == ExpressionOperatorType.Add {
-				return ExpressionValueType.String, nil
-			}
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Decimal\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Double:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.String:
-			if operationType == ExpressionOperatorType.Add {
-				return ExpressionValueType.String, nil
-			}
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Double\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.String:
-		if operationType == ExpressionOperatorType.Add {
-			return ExpressionValueType.String, nil
-		}
-		fallthrough
-	case ExpressionValueType.Guid:
-		fallthrough
-	case ExpressionValueType.DateTime:
-		return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"" + leftValueType.String() + "\" and \"" + rightValueType.String() + "\"")
-	default:
-		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-	}
-}
-
-func (et *ExpressionTree) deriveIntegerOperationValueType(operationType ExpressionOperatorTypeEnum, leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
-	switch leftValueType {
-	case ExpressionValueType.Boolean:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			return ExpressionValueType.Boolean, nil
-		case ExpressionValueType.Int32:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.String:
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Boolean\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Int32:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.String:
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Int32\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Int64:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.String:
-			fallthrough
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Int64\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Decimal:
-		fallthrough
-	case ExpressionValueType.Double:
-		fallthrough
-	case ExpressionValueType.String:
-		fallthrough
-	case ExpressionValueType.Guid:
-		fallthrough
-	case ExpressionValueType.DateTime:
-		return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"" + leftValueType.String() + "\" and \"" + rightValueType.String() + "\"")
-	default:
-		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-	}
-}
-
-func (et *ExpressionTree) deriveComparisonOperationValueType(operationType ExpressionOperatorTypeEnum, leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
-	switch leftValueType {
-	case ExpressionValueType.Boolean:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Boolean, nil
-		case ExpressionValueType.Int32:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Boolean\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Int32:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Int32, nil
-		case ExpressionValueType.Int64:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Int32\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Int64:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Int64, nil
-		case ExpressionValueType.Decimal:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Int64\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Decimal:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Decimal, nil
-		case ExpressionValueType.Double:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Decimal\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.Double:
-		switch rightValueType {
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Double, nil
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Double\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.String:
-		return leftValueType, nil
-	case ExpressionValueType.Guid:
-		switch rightValueType {
-		case ExpressionValueType.Guid:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.Guid, nil
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.DateTime:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"Guid\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	case ExpressionValueType.DateTime:
-		switch rightValueType {
-		case ExpressionValueType.DateTime:
-			fallthrough
-		case ExpressionValueType.String:
-			return ExpressionValueType.DateTime, nil
-		case ExpressionValueType.Boolean:
-			fallthrough
-		case ExpressionValueType.Int32:
-			fallthrough
-		case ExpressionValueType.Int64:
-			fallthrough
-		case ExpressionValueType.Decimal:
-			fallthrough
-		case ExpressionValueType.Double:
-			fallthrough
-		case ExpressionValueType.Guid:
-			return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"DateTime\" and \"" + rightValueType.String() + "\"")
-		default:
-			return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-		}
-	default:
-		return ZeroExpressionValueType, errors.New("unexpected expression value type encountered")
-	}
-}
-
-func (et *ExpressionTree) deriveBooleanOperationValueType(operationType ExpressionOperatorTypeEnum, leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
-	if leftValueType == ExpressionValueType.Boolean && rightValueType == ExpressionValueType.Boolean {
-		return ExpressionValueType.Boolean, nil
-	}
-
-	return ZeroExpressionValueType, errors.New("cannot perform \"" + operationType.String() + "\" operation on \"" + leftValueType.String() + "\" and \"" + rightValueType.String() + "\"")
 }
 
 // Filter Expression Function Implementations
