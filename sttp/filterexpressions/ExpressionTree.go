@@ -1808,7 +1808,15 @@ func (et *ExpressionTree) isGuid(testValue *ValueExpression) *ValueExpression {
 }
 
 func (et *ExpressionTree) isNull(testValue *ValueExpression, defaultValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if defaultValue.IsNull() {
+		return nil, errors.New("\"IsNull\" default value, second argument, is null")
+	}
+
+	if testValue.IsNull() {
+		return defaultValue, nil
+	}
+
+	return testValue, nil
 }
 
 func (et *ExpressionTree) isNumeric(testValue *ValueExpression) (*ValueExpression, error) {

@@ -246,7 +246,7 @@ var ExpressionFunctionType = struct {
 	IsInteger ExpressionFunctionTypeEnum
 	// IsGuid defines a function type that returns flag that determines if expression is a Guid value or can be parsed as one.
 	IsGuid ExpressionFunctionTypeEnum
-	// IsNull defines a function type that returns flag that determines if expression is null. All expressions can be null.
+	// IsNull defines a function type that returns the specified defaultValue if expression is null, otherwise returns the expression.
 	IsNull ExpressionFunctionTypeEnum
 	// IsNumeric defines a function type that returns flag that determines if expression is a numeric value or can be parsed as one.
 	IsNumeric ExpressionFunctionTypeEnum
