@@ -40,6 +40,9 @@ const (
 
 	// ExtXmlSchemaDataNamespace is used to define extended types for XSD elements, e.g., Guid and expression data types.
 	ExtXmlSchemaDataNamespace = "urn:schemas-microsoft-com:xml-msdata"
+
+	// DateTimeFormat defines the format of date/time values in an XSD formatted XML schema.
+	DateTimeFormat = "2006-01-02T15:04:05.99-07:00"
 )
 
 // DataSet represents an in-memory cache of records that is structured similarly to information
@@ -289,7 +292,7 @@ func (ds *DataSet) loadRecords(root *xml.XmlNode) {
 				case DataType.Boolean:
 					dataRow.SetValue(columnIndex, value == "true")
 				case DataType.DateTime:
-					dt, _ := time.Parse("2006-01-02T15:04:05.99-07:00", value)
+					dt, _ := time.Parse(DateTimeFormat, value)
 					dataRow.SetValue(columnIndex, dt)
 				case DataType.Single:
 					f32, _ := strconv.ParseFloat(value, 32)
