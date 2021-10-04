@@ -27,6 +27,7 @@ import (
 	"errors"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/sttp/goapi/sttp/data"
 )
@@ -1644,7 +1645,66 @@ func (et *ExpressionTree) coalesce(arguments []Expression) (*ValueExpression, er
 }
 
 func (et *ExpressionTree) convert(sourceValue *ValueExpression, targetType *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if targetType.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Convert\" function target type, second argument, must be a string")
+	}
+
+	if targetType.IsNull() {
+		return nil, errors.New("\"Convert\" function target type, second argument, is null")
+	}
+
+	targetTypeName, err := targetType.StringValue()
+
+	if err != nil {
+		return nil, err
+	}
+
+	targetTypeName = strings.ToUpper(targetTypeName)
+
+	// Remove any "System." prefix:       01234567
+	if strings.HasPrefix(targetTypeName, "SYSTEM.") && len(targetTypeName) > 7 {
+		targetTypeName = targetTypeName[7:]
+	}
+
+	targetValueType := ExpressionValueType.Undefined
+	var foundValueType bool
+
+	for i := 0; i < ExpressionValueTypeLen(); i++ {
+		valueType := ExpressionValueTypeEnum(i)
+
+		if targetTypeName == strings.ToUpper(valueType.String()) {
+			targetValueType = valueType
+			foundValueType = true
+			break
+		}
+	}
+
+	if !foundValueType {
+		// Handle a few common aliases
+		if targetTypeName == "SINGLE" || strings.HasPrefix(targetTypeName, "FLOAT") {
+			targetValueType = ExpressionValueType.Double
+			foundValueType = true
+		} else if targetTypeName == "BOOL" {
+			targetValueType = ExpressionValueType.Boolean
+			foundValueType = true
+		} else if strings.HasPrefix(targetTypeName, "INT") || strings.HasPrefix(targetTypeName, "UINT") {
+			targetValueType = ExpressionValueType.Int64
+			foundValueType = true
+		} else if targetTypeName == "DATE" || targetTypeName == "TIME" {
+			targetValueType = ExpressionValueType.DateTime
+			foundValueType = true
+		} else if targetTypeName == "UUID" {
+			targetValueType = ExpressionValueType.Guid
+			foundValueType = true
+		}
+	}
+
+	if !foundValueType || targetValueType == ExpressionValueType.Undefined {
+		target, _ := targetType.StringValue()
+		return nil, errors.New("specified \"Convert\" function target type \"" + target + "\", second argument, is not supported")
+	}
+
+	return sourceValue.Convert(targetValueType)
 }
 
 func (et *ExpressionTree) contains(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {

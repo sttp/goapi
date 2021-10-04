@@ -24,12 +24,13 @@
 package filterexpressions
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
+	"github.com/sttp/goapi/sttp/data"
 	"github.com/sttp/goapi/sttp/guid"
-	"github.com/sttp/goapi/sttp/ticks"
 )
 
 // ValueExpression represents a value expression.
@@ -167,7 +168,7 @@ func (ve *ValueExpression) String() string {
 			return ""
 		}
 
-		return value.Format(ticks.TimeFormat)
+		return value.Format(data.DateTimeFormat)
 	default:
 		return ""
 	}
@@ -176,6 +177,39 @@ func (ve *ValueExpression) String() string {
 // IsNull gets a flag that determines if the ValueExpression value is null.
 func (ve *ValueExpression) IsNull() bool {
 	return ve.value == nil
+}
+
+// True is a value expression of type boolean with a true value.
+var True *ValueExpression = NewValueExpression(ExpressionValueType.Boolean, true)
+
+// False is a value expression of type boolean with a false value.
+var False *ValueExpression = NewValueExpression(ExpressionValueType.Boolean, false)
+
+// EmptyString is a value expression of type string with a value of an empty string.
+var EmptyString *ValueExpression = NewValueExpression(ExpressionValueType.String, "")
+
+// NullValue gets the target expression value type with a value of nil.
+func NullValue(targetValueType ExpressionValueTypeEnum) *ValueExpression {
+	switch targetValueType {
+	case ExpressionValueType.Boolean:
+		return NewValueExpression(ExpressionValueType.Boolean, nil)
+	case ExpressionValueType.Int32:
+		return NewValueExpression(ExpressionValueType.Int32, nil)
+	case ExpressionValueType.Int64:
+		return NewValueExpression(ExpressionValueType.Int64, nil)
+	case ExpressionValueType.Decimal:
+		return NewValueExpression(ExpressionValueType.Decimal, nil)
+	case ExpressionValueType.Double:
+		return NewValueExpression(ExpressionValueType.Double, nil)
+	case ExpressionValueType.String:
+		return NewValueExpression(ExpressionValueType.String, nil)
+	case ExpressionValueType.Guid:
+		return NewValueExpression(ExpressionValueType.Guid, nil)
+	case ExpressionValueType.DateTime:
+		return NewValueExpression(ExpressionValueType.DateTime, nil)
+	default:
+		return NewValueExpression(ExpressionValueType.Undefined, nil)
+	}
 }
 
 func (ve *ValueExpression) validateValueType(valueType ExpressionValueTypeEnum) error {
@@ -314,35 +348,242 @@ func (ve *ValueExpression) DateTimeValue() (time.Time, error) {
 	return ve.value.(time.Time), nil
 }
 
-// True is a value expression of type boolean with a true value.
-var True *ValueExpression = NewValueExpression(ExpressionValueType.Boolean, true)
-
-// False is a value expression of type boolean with a false value.
-var False *ValueExpression = NewValueExpression(ExpressionValueType.Boolean, false)
-
-// EmptyString is a value expression of type string with a value of an empty string.
-var EmptyString *ValueExpression = NewValueExpression(ExpressionValueType.String, "")
-
-// NullValue gets the target expression value type with a value of nil.
-func NullValue(targetValueType ExpressionValueTypeEnum) *ValueExpression {
-	switch targetValueType {
-	case ExpressionValueType.Boolean:
-		return NewValueExpression(ExpressionValueType.Boolean, nil)
-	case ExpressionValueType.Int32:
-		return NewValueExpression(ExpressionValueType.Int32, nil)
-	case ExpressionValueType.Int64:
-		return NewValueExpression(ExpressionValueType.Int64, nil)
-	case ExpressionValueType.Decimal:
-		return NewValueExpression(ExpressionValueType.Decimal, nil)
-	case ExpressionValueType.Double:
-		return NewValueExpression(ExpressionValueType.Double, nil)
-	case ExpressionValueType.String:
-		return NewValueExpression(ExpressionValueType.String, nil)
-	case ExpressionValueType.Guid:
-		return NewValueExpression(ExpressionValueType.Guid, nil)
-	case ExpressionValueType.DateTime:
-		return NewValueExpression(ExpressionValueType.DateTime, nil)
-	default:
-		return NewValueExpression(ExpressionValueType.Undefined, nil)
+// Convert attempts to convert the ValueExpression to the specified targetValueType.
+func (ve *ValueExpression) Convert(targetValueType ExpressionValueTypeEnum) (*ValueExpression, error) {
+	// If source value is Null, result is Null, regardless of target type
+	if ve.IsNull() {
+		return NullValue(targetValueType), nil
 	}
+
+	var targetValue interface{}
+	var err error
+
+	switch ve.ValueType() {
+	case ExpressionValueType.Boolean:
+		var result bool
+
+		if result, err = ve.BooleanValue(); err != nil {
+			return nil, err
+		}
+
+		var value int
+
+		if result {
+			value = 1
+		}
+
+		switch targetValueType {
+		case ExpressionValueType.Boolean:
+			targetValue = result
+		case ExpressionValueType.Int32:
+			targetValue = value
+		case ExpressionValueType.Int64:
+			targetValue = int64(value)
+		case ExpressionValueType.Decimal:
+			targetValue = float64(value)
+		case ExpressionValueType.Double:
+			targetValue = float64(value)
+		case ExpressionValueType.String:
+			targetValue = ve.String()
+		case ExpressionValueType.Guid:
+			fallthrough
+		case ExpressionValueType.DateTime:
+			return nil, errors.New("cannot convert \"Boolean\" to \"" + targetValueType.String() + "\"")
+		default:
+			return nil, errors.New("unexpected expression value type encountered")
+		}
+	case ExpressionValueType.Int32:
+		var value int32
+
+		if value, err = ve.Int32Value(); err != nil {
+			return nil, err
+		}
+
+		switch targetValueType {
+		case ExpressionValueType.Boolean:
+			targetValue = value == 0
+		case ExpressionValueType.Int32:
+			targetValue = value
+		case ExpressionValueType.Int64:
+			targetValue = int64(value)
+		case ExpressionValueType.Decimal:
+			targetValue = float64(value)
+		case ExpressionValueType.Double:
+			targetValue = float64(value)
+		case ExpressionValueType.String:
+			targetValue = ve.String()
+		case ExpressionValueType.Guid:
+			fallthrough
+		case ExpressionValueType.DateTime:
+			return nil, errors.New("cannot convert \"Int32\" to \"" + targetValueType.String() + "\"")
+		default:
+			return nil, errors.New("unexpected expression value type encountered")
+		}
+	case ExpressionValueType.Int64:
+		var value int64
+
+		if value, err = ve.Int64Value(); err != nil {
+			return nil, err
+		}
+
+		switch targetValueType {
+		case ExpressionValueType.Boolean:
+			targetValue = value == 0
+		case ExpressionValueType.Int32:
+			targetValue = int32(value)
+		case ExpressionValueType.Int64:
+			targetValue = value
+		case ExpressionValueType.Decimal:
+			targetValue = float64(value)
+		case ExpressionValueType.Double:
+			targetValue = float64(value)
+		case ExpressionValueType.String:
+			targetValue = ve.String()
+		case ExpressionValueType.Guid:
+			fallthrough
+		case ExpressionValueType.DateTime:
+			return nil, errors.New("cannot convert \"Int64\" to \"" + targetValueType.String() + "\"")
+		default:
+			return nil, errors.New("unexpected expression value type encountered")
+		}
+	case ExpressionValueType.Decimal:
+		var value float64
+
+		if value, err = ve.DecimalValue(); err != nil {
+			return nil, err
+		}
+
+		switch targetValueType {
+		case ExpressionValueType.Boolean:
+			targetValue = value == 0.0
+		case ExpressionValueType.Int32:
+			targetValue = int32(value)
+		case ExpressionValueType.Int64:
+			targetValue = int64(value)
+		case ExpressionValueType.Decimal:
+			targetValue = value
+		case ExpressionValueType.Double:
+			targetValue = float64(value)
+		case ExpressionValueType.String:
+			targetValue = ve.String()
+		case ExpressionValueType.Guid:
+			fallthrough
+		case ExpressionValueType.DateTime:
+			return nil, errors.New("cannot convert \"Decimal\" to \"" + targetValueType.String() + "\"")
+		default:
+			return nil, errors.New("unexpected expression value type encountered")
+		}
+	case ExpressionValueType.Double:
+		var value float64
+
+		if value, err = ve.DoubleValue(); err != nil {
+			return nil, err
+		}
+
+		switch targetValueType {
+		case ExpressionValueType.Boolean:
+			targetValue = value == 0.0
+		case ExpressionValueType.Int32:
+			targetValue = int32(value)
+		case ExpressionValueType.Int64:
+			targetValue = int64(value)
+		case ExpressionValueType.Decimal:
+			targetValue = float64(value)
+		case ExpressionValueType.Double:
+			targetValue = value
+		case ExpressionValueType.String:
+			targetValue = ve.String()
+		case ExpressionValueType.Guid:
+			fallthrough
+		case ExpressionValueType.DateTime:
+			return nil, errors.New("cannot convert \"Double\" to \"" + targetValueType.String() + "\"")
+		default:
+			return nil, errors.New("unexpected expression value type encountered")
+		}
+	case ExpressionValueType.String:
+		var value string
+
+		if value, err = ve.StringValue(); err != nil {
+			return nil, err
+		}
+
+		switch targetValueType {
+		case ExpressionValueType.Boolean:
+			targetValue, _ = strconv.ParseBool(value)
+		case ExpressionValueType.Int32:
+			i, _ := strconv.ParseInt(value, 10, 32)
+			targetValue = int32(i)
+		case ExpressionValueType.Int64:
+			targetValue, _ = strconv.ParseInt(value, 10, 64)
+		case ExpressionValueType.Decimal:
+			targetValue, _ = strconv.ParseFloat(value, 64)
+		case ExpressionValueType.Double:
+			targetValue, _ = strconv.ParseFloat(value, 64)
+		case ExpressionValueType.String:
+			targetValue = value
+		case ExpressionValueType.Guid:
+			targetValue, _ = guid.Parse(value)
+		case ExpressionValueType.DateTime:
+			targetValue, _ = time.Parse(data.DateTimeFormat, value)
+		default:
+			return nil, errors.New("unexpected expression value type encountered")
+		}
+	case ExpressionValueType.Guid:
+		switch targetValueType {
+		case ExpressionValueType.String:
+			targetValue = ve.String()
+		case ExpressionValueType.Guid:
+			targetValue, _ = ve.GuidValue()
+		case ExpressionValueType.Boolean:
+			fallthrough
+		case ExpressionValueType.Int32:
+			fallthrough
+		case ExpressionValueType.Int64:
+			fallthrough
+		case ExpressionValueType.Decimal:
+			fallthrough
+		case ExpressionValueType.Double:
+			fallthrough
+		case ExpressionValueType.DateTime:
+			return nil, errors.New("cannot convert \"Guid\" to \"" + targetValueType.String() + "\"")
+		default:
+			return nil, errors.New("unexpected expression value type encountered")
+		}
+	case ExpressionValueType.DateTime:
+		var result time.Time
+
+		if result, err = ve.DateTimeValue(); err != nil {
+			return nil, err
+		}
+
+		value := result.Unix()
+
+		switch targetValueType {
+		case ExpressionValueType.Boolean:
+			targetValue = value == 0
+		case ExpressionValueType.Int32:
+			targetValue = int32(value)
+		case ExpressionValueType.Int64:
+			targetValue = int64(value)
+		case ExpressionValueType.Decimal:
+			targetValue = float64(value)
+		case ExpressionValueType.Double:
+			targetValue = float64(value)
+		case ExpressionValueType.String:
+			targetValue = ve.String()
+		case ExpressionValueType.DateTime:
+			targetValue = result
+		case ExpressionValueType.Guid:
+			return nil, errors.New("cannot convert \"DateTime\" to \"" + targetValueType.String() + "\"")
+		default:
+			return nil, errors.New("unexpected expression value type encountered")
+		}
+	case ExpressionValueType.Undefined:
+		// Change Undefined values to Nullable of target type
+		return NullValue(targetValueType), nil
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
+
+	return NewValueExpression(targetValueType, targetValue), nil
 }
