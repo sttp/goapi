@@ -1257,7 +1257,7 @@ func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpress
 
 func (et *ExpressionTree) abs(sourceValue *ValueExpression) (*ValueExpression, error) {
 	if !sourceValue.ValueType().IsNumericType() {
-		return nil, errors.New("\"Abs\" function argument must be numeric")
+		return nil, errors.New("\"Abs\" function source value, first argument, must be numeric")
 	}
 
 	// If source value is Null, result is Null
@@ -1297,7 +1297,7 @@ func (et *ExpressionTree) abs(sourceValue *ValueExpression) (*ValueExpression, e
 
 func (et *ExpressionTree) ceiling(sourceValue *ValueExpression) (*ValueExpression, error) {
 	if !sourceValue.ValueType().IsNumericType() {
-		return nil, errors.New("\"Ceiling\" function argument must be numeric")
+		return nil, errors.New("\"Ceiling\" function source value, first argument, must be numeric")
 	}
 
 	// If source value is Null, result is Null
@@ -1683,7 +1683,7 @@ func (et *ExpressionTree) endsWith(sourceValue *ValueExpression, testValue *Valu
 
 func (et *ExpressionTree) floor(sourceValue *ValueExpression) (*ValueExpression, error) {
 	if !sourceValue.ValueType().IsNumericType() {
-		return nil, errors.New("\"Floor\" function argument must be numeric")
+		return nil, errors.New("\"Floor\" function source value, first argument, must be numeric")
 	}
 
 	// If source value is Null, result is Null
@@ -1942,7 +1942,27 @@ func (et *ExpressionTree) reverse(sourceValue *ValueExpression) (*ValueExpressio
 }
 
 func (et *ExpressionTree) round(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if !sourceValue.ValueType().IsNumericType() {
+		return nil, errors.New("\"Round\" function source value, first argument, must be numeric")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(sourceValue.ValueType()), nil
+	}
+
+	if sourceValue.ValueType().IsIntegerType() {
+		return sourceValue, nil
+	}
+
+	switch sourceValue.ValueType() {
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Decimal, math.Round(sourceValue.decimalValue())), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Double, math.Round(sourceValue.doubleValue())), nil
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) split(sourceValue *ValueExpression, delimiterValue *ValueExpression, indexValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
