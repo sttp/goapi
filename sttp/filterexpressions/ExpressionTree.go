@@ -1907,11 +1907,71 @@ func (et *ExpressionTree) lower(sourceValue *ValueExpression) (*ValueExpression,
 }
 
 func (et *ExpressionTree) maxOf(arguments []Expression) (*ValueExpression, error) {
-	return nil, nil
+	testValue, err := et.evaluate(arguments[0])
+
+	if err != nil {
+		return nil, errors.New("failed while evaluating \"MaxOf\" function argument 0: " + err.Error())
+	}
+
+	for i := 1; i < len(arguments); i++ {
+		nextValue, err := et.evaluate(arguments[i])
+
+		if err != nil {
+			return nil, errors.New("failed while evaluating \"MaxOf\" function argument " + strconv.Itoa(i) + ": " + err.Error())
+		}
+
+		valueType, err := ExpressionOperatorType.GreaterThan.deriveComparisonOperationValueType(testValue.ValueType(), nextValue.ValueType())
+
+		if err != nil {
+			return nil, errors.New("failed while deriving \"MaxOf\" function \">\" comparison operation value type: " + err.Error())
+		}
+
+		result, err := et.greaterThanOp(nextValue, testValue, valueType)
+
+		if err != nil {
+			return nil, errors.New("failed while executing \">\" comparison operation in \"MaxOf\" function: " + err.Error())
+		}
+
+		if result.booleanValue() || (testValue.IsNull() && !nextValue.IsNull()) {
+			testValue = nextValue
+		}
+	}
+
+	return testValue, nil
 }
 
 func (et *ExpressionTree) minOf(arguments []Expression) (*ValueExpression, error) {
-	return nil, nil
+	testValue, err := et.evaluate(arguments[0])
+
+	if err != nil {
+		return nil, errors.New("failed while evaluating \"MinOf\" function argument 0: " + err.Error())
+	}
+
+	for i := 1; i < len(arguments); i++ {
+		nextValue, err := et.evaluate(arguments[i])
+
+		if err != nil {
+			return nil, errors.New("failed while evaluating \"MinOf\" function argument " + strconv.Itoa(i) + ": " + err.Error())
+		}
+
+		valueType, err := ExpressionOperatorType.LessThan.deriveComparisonOperationValueType(testValue.ValueType(), nextValue.ValueType())
+
+		if err != nil {
+			return nil, errors.New("failed while deriving \"MinOf\" function \"<\" comparison operation value type: " + err.Error())
+		}
+
+		result, err := et.greaterThanOp(nextValue, testValue, valueType)
+
+		if err != nil {
+			return nil, errors.New("failed while executing \"<\" comparison operation in \"MinOf\" function: " + err.Error())
+		}
+
+		if result.booleanValue() || (testValue.IsNull() && !nextValue.IsNull()) {
+			testValue = nextValue
+		}
+	}
+
+	return testValue, nil
 }
 
 func (et *ExpressionTree) now() (*ValueExpression, error) {
