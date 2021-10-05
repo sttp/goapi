@@ -35,6 +35,8 @@ import (
 	"github.com/sttp/goapi/sttp/guid"
 )
 
+var whitespace string = " \t\n\v\f\r\x85\xA0"
+
 // ExpressionTree represents a tree of expressions for evaluation.
 type ExpressionTree struct {
 	currentRow *data.DataRow
@@ -1882,7 +1884,16 @@ func (et *ExpressionTree) len(sourceValue *ValueExpression) (*ValueExpression, e
 }
 
 func (et *ExpressionTree) lower(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Lower\" function source value, first argument, must be a string")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.String), nil
+	}
+
+	return newValueExpression(ExpressionValueType.String, strings.ToLower(sourceValue.stringValue())), nil
 }
 
 func (et *ExpressionTree) maxOf(arguments []Expression) (*ValueExpression, error) {
@@ -1950,19 +1961,55 @@ func (et *ExpressionTree) subStr(sourceValue *ValueExpression, indexValue *Value
 }
 
 func (et *ExpressionTree) trim(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Trim\" function source value, first argument, must be a string")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.String), nil
+	}
+
+	return newValueExpression(ExpressionValueType.String, strings.TrimSpace(sourceValue.stringValue())), nil
 }
 
 func (et *ExpressionTree) trimLeft(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"TrimLeft\" function source value, first argument, must be a string")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.String), nil
+	}
+
+	return newValueExpression(ExpressionValueType.String, strings.TrimLeft(sourceValue.stringValue(), whitespace)), nil
 }
 
 func (et *ExpressionTree) trimRight(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"TrimRight\" function source value, first argument, must be a string")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.String), nil
+	}
+
+	return newValueExpression(ExpressionValueType.String, strings.TrimRight(sourceValue.stringValue(), whitespace)), nil
 }
 
 func (et *ExpressionTree) upper(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Upper\" function source value, first argument, must be a string")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.String), nil
+	}
+
+	return newValueExpression(ExpressionValueType.String, strings.ToUpper(sourceValue.stringValue())), nil
 }
 
 func (et *ExpressionTree) utcNow() (*ValueExpression, error) {
