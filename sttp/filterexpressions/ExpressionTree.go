@@ -1970,7 +1970,33 @@ func (et *ExpressionTree) split(sourceValue *ValueExpression, delimiterValue *Va
 }
 
 func (et *ExpressionTree) sqrt(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if !sourceValue.ValueType().IsNumericType() {
+		return nil, errors.New("\"Sqrt\" function source value, first argument, must be numeric")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(sourceValue.ValueType()), nil
+	}
+
+	switch sourceValue.ValueType() {
+	case ExpressionValueType.Boolean:
+		var f64 float64
+		if sourceValue.booleanValue() {
+			f64 = 1
+		}
+		return newValueExpression(ExpressionValueType.Double, math.Sqrt(f64)), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Double, math.Sqrt(float64(sourceValue.int32Value()))), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Double, math.Sqrt(float64(sourceValue.int64Value()))), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Decimal, math.Sqrt(sourceValue.decimalValue())), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Double, math.Sqrt(sourceValue.doubleValue())), nil
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) startsWith(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
