@@ -1957,7 +1957,7 @@ func (et *ExpressionTree) replace(sourceValue *ValueExpression, testValue *Value
 
 	// If source value is Null, result is Null
 	if sourceValue.IsNull() {
-		return NullValue(ExpressionValueType.Boolean), nil
+		return sourceValue, nil
 	}
 
 	var err error
@@ -1973,14 +1973,29 @@ func (et *ExpressionTree) replace(sourceValue *ValueExpression, testValue *Value
 			return nil, errors.New("failed while compiling \"Replace\" function case-insensitive RegEx replace expression: " + err.Error())
 		}
 
-		return newValueExpression(ExpressionValueType.Boolean, regex.ReplaceAllString(sourceValue.stringValue(), replaceValue.stringValue())), nil
+		return newValueExpression(ExpressionValueType.String, regex.ReplaceAllString(sourceValue.stringValue(), replaceValue.stringValue())), nil
 	}
 
-	return newValueExpression(ExpressionValueType.Boolean, strings.ReplaceAll(sourceValue.stringValue(), testValue.stringValue(), replaceValue.stringValue())), nil
+	return newValueExpression(ExpressionValueType.String, strings.ReplaceAll(sourceValue.stringValue(), testValue.stringValue(), replaceValue.stringValue())), nil
 }
 
 func (et *ExpressionTree) reverse(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Reverse\" function source value, first argument, must be a \"String\"")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.String), nil
+	}
+
+	chars := []rune(sourceValue.stringValue())
+
+	for i, j := 0, len(chars)-1; i < len(chars)/2; i, j = i+1, j-1 {
+		chars[i], chars[j] = chars[j], chars[i]
+	}
+
+	return newValueExpression(ExpressionValueType.String, string(chars)), nil
 }
 
 func (et *ExpressionTree) round(sourceValue *ValueExpression) (*ValueExpression, error) {
