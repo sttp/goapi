@@ -1323,7 +1323,7 @@ func (et *ExpressionTree) coalesce(arguments []Expression) (*ValueExpression, er
 	testValue, err := et.evaluate(arguments[0])
 
 	if err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Coalesce\" function argument 0: " + err.Error())
 	}
 
 	if !testValue.IsNull() {
@@ -1334,7 +1334,7 @@ func (et *ExpressionTree) coalesce(arguments []Expression) (*ValueExpression, er
 		listValue, err := et.evaluate(arguments[i])
 
 		if err != nil {
-			return nil, err
+			return nil, errors.New("failed while evaluating \"Coalesce\" function argument " + strconv.Itoa(i) + ": " + err.Error())
 		}
 
 		if !listValue.IsNull() {
@@ -1347,20 +1347,14 @@ func (et *ExpressionTree) coalesce(arguments []Expression) (*ValueExpression, er
 
 func (et *ExpressionTree) convert(sourceValue *ValueExpression, targetType *ValueExpression) (*ValueExpression, error) {
 	if targetType.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"Convert\" function target type, second argument, must be a string")
+		return nil, errors.New("\"Convert\" function target type, second argument, must be a \"String\"")
 	}
 
 	if targetType.IsNull() {
 		return nil, errors.New("\"Convert\" function target type, second argument, is null")
 	}
 
-	targetTypeName, err := targetType.StringValue()
-
-	if err != nil {
-		return nil, err
-	}
-
-	targetTypeName = strings.ToUpper(targetTypeName)
+	targetTypeName := strings.ToUpper(targetType.stringValue())
 
 	// Remove any "System." prefix:       01234567
 	if strings.HasPrefix(targetTypeName, "SYSTEM.") && len(targetTypeName) > 7 {
@@ -1410,11 +1404,11 @@ func (et *ExpressionTree) convert(sourceValue *ValueExpression, targetType *Valu
 
 func (et *ExpressionTree) contains(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"Contains\" function source value, first argument, must be a string")
+		return nil, errors.New("\"Contains\" function source value, first argument, must be a \"String\"")
 	}
 
 	if testValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"Contains\" function test value, second argument, must be a string")
+		return nil, errors.New("\"Contains\" function test value, second argument, must be a \"String\"")
 	}
 
 	// If source value is Null, result is Null
@@ -1429,7 +1423,7 @@ func (et *ExpressionTree) contains(sourceValue *ValueExpression, testValue *Valu
 	var err error
 
 	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while converting \"Contains\" function optional ignore case value, third argument, to \"Boolean\": " + err.Error())
 	}
 
 	if ignoreCase.booleanValue() {
@@ -1441,7 +1435,7 @@ func (et *ExpressionTree) contains(sourceValue *ValueExpression, testValue *Valu
 
 func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.DateTime && sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"DateAdd\" source value, first argument, must be a date-time")
+		return nil, errors.New("\"DateAdd\" function source value, first argument, must be a \"DateTime\" or a \"String\"")
 	}
 
 	if !addValue.ValueType().IsIntegerType() {
@@ -1449,19 +1443,7 @@ func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueE
 	}
 
 	if intervalType.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"DateAdd\" function interval type, third argument, must be a string")
-	}
-
-	var err error
-
-	// DateTime parameters should support strings as well as literals
-	if sourceValue, err = sourceValue.Convert(ExpressionValueType.DateTime); err != nil {
-		return nil, err
-	}
-
-	// If source value is Null, result is Null
-	if sourceValue.IsNull() {
-		return sourceValue, nil
+		return nil, errors.New("\"DateAdd\" function interval type, third argument, must be a \"String\"")
 	}
 
 	if addValue.IsNull() {
@@ -1472,10 +1454,22 @@ func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueE
 		return nil, errors.New("\"DateAdd\" function interval type, third argument, is null")
 	}
 
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return sourceValue, nil
+	}
+
+	var err error
+
+	// DateTime parameters should support strings as well as literals
+	if sourceValue, err = sourceValue.Convert(ExpressionValueType.DateTime); err != nil {
+		return nil, errors.New("failed while converting \"DateAdd\" function source value, first argument, to \"DateTime\": " + err.Error())
+	}
+
 	var interval TimeIntervalEnum
 
 	if interval, err = ParseTimeInterval(intervalType.stringValue()); err != nil {
-		return nil, err
+		return nil, errors.New("failed while parsing \"DateAdd\" function interval value, third argument, as a valid time interval: " + err.Error())
 	}
 
 	var value int
@@ -1521,30 +1515,19 @@ func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueE
 
 func (et *ExpressionTree) dateDiff(leftValue *ValueExpression, rightValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
 	if leftValue.ValueType() != ExpressionValueType.DateTime && leftValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"DateDiff\" left value, first argument, must be a date-time")
+		return nil, errors.New("\"DateDiff\" function left value, first argument, must be a \"DateTime\" or a \"String\"")
 	}
 
 	if rightValue.ValueType() != ExpressionValueType.DateTime && rightValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"DateDiff\" right value, second argument, must be a date-time")
+		return nil, errors.New("\"DateDiff\" function right value, second argument, must be a \"DateTime\" or a \"String\"")
 	}
 
 	if intervalType.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"DateDiff\" function interval type, third argument, must be a string")
+		return nil, errors.New("\"DateDiff\" function interval type, third argument, must be a \"String\"")
 	}
 
 	if intervalType.IsNull() {
 		return nil, errors.New("\"DateDiff\" function interval type, third argument, is null")
-	}
-
-	var err error
-
-	// DateTime parameters should support strings as well as literals
-	if leftValue, err = leftValue.Convert(ExpressionValueType.DateTime); err != nil {
-		return nil, err
-	}
-
-	if rightValue, err = rightValue.Convert(ExpressionValueType.DateTime); err != nil {
-		return nil, err
 	}
 
 	// If either test value is Null, result is Null
@@ -1552,10 +1535,21 @@ func (et *ExpressionTree) dateDiff(leftValue *ValueExpression, rightValue *Value
 		return NullValue(ExpressionValueType.Int32), nil
 	}
 
+	var err error
+
+	// DateTime parameters should support strings as well as literals
+	if leftValue, err = leftValue.Convert(ExpressionValueType.DateTime); err != nil {
+		return nil, errors.New("failed while converting \"DateDiff\" function left value, first argument, to \"DateTime\": " + err.Error())
+	}
+
+	if rightValue, err = rightValue.Convert(ExpressionValueType.DateTime); err != nil {
+		return nil, errors.New("failed while converting \"DateDiff\" function right value, second argument, to \"DateTime\": " + err.Error())
+	}
+
 	var interval TimeIntervalEnum
 
 	if interval, err = ParseTimeInterval(intervalType.stringValue()); err != nil {
-		return nil, err
+		return nil, errors.New("failed while parsing \"DateDiff\" function interval value, third argument, as a valid time interval: " + err.Error())
 	}
 
 	rightDate := rightValue.dateTimeValue()
@@ -1600,18 +1594,15 @@ func (et *ExpressionTree) dateDiff(leftValue *ValueExpression, rightValue *Value
 
 func (et *ExpressionTree) datePart(sourceValue *ValueExpression, intervalType *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.DateTime && sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"DatePart\" source value, first argument, must be a date-time")
+		return nil, errors.New("\"DatePart\" function source value, first argument, must be a \"DateTime\" or a \"String\"")
 	}
 
 	if intervalType.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"DatePart\" function interval type, second argument, must be a string")
+		return nil, errors.New("\"DatePart\" function interval type, second argument, must be a \"String\"")
 	}
 
-	var err error
-
-	// DateTime parameters should support strings as well as literals
-	if sourceValue, err = sourceValue.Convert(ExpressionValueType.DateTime); err != nil {
-		return nil, err
+	if intervalType.IsNull() {
+		return nil, errors.New("\"DatePart\" function interval type, second argument, is null")
 	}
 
 	// If source value is Null, result is Null
@@ -1619,14 +1610,17 @@ func (et *ExpressionTree) datePart(sourceValue *ValueExpression, intervalType *V
 		return NullValue(ExpressionValueType.Int32), nil
 	}
 
-	if intervalType.IsNull() {
-		return nil, errors.New("\"DatePart\" function interval type, second argument, is null")
+	var err error
+
+	// DateTime parameters should support strings as well as literals
+	if sourceValue, err = sourceValue.Convert(ExpressionValueType.DateTime); err != nil {
+		return nil, errors.New("failed while converting \"DatePart\" function source value, first argument, to \"DateTime\": " + err.Error())
 	}
 
 	var interval TimeIntervalEnum
 
 	if interval, err = ParseTimeInterval(intervalType.stringValue()); err != nil {
-		return nil, err
+		return nil, errors.New("failed while parsing \"DatePart\" function interval value, second argument, as a valid time interval: " + err.Error())
 	}
 
 	switch interval {
@@ -1658,11 +1652,11 @@ func (et *ExpressionTree) datePart(sourceValue *ValueExpression, intervalType *V
 
 func (et *ExpressionTree) endsWith(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"EndsWith\" function source value, first argument, must be a string")
+		return nil, errors.New("\"EndsWith\" function source value, first argument, must be a \"String\"")
 	}
 
 	if testValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"EndsWith\" function test value, second argument, must be a string")
+		return nil, errors.New("\"EndsWith\" function test value, second argument, must be a \"String\"")
 	}
 
 	// If source value is Null, result is Null
@@ -1677,7 +1671,7 @@ func (et *ExpressionTree) endsWith(sourceValue *ValueExpression, testValue *Valu
 	var err error
 
 	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while converting \"EndsWith\" function optional ignore case value, third argument, to \"Boolean\": " + err.Error())
 	}
 
 	if ignoreCase.booleanValue() {
@@ -1713,24 +1707,39 @@ func (et *ExpressionTree) floor(sourceValue *ValueExpression) (*ValueExpression,
 
 func (et *ExpressionTree) iif(testValue *ValueExpression, leftResultValue Expression, rightResultValue Expression) (*ValueExpression, error) {
 	if testValue.ValueType() != ExpressionValueType.Boolean {
-		return nil, errors.New("\"IIf\" function test value, first argument, must be a boolean")
+		return nil, errors.New("\"IIf\" function test value, first argument, must be a \"Boolean\"")
 	}
+
+	var result *ValueExpression
+	var err error
 
 	// Null test expression evaluates to false, that is, right expression
 	if testValue.booleanValue() {
-		return et.evaluate(leftResultValue)
+		result, err = et.evaluate(leftResultValue)
+
+		if err != nil {
+			return nil, errors.New("failed while evaluating \"IIf\" function left result value, second argument: " + err.Error())
+		}
+
+		return result, nil
 	}
 
-	return et.evaluate(rightResultValue)
+	result, err = et.evaluate(rightResultValue)
+
+	if err != nil {
+		return nil, errors.New("failed while evaluating \"IIf\" function right result value, third argument: " + err.Error())
+	}
+
+	return result, nil
 }
 
 func (et *ExpressionTree) indexOf(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"IndexOf\" function source value, first argument, must be a string")
+		return nil, errors.New("\"IndexOf\" function source value, first argument, must be a \"String\"")
 	}
 
 	if testValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"IndexOf\" function test value, second argument, must be a string")
+		return nil, errors.New("\"IndexOf\" function test value, second argument, must be a \"String\"")
 	}
 
 	// If source value is Null, result is Null
@@ -1745,7 +1754,7 @@ func (et *ExpressionTree) indexOf(sourceValue *ValueExpression, testValue *Value
 	var err error
 
 	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while converting \"IndexOf\" function optional ignore case value, third argument, to \"Boolean\": " + err.Error())
 	}
 
 	if ignoreCase.booleanValue() {
@@ -1841,11 +1850,11 @@ func (et *ExpressionTree) isNumeric(testValue *ValueExpression) *ValueExpression
 
 func (et *ExpressionTree) lastIndexOf(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"LastIndexOf\" function source value, first argument, must be a string")
+		return nil, errors.New("\"LastIndexOf\" function source value, first argument, must be a \"String\"")
 	}
 
 	if testValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"LastIndexOf\" function test value, second argument, must be a string")
+		return nil, errors.New("\"LastIndexOf\" function test value, second argument, must be a \"String\"")
 	}
 
 	// If source value is Null, result is Null
@@ -1860,7 +1869,7 @@ func (et *ExpressionTree) lastIndexOf(sourceValue *ValueExpression, testValue *V
 	var err error
 
 	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while converting \"LastIndexOf\" function optional ignore case value, third argument, to \"Boolean\": " + err.Error())
 	}
 
 	if ignoreCase.booleanValue() {
@@ -1872,7 +1881,7 @@ func (et *ExpressionTree) lastIndexOf(sourceValue *ValueExpression, testValue *V
 
 func (et *ExpressionTree) len(sourceValue *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"Len\" function source value, first argument, must be a string")
+		return nil, errors.New("\"Len\" function source value, first argument, must be a \"String\"")
 	}
 
 	// If source value is Null, result is Null
@@ -1885,7 +1894,7 @@ func (et *ExpressionTree) len(sourceValue *ValueExpression) (*ValueExpression, e
 
 func (et *ExpressionTree) lower(sourceValue *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"Lower\" function source value, first argument, must be a string")
+		return nil, errors.New("\"Lower\" function source value, first argument, must be a \"String\"")
 	}
 
 	// If source value is Null, result is Null
@@ -1962,7 +1971,7 @@ func (et *ExpressionTree) subStr(sourceValue *ValueExpression, indexValue *Value
 
 func (et *ExpressionTree) trim(sourceValue *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"Trim\" function source value, first argument, must be a string")
+		return nil, errors.New("\"Trim\" function source value, first argument, must be a \"String\"")
 	}
 
 	// If source value is Null, result is Null
@@ -1975,7 +1984,7 @@ func (et *ExpressionTree) trim(sourceValue *ValueExpression) (*ValueExpression, 
 
 func (et *ExpressionTree) trimLeft(sourceValue *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"TrimLeft\" function source value, first argument, must be a string")
+		return nil, errors.New("\"TrimLeft\" function source value, first argument, must be a \"String\"")
 	}
 
 	// If source value is Null, result is Null
@@ -1988,7 +1997,7 @@ func (et *ExpressionTree) trimLeft(sourceValue *ValueExpression) (*ValueExpressi
 
 func (et *ExpressionTree) trimRight(sourceValue *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"TrimRight\" function source value, first argument, must be a string")
+		return nil, errors.New("\"TrimRight\" function source value, first argument, must be a \"String\"")
 	}
 
 	// If source value is Null, result is Null
@@ -2001,7 +2010,7 @@ func (et *ExpressionTree) trimRight(sourceValue *ValueExpression) (*ValueExpress
 
 func (et *ExpressionTree) upper(sourceValue *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.String {
-		return nil, errors.New("\"Upper\" function source value, first argument, must be a string")
+		return nil, errors.New("\"Upper\" function source value, first argument, must be a \"String\"")
 	}
 
 	// If source value is Null, result is Null
