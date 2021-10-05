@@ -2108,11 +2108,55 @@ func (et *ExpressionTree) power(sourceValue *ValueExpression, exponentValue *Val
 }
 
 func (et *ExpressionTree) regExMatch(regexValue *ValueExpression, testValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	return et.evaluateRegEx("RegExMatch", regexValue, testValue, false)
 }
 
 func (et *ExpressionTree) regExVal(regexValue *ValueExpression, testValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	return et.evaluateRegEx("RegExVal", regexValue, testValue, true)
+}
+
+func (et *ExpressionTree) evaluateRegEx(functionName string, regexValue *ValueExpression, testValue *ValueExpression, returnMatchedValue bool) (*ValueExpression, error) {
+	if regexValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"" + functionName + "\" function expression value, first argument, must be a \"String\"")
+	}
+
+	if testValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"" + functionName + "\" function test value, second argument, must be a \"String\"")
+	}
+
+	// If regex value or test value is Null, result is Null
+	if regexValue.IsNull() || testValue.IsNull() {
+		if returnMatchedValue {
+			return NullValue(ExpressionValueType.String), nil
+		}
+
+		return NullValue(ExpressionValueType.Boolean), nil
+	}
+
+	regex, err := regexp.Compile(regexValue.stringValue())
+
+	if err != nil {
+		return nil, errors.New("failed while compiling \"" + functionName + "\" function expression value, first argument: " + err.Error())
+	}
+
+	testText := testValue.stringValue()
+	result := regex.FindStringIndex(testText)
+
+	if returnMatchedValue {
+		// RegExVal returns any left-most matched value, otherwise empty string
+		if result == nil {
+			return EmptyString, nil
+		}
+
+		return newValueExpression(ExpressionValueType.String, testText[result[0]:result[1]]), nil
+	}
+
+	// RegExMatch returns boolean result determining if there was a matched value
+	if result == nil {
+		return False, nil
+	}
+
+	return True, nil
 }
 
 func (et *ExpressionTree) replace(sourceValue *ValueExpression, testValue *ValueExpression, replaceValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
@@ -2148,10 +2192,10 @@ func (et *ExpressionTree) replace(sourceValue *ValueExpression, testValue *Value
 	}
 
 	if ignoreCase.booleanValue() {
-		regex, err := regexp.Compile("(?i)" + testValue.stringValue())
+		regex, err := regexp.Compile("(?i)" + regexp.QuoteMeta(testValue.stringValue()))
 
 		if err != nil {
-			return nil, errors.New("failed while compiling \"Replace\" function case-insensitive RegEx replace expression: " + err.Error())
+			return nil, errors.New("failed while compiling \"Replace\" function case-insensitive RegEx replace expression for test value, second argument: " + err.Error())
 		}
 
 		return newValueExpression(ExpressionValueType.String, regex.ReplaceAllString(sourceValue.stringValue(), replaceValue.stringValue())), nil
