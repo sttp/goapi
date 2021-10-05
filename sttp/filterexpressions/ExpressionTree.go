@@ -2057,7 +2057,54 @@ func (et *ExpressionTree) nthIndexOf(sourceValue *ValueExpression, testValue *Va
 }
 
 func (et *ExpressionTree) power(sourceValue *ValueExpression, exponentValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if !sourceValue.ValueType().IsNumericType() {
+		return nil, errors.New("\"Power\" function source value, first argument, must be numeric")
+	}
+
+	if !exponentValue.ValueType().IsNumericType() {
+		return nil, errors.New("\"Power\" function exponent value, second argument, must be numeric")
+	}
+
+	// If source value or exponent value is Null, result is Null
+	if sourceValue.IsNull() || exponentValue.IsNull() {
+		return NullValue(sourceValue.ValueType()), nil
+	}
+
+	valueType, err := ExpressionOperatorType.Multiply.deriveArithmeticOperationValueType(sourceValue.ValueType(), exponentValue.ValueType())
+
+	if err != nil {
+		return nil, errors.New("failed while deriving \"Power\" function \"*\" arithmetic operation value type: " + err.Error())
+	}
+
+	if sourceValue, err = sourceValue.Convert(valueType); err != nil {
+		return nil, errors.New("failed while converting \"Power\" function source value, first argument, to \"" + valueType.String() + "\": " + err.Error())
+	}
+
+	if exponentValue, err = sourceValue.Convert(valueType); err != nil {
+		return nil, errors.New("failed while converting \"Power\" function exponent value, second argument, to \"" + valueType.String() + "\": " + err.Error())
+	}
+
+	switch sourceValue.ValueType() {
+	case ExpressionValueType.Boolean:
+		var sf64, ef64 float64
+		if sourceValue.booleanValue() {
+			sf64 = 1.0
+		}
+		if exponentValue.booleanValue() {
+			ef64 = 1.0
+		}
+		return newValueExpression(ExpressionValueType.Boolean, math.Pow(sf64, ef64) != 0.0), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Int32, int32(math.Pow(float64(sourceValue.int32Value()), float64(exponentValue.int32Value())))), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Int64, int64(math.Pow(float64(sourceValue.int64Value()), float64(exponentValue.int64Value())))), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Decimal, math.Pow(sourceValue.decimalValue(), exponentValue.decimalValue())), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Double, math.Pow(sourceValue.doubleValue(), exponentValue.doubleValue())), nil
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) regExMatch(regexValue *ValueExpression, testValue *ValueExpression) (*ValueExpression, error) {
@@ -2174,7 +2221,7 @@ func (et *ExpressionTree) sqrt(sourceValue *ValueExpression) (*ValueExpression, 
 	case ExpressionValueType.Boolean:
 		var f64 float64
 		if sourceValue.booleanValue() {
-			f64 = 1
+			f64 = 1.0
 		}
 		return newValueExpression(ExpressionValueType.Double, math.Sqrt(f64)), nil
 	case ExpressionValueType.Int32:
