@@ -26,6 +26,7 @@ package filterexpressions
 import (
 	"errors"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1742,13 +1743,13 @@ func (et *ExpressionTree) indexOf(sourceValue *ValueExpression, testValue *Value
 		return nil, errors.New("\"IndexOf\" function test value, second argument, must be a \"String\"")
 	}
 
+	if testValue.IsNull() {
+		return nil, errors.New("\"IndexOf\" function test value, second argument, is null")
+	}
+
 	// If source value is Null, result is Null
 	if sourceValue.IsNull() {
 		return NullValue(ExpressionValueType.Int32), nil
-	}
-
-	if testValue.IsNull() {
-		return nil, errors.New("\"IndexOf\" function test value, second argument, is null")
 	}
 
 	var err error
@@ -1857,13 +1858,13 @@ func (et *ExpressionTree) lastIndexOf(sourceValue *ValueExpression, testValue *V
 		return nil, errors.New("\"LastIndexOf\" function test value, second argument, must be a \"String\"")
 	}
 
+	if testValue.IsNull() {
+		return nil, errors.New("\"LastIndexOf\" function test value, second argument, is null")
+	}
+
 	// If source value is Null, result is Null
 	if sourceValue.IsNull() {
 		return NullValue(ExpressionValueType.Int32), nil
-	}
-
-	if testValue.IsNull() {
-		return nil, errors.New("\"LastIndexOf\" function test value, second argument, is null")
 	}
 
 	var err error
@@ -1934,7 +1935,48 @@ func (et *ExpressionTree) regExVal(regexValue *ValueExpression, testValue *Value
 }
 
 func (et *ExpressionTree) replace(sourceValue *ValueExpression, testValue *ValueExpression, replaceValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Replace\" function source value, first argument, must be a \"String\"")
+	}
+
+	if testValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Replace\" function test value, second argument, must be a \"String\"")
+	}
+
+	if replaceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Replace\" function replace value, third argument, must be a \"String\"")
+	}
+
+	if testValue.IsNull() {
+		return nil, errors.New("\"Replace\" function test value, second argument, is null")
+	}
+
+	if replaceValue.IsNull() {
+		return nil, errors.New("\"Replace\" function replace value, third argument, is null")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.Boolean), nil
+	}
+
+	var err error
+
+	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
+		return nil, errors.New("failed while converting \"Replace\" function optional ignore case value, fourth argument, to \"Boolean\": " + err.Error())
+	}
+
+	if ignoreCase.booleanValue() {
+		regex, err := regexp.Compile("(?i)" + testValue.stringValue())
+
+		if err != nil {
+			return nil, errors.New("failed while compiling \"Replace\" function case-insensitive RegEx replace expression: " + err.Error())
+		}
+
+		return newValueExpression(ExpressionValueType.Boolean, regex.ReplaceAllString(sourceValue.stringValue(), replaceValue.stringValue())), nil
+	}
+
+	return newValueExpression(ExpressionValueType.Boolean, strings.ReplaceAll(sourceValue.stringValue(), testValue.stringValue(), replaceValue.stringValue())), nil
 }
 
 func (et *ExpressionTree) reverse(sourceValue *ValueExpression) (*ValueExpression, error) {
