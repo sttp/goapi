@@ -1915,11 +1915,85 @@ func (et *ExpressionTree) minOf(arguments []Expression) (*ValueExpression, error
 }
 
 func (et *ExpressionTree) now() (*ValueExpression, error) {
-	return nil, nil
+	return newValueExpression(ExpressionValueType.DateTime, time.Now()), nil
 }
 
 func (et *ExpressionTree) nthIndexOf(sourceValue *ValueExpression, testValue *ValueExpression, indexValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"NthIndexOf\" function source value, first argument, must be a \"String\"")
+	}
+
+	if testValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"NthIndexOf\" function test value, second argument, must be a \"String\"")
+	}
+
+	if !indexValue.ValueType().IsIntegerType() {
+		return nil, errors.New("\"NthIndexOf\" function index value, third argument, must be an integer type")
+	}
+
+	if testValue.IsNull() {
+		return nil, errors.New("\"NthIndexOf\" function test value, second argument, is null")
+	}
+
+	if indexValue.IsNull() {
+		return nil, errors.New("\"NthIndexOf\" function index value, third argument, is null")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.Int32), nil
+	}
+
+	var err error
+
+	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
+		return nil, errors.New("failed while converting \"NthIndexOf\" function optional ignore case value, fourth argument, to \"Boolean\": " + err.Error())
+	}
+
+	var index int
+
+	switch indexValue.ValueType() {
+	case ExpressionValueType.Boolean:
+		if indexValue.booleanValue() {
+			index = 1
+		}
+	case ExpressionValueType.Int32:
+		index = int(indexValue.int32Value())
+	case ExpressionValueType.Int64:
+		index = int(indexValue.int64Value())
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
+
+	var source, test string
+
+	if ignoreCase.booleanValue() {
+		source = strings.ToUpper(sourceValue.stringValue())
+		test = strings.ToUpper(testValue.stringValue())
+	} else {
+		source = sourceValue.stringValue()
+		test = testValue.stringValue()
+	}
+
+	// https://play.golang.org/p/Kz36Y9pKUZk
+	var result int
+
+	for i := 0; i < index; i++ {
+		location := strings.Index(source, test)
+
+		if location == -1 {
+			result = 0
+			break
+		}
+
+		location++
+		result += location
+		source = source[location:]
+	}
+
+	result -= 1
+
+	return newValueExpression(ExpressionValueType.Int32, int32(result)), nil
 }
 
 func (et *ExpressionTree) power(sourceValue *ValueExpression, exponentValue *ValueExpression) (*ValueExpression, error) {
@@ -2152,7 +2226,7 @@ func (et *ExpressionTree) upper(sourceValue *ValueExpression) (*ValueExpression,
 }
 
 func (et *ExpressionTree) utcNow() (*ValueExpression, error) {
-	return nil, nil
+	return newValueExpression(ExpressionValueType.DateTime, time.Now().UTC()), nil
 }
 
 // Filter Expression Operator Implementations
