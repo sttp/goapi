@@ -1869,7 +1869,16 @@ func (et *ExpressionTree) lastIndexOf(sourceValue *ValueExpression, testValue *V
 }
 
 func (et *ExpressionTree) len(sourceValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Len\" function source value, first argument, must be a string")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.Int32), nil
+	}
+
+	return newValueExpression(ExpressionValueType.Int32, int32(len(sourceValue.stringValue()))), nil
 }
 
 func (et *ExpressionTree) lower(sourceValue *ValueExpression) (*ValueExpression, error) {
