@@ -1838,7 +1838,34 @@ func (et *ExpressionTree) isNumeric(testValue *ValueExpression) *ValueExpression
 }
 
 func (et *ExpressionTree) lastIndexOf(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"LastIndexOf\" function source value, first argument, must be a string")
+	}
+
+	if testValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"LastIndexOf\" function test value, second argument, must be a string")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.Int32), nil
+	}
+
+	if testValue.IsNull() {
+		return nil, errors.New("\"LastIndexOf\" function test value, second argument, is null")
+	}
+
+	var err error
+
+	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
+		return nil, err
+	}
+
+	if ignoreCase.booleanValue() {
+		return newValueExpression(ExpressionValueType.Int32, int32(strings.LastIndex(strings.ToUpper(sourceValue.stringValue()), strings.ToUpper(testValue.stringValue())))), nil
+	}
+
+	return newValueExpression(ExpressionValueType.Int32, int32(strings.LastIndex(sourceValue.stringValue(), testValue.stringValue()))), nil
 }
 
 func (et *ExpressionTree) len(sourceValue *ValueExpression) (*ValueExpression, error) {
