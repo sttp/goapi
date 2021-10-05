@@ -2000,7 +2000,34 @@ func (et *ExpressionTree) sqrt(sourceValue *ValueExpression) (*ValueExpression, 
 }
 
 func (et *ExpressionTree) startsWith(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"StartsWith\" function source value, first argument, must be a \"String\"")
+	}
+
+	if testValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"StartsWith\" function test value, second argument, must be a \"String\"")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return NullValue(ExpressionValueType.Boolean), nil
+	}
+
+	if testValue.IsNull() {
+		return False, nil
+	}
+
+	var err error
+
+	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
+		return nil, errors.New("failed while converting \"StartsWith\" function optional ignore case value, third argument, to \"Boolean\": " + err.Error())
+	}
+
+	if ignoreCase.booleanValue() {
+		return newValueExpression(ExpressionValueType.Boolean, strings.HasPrefix(strings.ToUpper(sourceValue.stringValue()), strings.ToUpper(testValue.stringValue()))), nil
+	}
+
+	return newValueExpression(ExpressionValueType.Boolean, strings.HasPrefix(sourceValue.stringValue(), testValue.stringValue())), nil
 }
 
 func (et *ExpressionTree) strCount(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
