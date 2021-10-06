@@ -2353,7 +2353,35 @@ func (et *ExpressionTree) startsWith(sourceValue *ValueExpression, testValue *Va
 }
 
 func (et *ExpressionTree) strCount(sourceValue *ValueExpression, testValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"StrCount\" function source value, first argument, must be a \"String\"")
+	}
+
+	if testValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"StrCount\" function test value, second argument, must be a \"String\"")
+	}
+
+	if sourceValue.IsNull() || testValue.IsNull() {
+		return newValueExpression(ExpressionValueType.Int32, 0), nil
+	}
+
+	findValue := testValue.stringValue()
+
+	if len(findValue) == 0 {
+		return newValueExpression(ExpressionValueType.Int32, 0), nil
+	}
+
+	var err error
+
+	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
+		return nil, errors.New("failed while converting \"StrCount\" function optional ignore case value, third argument, to \"Boolean\": " + err.Error())
+	}
+
+	if ignoreCase.booleanValue() {
+		return newValueExpression(ExpressionValueType.Int32, strings.Count(strings.ToUpper(sourceValue.stringValue()), strings.ToUpper(testValue.stringValue()))), nil
+	}
+
+	return newValueExpression(ExpressionValueType.Int32, strings.Count(sourceValue.stringValue(), testValue.stringValue())), nil
 }
 
 func (et *ExpressionTree) strCmp(leftValue *ValueExpression, rightValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
