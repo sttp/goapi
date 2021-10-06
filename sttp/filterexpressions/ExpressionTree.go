@@ -2655,11 +2655,79 @@ func (et *ExpressionTree) subtractOp(leftValue *ValueExpression, rightValue *Val
 }
 
 func (et *ExpressionTree) bitShiftLeftOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	// If left is Null, result is Null
+	if leftValue.IsNull() {
+		return leftValue, nil
+	}
+
+	if !rightValue.ValueType().IsIntegerType() {
+		return nil, errors.New("BitShift operation shift value must be an integer")
+	}
+
+	if rightValue.IsNull() {
+		return nil, errors.New("BitShift operation shift value is null")
+	}
+
+	switch leftValue.ValueType() {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt()<<rightValue.integerValue(0) != 0), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Int32, int32(leftValue.int32Value()<<rightValue.integerValue(0))), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()<<rightValue.integerValue(0))), nil
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.Double:
+		fallthrough
+	case ExpressionValueType.String:
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		fallthrough
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply left bit-shift \"<<\" operator to \"" + leftValue.ValueType().String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) bitShiftRightOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	// If left is Null, result is Null
+	if leftValue.IsNull() {
+		return leftValue, nil
+	}
+
+	if !rightValue.ValueType().IsIntegerType() {
+		return nil, errors.New("BitShift operation shift value must be an integer")
+	}
+
+	if rightValue.IsNull() {
+		return nil, errors.New("BitShift operation shift value is null")
+	}
+
+	switch leftValue.ValueType() {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt()>>rightValue.integerValue(0) != 0), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Int32, int32(leftValue.int32Value()>>rightValue.integerValue(0))), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()>>rightValue.integerValue(0))), nil
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.Double:
+		fallthrough
+	case ExpressionValueType.String:
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		fallthrough
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply right bit-shift \">>\" operator to \"" + leftValue.ValueType().String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) bitwiseAndOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
