@@ -116,7 +116,7 @@ func (et *ExpressionTree) evaluateUnary(expression Expression) (*ValueExpression
 	var unaryValue *ValueExpression
 
 	if unaryValue, err = et.evaluate(unaryExpression.Value()); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating unary expression value: " + err.Error())
 	}
 
 	unaryValueType := unaryValue.ValueType()
@@ -236,7 +236,7 @@ func (et *ExpressionTree) evaluateColumn(expression Expression) (*ValueExpressio
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, errors.New("failed while getting column \"" + column.Name() + "\" " + column.Type().String() + " value for current row: " + err.Error())
 	}
 
 	if isNull {
@@ -252,7 +252,7 @@ func (et *ExpressionTree) evaluateInList(expression Expression) (*ValueExpressio
 	var err error
 
 	if inListValue, err = et.evaluate(inListExpression.Value()); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"IN\" expression source value: " + err.Error())
 	}
 
 	// If in list test value is Null, result is Null
@@ -269,15 +269,15 @@ func (et *ExpressionTree) evaluateInList(expression Expression) (*ValueExpressio
 
 	for i := 0; i < len(arguments); i++ {
 		if argumentValue, err = et.evaluate(arguments[i]); err != nil {
-			return nil, err
+			return nil, errors.New("failed while evaluating \"IN\" expression argument " + strconv.Itoa(i) + ": " + err.Error())
 		}
 
 		if valueType, err = ExpressionOperatorType.Equal.deriveComparisonOperationValueType(inListValue.ValueType(), argumentValue.ValueType()); err != nil {
-			return nil, err
+			return nil, errors.New("failed while deriving \"IN\" expresssion equality comparison operation value type: " + err.Error())
 		}
 
 		if result, err = et.equalOp(inListValue, argumentValue, valueType, exactMatch); err != nil {
-			return nil, err
+			return nil, errors.New("failed while comparing \"IN\" expresssion source value to argument " + strconv.Itoa(i) + " for equality: " + err.Error())
 		}
 
 		if result.booleanValue() {
@@ -1181,19 +1181,19 @@ func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpress
 	var leftValue *ValueExpression
 
 	if leftValue, err = et.evaluate(operatorExpression.LeftValue()); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"" + operatorExpression.OperatorType().String() + "\" operator left operand: " + err.Error())
 	}
 
 	var rightValue *ValueExpression
 
 	if rightValue, err = et.evaluate(operatorExpression.RightValue()); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"" + operatorExpression.OperatorType().String() + "\" operator right operand: " + err.Error())
 	}
 
 	var valueType ExpressionValueTypeEnum
 
 	if valueType, err = operatorExpression.OperatorType().deriveOperationValueType(leftValue.ValueType(), rightValue.ValueType()); err != nil {
-		return nil, err
+		return nil, errors.New("failed while deriving \"" + operatorExpression.OperatorType().String() + "\" operator value type: " + err.Error())
 	}
 
 	switch operatorExpression.OperatorType() {
@@ -1923,7 +1923,7 @@ func (et *ExpressionTree) maxOf(arguments []Expression) (*ValueExpression, error
 		valueType, err := ExpressionOperatorType.GreaterThan.deriveComparisonOperationValueType(testValue.ValueType(), nextValue.ValueType())
 
 		if err != nil {
-			return nil, errors.New("failed while deriving \"MaxOf\" function \">\" comparison operation value type: " + err.Error())
+			return nil, errors.New("failed while deriving \"MaxOf\" function greater than comparison operation value type: " + err.Error())
 		}
 
 		result, err := et.greaterThanOp(nextValue, testValue, valueType)
@@ -1957,7 +1957,7 @@ func (et *ExpressionTree) minOf(arguments []Expression) (*ValueExpression, error
 		valueType, err := ExpressionOperatorType.LessThan.deriveComparisonOperationValueType(testValue.ValueType(), nextValue.ValueType())
 
 		if err != nil {
-			return nil, errors.New("failed while deriving \"MinOf\" function \"<\" comparison operation value type: " + err.Error())
+			return nil, errors.New("failed while deriving \"MinOf\" function less than comparison operation value type: " + err.Error())
 		}
 
 		result, err := et.greaterThanOp(nextValue, testValue, valueType)
@@ -2055,7 +2055,7 @@ func (et *ExpressionTree) power(sourceValue *ValueExpression, exponentValue *Val
 	valueType, err := ExpressionOperatorType.Multiply.deriveArithmeticOperationValueType(sourceValue.ValueType(), exponentValue.ValueType())
 
 	if err != nil {
-		return nil, errors.New("failed while deriving \"Power\" function \"*\" arithmetic operation value type: " + err.Error())
+		return nil, errors.New("failed while deriving \"Power\" function multiplicative arithmetic operation value type: " + err.Error())
 	}
 
 	if sourceValue, err = sourceValue.Convert(valueType); err != nil {
