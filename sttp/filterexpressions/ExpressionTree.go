@@ -2035,25 +2035,7 @@ func (et *ExpressionTree) nthIndexOf(sourceValue *ValueExpression, testValue *Va
 		test = testValue.stringValue()
 	}
 
-	// https://play.golang.org/p/Kz36Y9pKUZk
-	var result int
-
-	for i := 0; i < index; i++ {
-		location := strings.Index(source, test)
-
-		if location == -1 {
-			result = 0
-			break
-		}
-
-		location++
-		result += location
-		source = source[location:]
-	}
-
-	result -= 1
-
-	return newValueExpression(ExpressionValueType.Int32, int32(result)), nil
+	return newValueExpression(ExpressionValueType.Int32, int32(findNthIndex(source, test, index))), nil
 }
 
 func (et *ExpressionTree) power(sourceValue *ValueExpression, exponentValue *ValueExpression) (*ValueExpression, error) {
@@ -2248,7 +2230,65 @@ func (et *ExpressionTree) round(sourceValue *ValueExpression) (*ValueExpression,
 }
 
 func (et *ExpressionTree) split(sourceValue *ValueExpression, delimiterValue *ValueExpression, indexValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Split\" function source value, first argument, must be a \"String\"")
+	}
+
+	if delimiterValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"Split\" function delimeter value, second argument, must be a \"String\"")
+	}
+
+	if !indexValue.ValueType().IsIntegerType() {
+		return nil, errors.New("\"Split\" function index value, third argument, must be an integer type")
+	}
+
+	if delimiterValue.IsNull() {
+		return nil, errors.New("\"Split\" delimiter test value, second argument, is null")
+	}
+
+	if indexValue.IsNull() {
+		return nil, errors.New("\"Split\" function index value, third argument, is null")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return sourceValue, nil
+	}
+
+	var err error
+
+	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
+		return nil, errors.New("failed while converting \"Split\" function optional ignore case value, fourth argument, to \"Boolean\": " + err.Error())
+	}
+
+	var index int
+
+	switch indexValue.ValueType() {
+	case ExpressionValueType.Boolean:
+		if indexValue.booleanValue() {
+			index = 1
+		}
+	case ExpressionValueType.Int32:
+		index = int(indexValue.int32Value())
+	case ExpressionValueType.Int64:
+		index = int(indexValue.int64Value())
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
+
+	var result []int
+
+	if ignoreCase.booleanValue() {
+		result = splitNthIndex(strings.ToUpper(sourceValue.stringValue()), strings.ToUpper(delimiterValue.stringValue()), index)
+	} else {
+		result = splitNthIndex(sourceValue.stringValue(), delimiterValue.stringValue(), index)
+	}
+
+	if result == nil {
+		return EmptyString, nil
+	}
+
+	return newValueExpression(ExpressionValueType.String, sourceValue.stringValue()[result[0]:result[1]]), nil
 }
 
 func (et *ExpressionTree) sqrt(sourceValue *ValueExpression) (*ValueExpression, error) {
@@ -2468,4 +2508,44 @@ func (et *ExpressionTree) andOp(leftValue *ValueExpression, rightValue *ValueExp
 
 func (et *ExpressionTree) orOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
 	return nil, nil
+}
+
+// https://play.golang.org/p/-zlKH7mfboa
+func findNthIndex(source, test string, index int) int {
+	var result int
+
+	for i := 0; i < index+1; i++ {
+		location := strings.Index(source, test)
+
+		if location == -1 {
+			result = 0
+			break
+		}
+
+		location++
+		result += location
+		source = source[location:]
+	}
+
+	return result - 1
+}
+
+// https://play.golang.org/p/_7nc06CqjKi
+func splitNthIndex(source, test string, index int) []int {
+	firstIndex := findNthIndex(source, test, index-1)
+	secondIndex := findNthIndex(source, test, index)
+
+	if firstIndex <= 0 && secondIndex <= 0 {
+		return nil
+	}
+
+	if firstIndex <= 0 {
+		return []int{0, secondIndex}
+	}
+
+	if secondIndex <= 0 {
+		return []int{firstIndex + len(test), len(source)}
+	}
+
+	return []int{firstIndex + len(test), secondIndex}
 }
