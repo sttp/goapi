@@ -1473,20 +1473,7 @@ func (et *ExpressionTree) dateAdd(sourceValue *ValueExpression, addValue *ValueE
 		return nil, errors.New("failed while parsing \"DateAdd\" function interval value, third argument, as a valid time interval: " + err.Error())
 	}
 
-	var value int
-
-	switch addValue.ValueType() {
-	case ExpressionValueType.Boolean:
-		if addValue.booleanValue() {
-			value = 1
-		}
-	case ExpressionValueType.Int32:
-		value = int(addValue.int32Value())
-	case ExpressionValueType.Int64:
-		value = int(addValue.int64Value())
-	default:
-		return nil, errors.New("unexpected expression value type encountered")
-	}
+	value := addValue.integerValue(0)
 
 	switch interval {
 	case TimeInterval.Year:
@@ -2010,21 +1997,6 @@ func (et *ExpressionTree) nthIndexOf(sourceValue *ValueExpression, testValue *Va
 		return nil, errors.New("failed while converting \"NthIndexOf\" function optional ignore case value, fourth argument, to \"Boolean\": " + err.Error())
 	}
 
-	var index int
-
-	switch indexValue.ValueType() {
-	case ExpressionValueType.Boolean:
-		if indexValue.booleanValue() {
-			index = 1
-		}
-	case ExpressionValueType.Int32:
-		index = int(indexValue.int32Value())
-	case ExpressionValueType.Int64:
-		index = int(indexValue.int64Value())
-	default:
-		return nil, errors.New("unexpected expression value type encountered")
-	}
-
 	var source, test string
 
 	if ignoreCase.booleanValue() {
@@ -2035,7 +2007,7 @@ func (et *ExpressionTree) nthIndexOf(sourceValue *ValueExpression, testValue *Va
 		test = testValue.stringValue()
 	}
 
-	return newValueExpression(ExpressionValueType.Int32, int32(findNthIndex(source, test, index))), nil
+	return newValueExpression(ExpressionValueType.Int32, int32(findNthIndex(source, test, indexValue.integerValue(-1)))), nil
 }
 
 func (et *ExpressionTree) power(sourceValue *ValueExpression, exponentValue *ValueExpression) (*ValueExpression, error) {
@@ -2261,21 +2233,7 @@ func (et *ExpressionTree) split(sourceValue *ValueExpression, delimiterValue *Va
 		return nil, errors.New("failed while converting \"Split\" function optional ignore case value, fourth argument, to \"Boolean\": " + err.Error())
 	}
 
-	var index int
-
-	switch indexValue.ValueType() {
-	case ExpressionValueType.Boolean:
-		if indexValue.booleanValue() {
-			index = 1
-		}
-	case ExpressionValueType.Int32:
-		index = int(indexValue.int32Value())
-	case ExpressionValueType.Int64:
-		index = int(indexValue.int64Value())
-	default:
-		return nil, errors.New("unexpected expression value type encountered")
-	}
-
+	index := indexValue.integerValue(-1)
 	var result []int
 
 	if ignoreCase.booleanValue() {
@@ -2422,7 +2380,35 @@ func (et *ExpressionTree) strCmp(leftValue *ValueExpression, rightValue *ValueEx
 }
 
 func (et *ExpressionTree) subStr(sourceValue *ValueExpression, indexValue *ValueExpression, lengthValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if sourceValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"SubStr\" function source value, first argument, must be a \"String\"")
+	}
+
+	if !indexValue.ValueType().IsIntegerType() {
+		return nil, errors.New("\"SubStr\" function index value, second argument, must be an integer type")
+	}
+
+	if !lengthValue.ValueType().IsIntegerType() {
+		return nil, errors.New("\"SubStr\" function length value, third argument, must be an integer type")
+	}
+
+	if indexValue.IsNull() {
+		return nil, errors.New("\"SubStr\" function index value, second argument, is null")
+	}
+
+	// If source value is Null, result is Null
+	if sourceValue.IsNull() {
+		return sourceValue, nil
+	}
+
+	index := indexValue.integerValue(0)
+
+	if !lengthValue.IsNull() {
+		length := lengthValue.integerValue(0)
+		return newValueExpression(ExpressionValueType.String, sourceValue.stringValue()[index:index+length]), nil
+	}
+
+	return newValueExpression(ExpressionValueType.String, sourceValue.stringValue()[index:]), nil
 }
 
 func (et *ExpressionTree) trim(sourceValue *ValueExpression) (*ValueExpression, error) {
