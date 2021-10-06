@@ -397,7 +397,7 @@ func (et *ExpressionTree) evaluateAbs(arguments []Expression) (*ValueExpression,
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Abs\" function source value, first argument: " + err.Error())
 	}
 
 	return et.abs(sourceValue)
@@ -412,7 +412,7 @@ func (et *ExpressionTree) evaluateCeiling(arguments []Expression) (*ValueExpress
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Ceiling\" function source value, first argument: " + err.Error())
 	}
 
 	return et.ceiling(sourceValue)
@@ -436,11 +436,11 @@ func (et *ExpressionTree) evaluateConvert(arguments []Expression) (*ValueExpress
 	var err error
 
 	if sourceValue, err = et.evaluate(arguments[0]); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Convert\" function source value, first argument: " + err.Error())
 	}
 
 	if targetType, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Convert\" function target type, second argument: " + err.Error())
 	}
 
 	return et.convert(sourceValue, targetType)
@@ -455,11 +455,11 @@ func (et *ExpressionTree) evaluateContains(arguments []Expression) (*ValueExpres
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Contains\" function source value, first argument: " + err.Error())
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Contains\" function test value, first argument: " + err.Error())
 	}
 
 	if len(arguments) == 2 {
@@ -469,7 +469,7 @@ func (et *ExpressionTree) evaluateContains(arguments []Expression) (*ValueExpres
 	var ignoreCase *ValueExpression
 
 	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Contains\" function optional ignore case value, third argument: " + err.Error())
 	}
 
 	return et.contains(sourceValue, testValue, ignoreCase)
@@ -484,15 +484,15 @@ func (et *ExpressionTree) evaluateDateAdd(arguments []Expression) (*ValueExpress
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.DateTime); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"DateAdd\" function source value, first argument: " + err.Error())
 	}
 
 	if addValue, err = et.evaluateAs(arguments[1], ExpressionValueType.Int32); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"DateAdd\" function add value, second argument: " + err.Error())
 	}
 
 	if intervalType, err = et.evaluateAs(arguments[2], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"DateAdd\" function interval type, third argument: " + err.Error())
 	}
 
 	return et.dateAdd(sourceValue, addValue, intervalType)
@@ -507,15 +507,15 @@ func (et *ExpressionTree) evaluateDateDiff(arguments []Expression) (*ValueExpres
 	var err error
 
 	if leftValue, err = et.evaluateAs(arguments[0], ExpressionValueType.DateTime); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"DateDiff\" function left value, first argument: " + err.Error())
 	}
 
 	if rightValue, err = et.evaluateAs(arguments[1], ExpressionValueType.DateTime); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"DateDiff\" function right value, second argument: " + err.Error())
 	}
 
 	if intervalType, err = et.evaluateAs(arguments[2], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"DateDiff\" function interval type, third argument: " + err.Error())
 	}
 
 	return et.dateDiff(leftValue, rightValue, intervalType)
@@ -530,11 +530,11 @@ func (et *ExpressionTree) evaluateDatePart(arguments []Expression) (*ValueExpres
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.DateTime); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"DatePart\" function source value, first argument: " + err.Error())
 	}
 
 	if intervalType, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"DatePart\" function interval type, second argument: " + err.Error())
 	}
 
 	return et.datePart(sourceValue, intervalType)
@@ -549,11 +549,11 @@ func (et *ExpressionTree) evaluateEndsWith(arguments []Expression) (*ValueExpres
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"EndsWith\" function source value, first argument: " + err.Error())
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"EndsWith\" function test value, second argument: " + err.Error())
 	}
 
 	if len(arguments) == 2 {
@@ -563,7 +563,7 @@ func (et *ExpressionTree) evaluateEndsWith(arguments []Expression) (*ValueExpres
 	var ignoreCase *ValueExpression
 
 	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"EndsWith\" function optional ignore case value, third argument: " + err.Error())
 	}
 
 	return et.endsWith(sourceValue, testValue, ignoreCase)
@@ -578,7 +578,7 @@ func (et *ExpressionTree) evaluateFloor(arguments []Expression) (*ValueExpressio
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Floor\" function source value, first argument: " + err.Error())
 	}
 
 	return et.floor(sourceValue)
@@ -593,7 +593,7 @@ func (et *ExpressionTree) evaluateIIf(arguments []Expression) (*ValueExpression,
 	var err error
 
 	if testValue, err = et.evaluate(arguments[1]); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"IIf\" function test value, first argument: " + err.Error())
 	}
 
 	// Not pre-evaluating IIf result value arguments - only evaluating desired path
@@ -609,11 +609,11 @@ func (et *ExpressionTree) evaluateIndexOf(arguments []Expression) (*ValueExpress
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"IndexOf\" function source value, first argument: " + err.Error())
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"IndexOf\" function test value, second argument: " + err.Error())
 	}
 
 	if len(arguments) == 2 {
@@ -623,7 +623,7 @@ func (et *ExpressionTree) evaluateIndexOf(arguments []Expression) (*ValueExpress
 	var ignoreCase *ValueExpression
 
 	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"IndexOf\" function optional ignore case value, third argument: " + err.Error())
 	}
 
 	return et.indexOf(sourceValue, testValue, ignoreCase)
@@ -634,14 +634,14 @@ func (et *ExpressionTree) evaluateIsDate(arguments []Expression) (*ValueExpressi
 		return nil, errors.New("\"IsDate\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
 	}
 
-	var sourceValue *ValueExpression
+	var testValue *ValueExpression
 	var err error
 
-	if sourceValue, err = et.evaluate(arguments[0]); err != nil {
-		return nil, err
+	if testValue, err = et.evaluate(arguments[0]); err != nil {
+		return nil, errors.New("failed while evaluating \"IsDate\" function test value, first argument: " + err.Error())
 	}
 
-	return et.isDate(sourceValue), nil
+	return et.isDate(testValue), nil
 }
 
 func (et *ExpressionTree) evaluateIsInteger(arguments []Expression) (*ValueExpression, error) {
@@ -649,14 +649,14 @@ func (et *ExpressionTree) evaluateIsInteger(arguments []Expression) (*ValueExpre
 		return nil, errors.New("\"IsInteger\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
 	}
 
-	var sourceValue *ValueExpression
+	var testValue *ValueExpression
 	var err error
 
-	if sourceValue, err = et.evaluate(arguments[0]); err != nil {
-		return nil, err
+	if testValue, err = et.evaluate(arguments[0]); err != nil {
+		return nil, errors.New("failed while evaluating \"IsInteger\" function test value, first argument: " + err.Error())
 	}
 
-	return et.isInteger(sourceValue), nil
+	return et.isInteger(testValue), nil
 }
 
 func (et *ExpressionTree) evaluateIsGuid(arguments []Expression) (*ValueExpression, error) {
@@ -664,14 +664,14 @@ func (et *ExpressionTree) evaluateIsGuid(arguments []Expression) (*ValueExpressi
 		return nil, errors.New("\"IsGuid\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
 	}
 
-	var sourceValue *ValueExpression
+	var testValue *ValueExpression
 	var err error
 
-	if sourceValue, err = et.evaluate(arguments[0]); err != nil {
-		return nil, err
+	if testValue, err = et.evaluate(arguments[0]); err != nil {
+		return nil, errors.New("failed while evaluating \"IsGuid\" function test value, first argument: " + err.Error())
 	}
 
-	return et.isGuid(sourceValue), nil
+	return et.isGuid(testValue), nil
 }
 
 func (et *ExpressionTree) evaluateIsNull(arguments []Expression) (*ValueExpression, error) {
@@ -683,11 +683,11 @@ func (et *ExpressionTree) evaluateIsNull(arguments []Expression) (*ValueExpressi
 	var err error
 
 	if testValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"IsNull\" function test value, first argument: " + err.Error())
 	}
 
 	if defaultValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"IsNull\" function default value, second argument: " + err.Error())
 	}
 
 	return et.isNull(testValue, defaultValue)
@@ -698,14 +698,14 @@ func (et *ExpressionTree) evaluateIsNumeric(arguments []Expression) (*ValueExpre
 		return nil, errors.New("\"IsNumeric\" function expects 1 argument, received " + strconv.Itoa(len(arguments)))
 	}
 
-	var sourceValue *ValueExpression
+	var testValue *ValueExpression
 	var err error
 
-	if sourceValue, err = et.evaluate(arguments[0]); err != nil {
-		return nil, err
+	if testValue, err = et.evaluate(arguments[0]); err != nil {
+		return nil, errors.New("failed while evaluating \"IsNumeric\" function test value, first argument: " + err.Error())
 	}
 
-	return et.isNumeric(sourceValue), nil
+	return et.isNumeric(testValue), nil
 }
 
 func (et *ExpressionTree) evaluateLastIndexOf(arguments []Expression) (*ValueExpression, error) {
@@ -717,11 +717,11 @@ func (et *ExpressionTree) evaluateLastIndexOf(arguments []Expression) (*ValueExp
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"LastIndexOf\" function source value, first argument: " + err.Error())
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"LastIndexOf\" function test value, second argument: " + err.Error())
 	}
 
 	if len(arguments) == 2 {
@@ -731,7 +731,7 @@ func (et *ExpressionTree) evaluateLastIndexOf(arguments []Expression) (*ValueExp
 	var ignoreCase *ValueExpression
 
 	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"LastIndexOf\" function optional ignore case value, third argument: " + err.Error())
 	}
 
 	return et.lastIndexOf(sourceValue, testValue, ignoreCase)
@@ -746,7 +746,7 @@ func (et *ExpressionTree) evaluateLen(arguments []Expression) (*ValueExpression,
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Len\" function source value, first argument: " + err.Error())
 	}
 
 	return et.len(sourceValue)
@@ -761,7 +761,7 @@ func (et *ExpressionTree) evaluateLower(arguments []Expression) (*ValueExpressio
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Lower\" function source value, first argument: " + err.Error())
 	}
 
 	return et.lower(sourceValue)
@@ -792,15 +792,15 @@ func (et *ExpressionTree) evaluateNthIndexOf(arguments []Expression) (*ValueExpr
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"NthIndexOf\" function source value, first argument: " + err.Error())
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"NthIndexOf\" function test value, second argument: " + err.Error())
 	}
 
 	if indexValue, err = et.evaluateAs(arguments[2], ExpressionValueType.Int32); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"NthIndexOf\" function index value, third argument: " + err.Error())
 	}
 
 	if len(arguments) == 3 {
@@ -810,7 +810,7 @@ func (et *ExpressionTree) evaluateNthIndexOf(arguments []Expression) (*ValueExpr
 	var ignoreCase *ValueExpression
 
 	if ignoreCase, err = et.evaluateAs(arguments[3], ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"NthIndexOf\" function optional ignore case value, fourth argument: " + err.Error())
 	}
 
 	return et.nthIndexOf(sourceValue, testValue, indexValue, ignoreCase)
@@ -833,11 +833,11 @@ func (et *ExpressionTree) evaluatePower(arguments []Expression) (*ValueExpressio
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Power\" function source value, first argument: " + err.Error())
 	}
 
 	if exponentValue, err = et.evaluateAs(arguments[1], ExpressionValueType.Int32); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Power\" function exponent value, second argument: " + err.Error())
 	}
 
 	return et.power(sourceValue, exponentValue)
@@ -852,11 +852,11 @@ func (et *ExpressionTree) evaluateRegExMatch(arguments []Expression) (*ValueExpr
 	var err error
 
 	if regexValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"RegExMatch\" function expression value, first argument: " + err.Error())
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"RegExMatch\" function test value, second argument: " + err.Error())
 	}
 
 	return et.regExMatch(regexValue, testValue)
@@ -871,11 +871,11 @@ func (et *ExpressionTree) evaluateRegExVal(arguments []Expression) (*ValueExpres
 	var err error
 
 	if regexValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"RegExVal\" function expression value, first argument: " + err.Error())
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"RegExVal\" function test value, second argument: " + err.Error())
 	}
 
 	return et.regExVal(regexValue, testValue)
@@ -890,15 +890,15 @@ func (et *ExpressionTree) evaluateReplace(arguments []Expression) (*ValueExpress
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Replace\" function source value, first argument: " + err.Error())
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Replace\" function test value, second argument: " + err.Error())
 	}
 
 	if replaceValue, err = et.evaluateAs(arguments[2], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Replace\" function replace value, third argument: " + err.Error())
 	}
 
 	if len(arguments) == 2 {
@@ -908,7 +908,7 @@ func (et *ExpressionTree) evaluateReplace(arguments []Expression) (*ValueExpress
 	var ignoreCase *ValueExpression
 
 	if ignoreCase, err = et.evaluateAs(arguments[3], ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Replace\" function optional ignore case value, fourth argument: " + err.Error())
 	}
 
 	return et.replace(sourceValue, testValue, replaceValue, ignoreCase)
@@ -923,7 +923,7 @@ func (et *ExpressionTree) evaluateReverse(arguments []Expression) (*ValueExpress
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Reverse\" function source value, first argument: " + err.Error())
 	}
 
 	return et.reverse(sourceValue)
@@ -938,7 +938,7 @@ func (et *ExpressionTree) evaluateRound(arguments []Expression) (*ValueExpressio
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Round\" function source value, first argument: " + err.Error())
 	}
 
 	return et.round(sourceValue)
@@ -953,15 +953,15 @@ func (et *ExpressionTree) evaluateSplit(arguments []Expression) (*ValueExpressio
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Split\" function source value, first argument: " + err.Error())
 	}
 
 	if delimeterValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Split\" function delimiter value, second argument: " + err.Error())
 	}
 
 	if indexValue, err = et.evaluateAs(arguments[2], ExpressionValueType.Int32); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Split\" function index value, third argument: " + err.Error())
 	}
 
 	if len(arguments) == 3 {
@@ -971,7 +971,7 @@ func (et *ExpressionTree) evaluateSplit(arguments []Expression) (*ValueExpressio
 	var ignoreCase *ValueExpression
 
 	if ignoreCase, err = et.evaluateAs(arguments[3], ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Split\" function optional ignore case value, fourth argument: " + err.Error())
 	}
 
 	return et.split(sourceValue, delimeterValue, indexValue, ignoreCase)
@@ -986,7 +986,7 @@ func (et *ExpressionTree) evaluateSqrt(arguments []Expression) (*ValueExpression
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.Double); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Sqrt\" function source value, first argument: " + err.Error())
 	}
 
 	return et.sqrt(sourceValue)
@@ -1001,11 +1001,11 @@ func (et *ExpressionTree) evaluateStartsWith(arguments []Expression) (*ValueExpr
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"StartsWith\" function source value, first argument: " + err.Error())
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"StartsWith\" function test value, second argument: " + err.Error())
 	}
 
 	if len(arguments) == 2 {
@@ -1015,7 +1015,7 @@ func (et *ExpressionTree) evaluateStartsWith(arguments []Expression) (*ValueExpr
 	var ignoreCase *ValueExpression
 
 	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"StartsWith\" function optional ignore case value, third argument: " + err.Error())
 	}
 
 	return et.startsWith(sourceValue, testValue, ignoreCase)
@@ -1030,11 +1030,11 @@ func (et *ExpressionTree) evaluateStrCount(arguments []Expression) (*ValueExpres
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"StrCount\" function source value, first argument: " + err.Error())
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"StrCount\" function test value, second argument: " + err.Error())
 	}
 
 	if len(arguments) == 2 {
@@ -1044,7 +1044,7 @@ func (et *ExpressionTree) evaluateStrCount(arguments []Expression) (*ValueExpres
 	var ignoreCase *ValueExpression
 
 	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"StrCount\" function optional ignore case value, third argument: " + err.Error())
 	}
 
 	return et.strCount(sourceValue, testValue, ignoreCase)
@@ -1059,11 +1059,11 @@ func (et *ExpressionTree) evaluateStrCmp(arguments []Expression) (*ValueExpressi
 	var err error
 
 	if leftValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"StrCmp\" function left value, first argument: " + err.Error())
 	}
 
 	if rightValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"StrCmp\" function right value, second argument: " + err.Error())
 	}
 
 	if len(arguments) == 2 {
@@ -1073,7 +1073,7 @@ func (et *ExpressionTree) evaluateStrCmp(arguments []Expression) (*ValueExpressi
 	var ignoreCase *ValueExpression
 
 	if ignoreCase, err = et.evaluateAs(arguments[2], ExpressionValueType.Boolean); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"StrCmp\" function optional ignore case value, third argument: " + err.Error())
 	}
 
 	return et.strCmp(leftValue, rightValue, ignoreCase)
@@ -1088,11 +1088,11 @@ func (et *ExpressionTree) evaluateSubStr(arguments []Expression) (*ValueExpressi
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"SubStr\" function source value, first argument: " + err.Error())
 	}
 
 	if indexValue, err = et.evaluateAs(arguments[1], ExpressionValueType.Int32); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"SubStr\" function index value, second argument: " + err.Error())
 	}
 
 	if len(arguments) == 2 {
@@ -1100,7 +1100,7 @@ func (et *ExpressionTree) evaluateSubStr(arguments []Expression) (*ValueExpressi
 	}
 
 	if lengthValue, err = et.evaluateAs(arguments[2], ExpressionValueType.Int32); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"SubStr\" function optional length value, third argument: " + err.Error())
 	}
 
 	return et.subStr(sourceValue, indexValue, lengthValue)
@@ -1115,7 +1115,7 @@ func (et *ExpressionTree) evaluateTrim(arguments []Expression) (*ValueExpression
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Trim\" function source value, first argument: " + err.Error())
 	}
 
 	return et.trim(sourceValue)
@@ -1130,7 +1130,7 @@ func (et *ExpressionTree) evaluateTrimLeft(arguments []Expression) (*ValueExpres
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"TrimLeft\" function source value, first argument: " + err.Error())
 	}
 
 	return et.trimLeft(sourceValue)
@@ -1145,7 +1145,7 @@ func (et *ExpressionTree) evaluateTrimRight(arguments []Expression) (*ValueExpre
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"TrimRight\" function source value, first argument: " + err.Error())
 	}
 
 	return et.trimRight(sourceValue)
@@ -1160,7 +1160,7 @@ func (et *ExpressionTree) evaluateUpper(arguments []Expression) (*ValueExpressio
 	var err error
 
 	if sourceValue, err = et.evaluateAs(arguments[0], ExpressionValueType.String); err != nil {
-		return nil, err
+		return nil, errors.New("failed while evaluating \"Upper\" function source value, first argument: " + err.Error())
 	}
 
 	return et.upper(sourceValue)
