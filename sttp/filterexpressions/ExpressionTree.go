@@ -2362,13 +2362,13 @@ func (et *ExpressionTree) strCount(sourceValue *ValueExpression, testValue *Valu
 	}
 
 	if sourceValue.IsNull() || testValue.IsNull() {
-		return newValueExpression(ExpressionValueType.Int32, 0), nil
+		return newValueExpression(ExpressionValueType.Int32, int32(0)), nil
 	}
 
 	findValue := testValue.stringValue()
 
 	if len(findValue) == 0 {
-		return newValueExpression(ExpressionValueType.Int32, 0), nil
+		return newValueExpression(ExpressionValueType.Int32, int32(0)), nil
 	}
 
 	var err error
@@ -2378,14 +2378,47 @@ func (et *ExpressionTree) strCount(sourceValue *ValueExpression, testValue *Valu
 	}
 
 	if ignoreCase.booleanValue() {
-		return newValueExpression(ExpressionValueType.Int32, strings.Count(strings.ToUpper(sourceValue.stringValue()), strings.ToUpper(testValue.stringValue()))), nil
+		return newValueExpression(ExpressionValueType.Int32, int32(strings.Count(strings.ToUpper(sourceValue.stringValue()), strings.ToUpper(testValue.stringValue())))), nil
 	}
 
-	return newValueExpression(ExpressionValueType.Int32, strings.Count(sourceValue.stringValue(), testValue.stringValue())), nil
+	return newValueExpression(ExpressionValueType.Int32, int32(strings.Count(sourceValue.stringValue(), testValue.stringValue()))), nil
 }
 
 func (et *ExpressionTree) strCmp(leftValue *ValueExpression, rightValue *ValueExpression, ignoreCase *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	if leftValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"StrCmp\" function left value, first argument, must be a \"String\"")
+	}
+
+	if rightValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("\"StrCmp\" function right value, second argument, must be a \"String\"")
+	}
+
+	// If both left and right values are null, values are considered equal
+	if leftValue.IsNull() && rightValue.IsNull() {
+		return newValueExpression(ExpressionValueType.Int32, int32(0)), nil
+	}
+
+	// If left value is null, right non-null value will be considered greater
+	if leftValue.IsNull() {
+		return newValueExpression(ExpressionValueType.Int32, int32(1)), nil
+	}
+
+	// If right value is null, left non-null value will be considered greater
+	if rightValue.IsNull() {
+		return newValueExpression(ExpressionValueType.Int32, int32(-1)), nil
+	}
+
+	var err error
+
+	if ignoreCase, err = ignoreCase.Convert(ExpressionValueType.Boolean); err != nil {
+		return nil, errors.New("failed while converting \"StrCmp\" function optional ignore case value, third argument, to \"Boolean\": " + err.Error())
+	}
+
+	if ignoreCase.booleanValue() {
+		return newValueExpression(ExpressionValueType.Int32, int32(strings.Compare(strings.ToUpper(leftValue.stringValue()), strings.ToUpper(rightValue.stringValue())))), nil
+	}
+
+	return newValueExpression(ExpressionValueType.Int32, int32(strings.Compare(leftValue.stringValue(), rightValue.stringValue()))), nil
 }
 
 func (et *ExpressionTree) subStr(sourceValue *ValueExpression, indexValue *ValueExpression, lengthValue *ValueExpression) (*ValueExpression, error) {
