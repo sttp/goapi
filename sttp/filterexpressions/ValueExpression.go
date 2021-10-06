@@ -184,11 +184,7 @@ func NullValue(targetValueType ExpressionValueTypeEnum) *ValueExpression {
 func (ve *ValueExpression) integerValue(defaultValue int) int {
 	switch ve.ValueType() {
 	case ExpressionValueType.Boolean:
-		if ve.booleanValue() {
-			return 1
-		}
-
-		return 0
+		return ve.booleanValueAsInt()
 	case ExpressionValueType.Int32:
 		return int(ve.int32Value())
 	case ExpressionValueType.Int64:
@@ -224,6 +220,14 @@ func (ve *ValueExpression) booleanValue() bool {
 	}
 
 	return ve.value.(bool)
+}
+
+func (ve *ValueExpression) booleanValueAsInt() int {
+	if ve.booleanValue() {
+		return 1
+	}
+
+	return 0
 }
 
 // Int32Value gets the ValueExpression value cast as an int32.
@@ -399,16 +403,11 @@ func (ve *ValueExpression) Convert(targetValueType ExpressionValueTypeEnum) (*Va
 }
 
 func (ve *ValueExpression) convertFromBoolean(targetValueType ExpressionValueTypeEnum) (*ValueExpression, error) {
-	result := ve.booleanValue()
-	var value int
-
-	if result {
-		value = 1
-	}
+	value := ve.booleanValueAsInt()
 
 	switch targetValueType {
 	case ExpressionValueType.Boolean:
-		return newValueExpression(targetValueType, result), nil
+		return newValueExpression(targetValueType, value != 0), nil
 	case ExpressionValueType.Int32:
 		return newValueExpression(targetValueType, value), nil
 	case ExpressionValueType.Int64:
@@ -433,7 +432,7 @@ func (ve *ValueExpression) convertFromInt32(targetValueType ExpressionValueTypeE
 
 	switch targetValueType {
 	case ExpressionValueType.Boolean:
-		return newValueExpression(targetValueType, value == 0), nil
+		return newValueExpression(targetValueType, value != 0), nil
 	case ExpressionValueType.Int32:
 		return newValueExpression(targetValueType, value), nil
 	case ExpressionValueType.Int64:
@@ -458,7 +457,7 @@ func (ve *ValueExpression) convertFromInt64(targetValueType ExpressionValueTypeE
 
 	switch targetValueType {
 	case ExpressionValueType.Boolean:
-		return newValueExpression(targetValueType, value == 0), nil
+		return newValueExpression(targetValueType, value != 0), nil
 	case ExpressionValueType.Int32:
 		return newValueExpression(targetValueType, int32(value)), nil
 	case ExpressionValueType.Int64:
@@ -483,7 +482,7 @@ func (ve *ValueExpression) convertFromDecimal(targetValueType ExpressionValueTyp
 
 	switch targetValueType {
 	case ExpressionValueType.Boolean:
-		return newValueExpression(targetValueType, value == 0.0), nil
+		return newValueExpression(targetValueType, value != 0.0), nil
 	case ExpressionValueType.Int32:
 		return newValueExpression(targetValueType, int32(value)), nil
 	case ExpressionValueType.Int64:
@@ -508,7 +507,7 @@ func (ve *ValueExpression) convertFromDouble(targetValueType ExpressionValueType
 
 	switch targetValueType {
 	case ExpressionValueType.Boolean:
-		return newValueExpression(targetValueType, value == 0.0), nil
+		return newValueExpression(targetValueType, value != 0.0), nil
 	case ExpressionValueType.Int32:
 		return newValueExpression(targetValueType, int32(value)), nil
 	case ExpressionValueType.Int64:
@@ -589,7 +588,7 @@ func (ve *ValueExpression) convertFromDateTime(targetValueType ExpressionValueTy
 
 	switch targetValueType {
 	case ExpressionValueType.Boolean:
-		return newValueExpression(targetValueType, value == 0), nil
+		return newValueExpression(targetValueType, value != 0), nil
 	case ExpressionValueType.Int32:
 		return newValueExpression(targetValueType, int32(value)), nil
 	case ExpressionValueType.Int64:
