@@ -181,6 +181,23 @@ func NullValue(targetValueType ExpressionValueTypeEnum) *ValueExpression {
 	}
 }
 
+func (ve *ValueExpression) integerValue(defaultValue int) int {
+	switch ve.ValueType() {
+	case ExpressionValueType.Boolean:
+		if ve.booleanValue() {
+			return 1
+		}
+
+		return 0
+	case ExpressionValueType.Int32:
+		return int(ve.int32Value())
+	case ExpressionValueType.Int64:
+		return int(ve.int64Value())
+	default:
+		return defaultValue
+	}
+}
+
 func (ve *ValueExpression) validateValueType(valueType ExpressionValueTypeEnum) error {
 	if valueType != ve.valueType {
 		return fmt.Errorf("cannot read expression value as \"%s\", type is \"%s\"", valueType.String(), ve.valueType.String())
