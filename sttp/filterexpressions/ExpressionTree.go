@@ -2587,11 +2587,71 @@ func (et *ExpressionTree) modulusOp(leftValue *ValueExpression, rightValue *Valu
 }
 
 func (et *ExpressionTree) addOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(valueType), nil
+	}
+
+	if err := convertOperands(&leftValue, &rightValue, valueType); err != nil {
+		return nil, errors.New("addition \"+\" operator " + err.Error())
+	}
+
+	switch valueType {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt()+rightValue.booleanValueAsInt() != 0), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Int32, int32(leftValue.int32Value()+rightValue.int32Value())), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()+rightValue.int64Value())), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Decimal, float64(leftValue.decimalValue()+rightValue.decimalValue())), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Double, float64(leftValue.doubleValue()+rightValue.doubleValue())), nil
+	case ExpressionValueType.String:
+		return newValueExpression(ExpressionValueType.String, leftValue.stringValue()+rightValue.stringValue()), nil
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		fallthrough
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply addition \"+\" operator to \"" + valueType.String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) subtractOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(valueType), nil
+	}
+
+	if err := convertOperands(&leftValue, &rightValue, valueType); err != nil {
+		return nil, errors.New("subtraction \"-\" operator " + err.Error())
+	}
+
+	switch valueType {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt()-rightValue.booleanValueAsInt() != 0), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Int32, int32(leftValue.int32Value()-rightValue.int32Value())), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()-rightValue.int64Value())), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Decimal, float64(leftValue.decimalValue()-rightValue.decimalValue())), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Double, float64(leftValue.doubleValue()-rightValue.doubleValue())), nil
+	case ExpressionValueType.String:
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		fallthrough
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply subtraction \"-\" operator to \"" + valueType.String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) bitShiftLeftOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
