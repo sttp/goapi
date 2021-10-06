@@ -2401,14 +2401,26 @@ func (et *ExpressionTree) subStr(sourceValue *ValueExpression, indexValue *Value
 		return sourceValue, nil
 	}
 
+	sourceText := sourceValue.stringValue()
 	index := indexValue.integerValue(0)
+
+	if index < 0 || index >= len(sourceText) {
+		return EmptyString, nil
+	}
 
 	if !lengthValue.IsNull() {
 		length := lengthValue.integerValue(0)
-		return newValueExpression(ExpressionValueType.String, sourceValue.stringValue()[index:index+length]), nil
+
+		if length <= 0 {
+			return EmptyString, nil
+		}
+
+		if index+length < len(sourceText) {
+			return newValueExpression(ExpressionValueType.String, sourceText[index:index+length]), nil
+		}
 	}
 
-	return newValueExpression(ExpressionValueType.String, sourceValue.stringValue()[index:]), nil
+	return newValueExpression(ExpressionValueType.String, sourceText[index:]), nil
 }
 
 func (et *ExpressionTree) trim(sourceValue *ValueExpression) (*ValueExpression, error) {
