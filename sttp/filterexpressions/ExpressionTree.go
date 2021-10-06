@@ -2040,14 +2040,7 @@ func (et *ExpressionTree) power(sourceValue *ValueExpression, exponentValue *Val
 
 	switch sourceValue.ValueType() {
 	case ExpressionValueType.Boolean:
-		var sf64, ef64 float64
-		if sourceValue.booleanValue() {
-			sf64 = 1.0
-		}
-		if exponentValue.booleanValue() {
-			ef64 = 1.0
-		}
-		return newValueExpression(ExpressionValueType.Boolean, math.Pow(sf64, ef64) != 0.0), nil
+		return newValueExpression(ExpressionValueType.Boolean, math.Pow(float64(sourceValue.booleanValueAsInt()), float64(exponentValue.booleanValueAsInt())) != 0.0), nil
 	case ExpressionValueType.Int32:
 		return newValueExpression(ExpressionValueType.Int32, int32(math.Pow(float64(sourceValue.int32Value()), float64(exponentValue.int32Value())))), nil
 	case ExpressionValueType.Int64:
@@ -2261,11 +2254,7 @@ func (et *ExpressionTree) sqrt(sourceValue *ValueExpression) (*ValueExpression, 
 
 	switch sourceValue.ValueType() {
 	case ExpressionValueType.Boolean:
-		var f64 float64
-		if sourceValue.booleanValue() {
-			f64 = 1.0
-		}
-		return newValueExpression(ExpressionValueType.Double, math.Sqrt(f64)), nil
+		return newValueExpression(ExpressionValueType.Double, math.Sqrt(float64(sourceValue.booleanValueAsInt()))), nil
 	case ExpressionValueType.Int32:
 		return newValueExpression(ExpressionValueType.Double, math.Sqrt(float64(sourceValue.int32Value()))), nil
 	case ExpressionValueType.Int64:
@@ -2481,12 +2470,94 @@ func (et *ExpressionTree) utcNow() (*ValueExpression, error) {
 
 // Filter Expression Operator Implementations
 
+func convertOperands(leftValue **ValueExpression, rightValue **ValueExpression, valueType ExpressionValueTypeEnum) error {
+	var err error
+
+	if *leftValue, err = (*leftValue).Convert(valueType); err != nil {
+		return errors.New("failed while converting left operand, to \"" + valueType.String() + "\": " + err.Error())
+	}
+
+	if *rightValue, err = (*rightValue).Convert(valueType); err != nil {
+		return errors.New("failed while converting right operand, to \"" + valueType.String() + "\": " + err.Error())
+	}
+
+	return nil
+}
+
 func (et *ExpressionTree) multiplyOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(valueType), nil
+	}
+
+	if err := convertOperands(&leftValue, &rightValue, valueType); err != nil {
+		return nil, errors.New("multiplication \"*\" operator " + err.Error())
+	}
+
+	switch valueType {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt()*rightValue.booleanValueAsInt() != 0), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Int32, int32(leftValue.int32Value()*rightValue.int32Value())), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()*rightValue.int64Value())), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Decimal, float64(leftValue.decimalValue()*rightValue.decimalValue())), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Double, float64(leftValue.doubleValue()*rightValue.doubleValue())), nil
+	case ExpressionValueType.String:
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		fallthrough
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply multiplication \"*\" operator to \"" + valueType.String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) divideOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(valueType), nil
+	}
+
+	if err := convertOperands(&leftValue, &rightValue, valueType); err != nil {
+		return nil, errors.New("division \"/\" operator " + err.Error())
+	}
+
+	switch valueType {
+	case ExpressionValueType.Boolean:
+		leftInt := leftValue.booleanValueAsInt()
+		rightInt := rightValue.booleanValueAsInt()
+		var result bool
+
+		if rightInt != 0 {
+			result = leftInt/rightInt != 0
+		}
+
+		return newValueExpression(ExpressionValueType.Boolean, result), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Int32, int32(leftValue.int32Value()/rightValue.int32Value())), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()/rightValue.int64Value())), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Decimal, float64(leftValue.decimalValue()/rightValue.decimalValue())), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Double, float64(leftValue.doubleValue()/rightValue.doubleValue())), nil
+	case ExpressionValueType.String:
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		fallthrough
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply division \"/\" operator to \"" + valueType.String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) modulusOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
