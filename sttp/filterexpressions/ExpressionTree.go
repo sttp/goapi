@@ -2799,7 +2799,37 @@ func (et *ExpressionTree) bitwiseOrOp(leftValue *ValueExpression, rightValue *Va
 }
 
 func (et *ExpressionTree) bitwiseXorOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(valueType), nil
+	}
+
+	if err := convertOperands(&leftValue, &rightValue, valueType); err != nil {
+		return nil, errors.New("bitwise \"^\" operator " + err.Error())
+	}
+
+	switch valueType {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt()^rightValue.booleanValueAsInt() != 0), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Int32, int32(leftValue.int32Value()^rightValue.int32Value())), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()^rightValue.int64Value())), nil
+	case ExpressionValueType.Decimal:
+		fallthrough
+	case ExpressionValueType.Double:
+		fallthrough
+	case ExpressionValueType.String:
+		fallthrough
+	case ExpressionValueType.Guid:
+		fallthrough
+	case ExpressionValueType.DateTime:
+		fallthrough
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply bitwise \"^\" operator to \"" + valueType.String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) lessThanOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
