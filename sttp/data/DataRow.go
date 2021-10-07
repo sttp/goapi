@@ -91,17 +91,17 @@ func (dr *DataRow) validateColumnType(columnIndex, targetType int, read bool) (*
 	return column, nil
 }
 
-// func (dr *DataRow) getExpressionTree(column *DataColumn) (*ExpressionTree, error) {
+// func (dr *DataRow) getExpressionTree(column *DataColumn) (*filterexpressions.ExpressionTree, error) {
 // 	columnIndex := column.Index()
 
 // 	if dr.values[columnIndex] == nil {
 // 		dataTable := column.Parent()
-// 		parser := NewFilterExpressionParser(column.Expression())
+// 		parser := filterexpressions.NewFilterExpressionParser(column.Expression(), true)
 
-// 		parser.SetDataSet(dataTable.Parent())
-// 		parser.SetPrimaryTableName(dataTable.Name())
-// 		parser.SetTrackFilteredSignalIDs(false)
-// 		parser.SetTrackFilteredRows(false)
+// 		parser.DataSet = dataTable.Parent()
+// 		parser.PrimaryTableName = dataTable.Name()
+// 		parser.TrackFilteredSignalIDs = false
+// 		parser.TrackFilteredRows = false
 
 // 		expressionTrees := parser.GetExpressionTrees()
 
