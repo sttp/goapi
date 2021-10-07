@@ -2973,11 +2973,77 @@ func (et *ExpressionTree) greaterThanOrEqualOp(leftValue *ValueExpression, right
 }
 
 func (et *ExpressionTree) equalOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum, exactMatch bool) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(valueType), nil
+	}
+
+	if err := convertOperands(&leftValue, &rightValue, valueType); err != nil {
+		return nil, errors.New("equal \"=\" operator " + err.Error())
+	}
+
+	switch valueType {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt() == rightValue.booleanValueAsInt()), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.int32Value() == rightValue.int32Value()), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() == rightValue.int64Value()), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() == rightValue.decimalValue()), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() == rightValue.doubleValue()), nil
+	case ExpressionValueType.String:
+		if exactMatch {
+			return newValueExpression(ExpressionValueType.Boolean, leftValue.stringValue() == rightValue.stringValue()), nil
+		}
+		return newValueExpression(ExpressionValueType.Boolean, strings.EqualFold(leftValue.stringValue(), rightValue.stringValue())), nil
+	case ExpressionValueType.Guid:
+		return newValueExpression(ExpressionValueType.Boolean, guid.Compare(leftValue.guidValue(), rightValue.guidValue()) == 0), nil
+	case ExpressionValueType.DateTime:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.dateTimeValue().Equal(rightValue.dateTimeValue())), nil
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply equal \"=\" operator to \"" + valueType.String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) notEqualOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum, exactMatch bool) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(valueType), nil
+	}
+
+	if err := convertOperands(&leftValue, &rightValue, valueType); err != nil {
+		return nil, errors.New("not equal \"!=\" operator " + err.Error())
+	}
+
+	switch valueType {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt() != rightValue.booleanValueAsInt()), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.int32Value() != rightValue.int32Value()), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() != rightValue.int64Value()), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() != rightValue.decimalValue()), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() != rightValue.doubleValue()), nil
+	case ExpressionValueType.String:
+		if exactMatch {
+			return newValueExpression(ExpressionValueType.Boolean, leftValue.stringValue() != rightValue.stringValue()), nil
+		}
+		return newValueExpression(ExpressionValueType.Boolean, !strings.EqualFold(leftValue.stringValue(), rightValue.stringValue())), nil
+	case ExpressionValueType.Guid:
+		return newValueExpression(ExpressionValueType.Boolean, guid.Compare(leftValue.guidValue(), rightValue.guidValue()) != 0), nil
+	case ExpressionValueType.DateTime:
+		return newValueExpression(ExpressionValueType.Boolean, !leftValue.dateTimeValue().Equal(rightValue.dateTimeValue())), nil
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply not equal \"!=\" operator to \"" + valueType.String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) isNullOp(leftValue *ValueExpression) (*ValueExpression, error) {
