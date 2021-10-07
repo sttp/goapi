@@ -44,10 +44,10 @@ type ExpressionTree struct {
 	table      *data.DataTable
 
 	// TopLimit represents the parsed value associated with the "TOP" keyword.
-	TopLimit int32
+	TopLimit int
 
 	// OrderByTerms represents the order by elements parsed from the "ORDER BY" keyword.
-	OrderByTerms []OrderByTerm
+	OrderByTerms []*OrderByTerm
 
 	// Root is the starting Expression for evaluation of the expression tree, or nil if
 	// there is not one. This is the root expression of the ExpressionTree. Assign root
