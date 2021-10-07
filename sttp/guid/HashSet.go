@@ -6,8 +6,9 @@
 //     file may cause incorrect behavior and will be lost
 //     if the code is regenerated.
 //
-//     Generated on 2021 October 07 19:12:48 UTC
+//     Generated on 2021 October 07 20:51:43 UTC
 // </auto-generated>
+//---------------------------------------------------------
 
 //******************************************************************************************************
 //  HashSet.go - Gbtc
