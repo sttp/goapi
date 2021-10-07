@@ -1234,9 +1234,9 @@ func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpress
 	case ExpressionOperatorType.NotEqualExactMatch:
 		return et.notEqualOp(leftValue, rightValue, valueType, true)
 	case ExpressionOperatorType.IsNull:
-		return et.isNullOp(leftValue)
+		return et.isNullOp(leftValue), nil
 	case ExpressionOperatorType.IsNotNull:
-		return et.isNotNullOp(leftValue)
+		return et.isNotNullOp(leftValue), nil
 	case ExpressionOperatorType.Like:
 		return et.likeOp(leftValue, rightValue, false)
 	case ExpressionOperatorType.LikeExactMatch:
@@ -3046,12 +3046,12 @@ func (et *ExpressionTree) notEqualOp(leftValue *ValueExpression, rightValue *Val
 	}
 }
 
-func (et *ExpressionTree) isNullOp(leftValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+func (et *ExpressionTree) isNullOp(leftValue *ValueExpression) *ValueExpression {
+	return newValueExpression(ExpressionValueType.Boolean, leftValue.IsNull())
 }
 
-func (et *ExpressionTree) isNotNullOp(leftValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+func (et *ExpressionTree) isNotNullOp(leftValue *ValueExpression) *ValueExpression {
+	return newValueExpression(ExpressionValueType.Boolean, !leftValue.IsNull())
 }
 
 func (et *ExpressionTree) likeOp(leftValue *ValueExpression, rightValue *ValueExpression, exactMatch bool) (*ValueExpression, error) {
