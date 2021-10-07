@@ -80,6 +80,7 @@ var DataType = struct {
 }
 
 // String gets the DataType enumeration name as a string.
+//gocyclo:ignore
 func (dte DataTypeEnum) String() string {
 	switch dte {
 	case DataType.String:
@@ -120,6 +121,7 @@ func (dte DataTypeEnum) String() string {
 // ParseXsdDataType gets the DataType from the provided XSD data type. Return tuple includes
 // boolean value that determines if parse was successful. See XML Schema Language Datatypes
 // for possible xsdTypeName values:  https://www.w3.org/TR/xmlschema-2/
+//gocyclo:ignore
 func ParseXsdDataType(xsdTypeName, extDataType string) (DataTypeEnum, bool) {
 	switch xsdTypeName {
 	case "string":

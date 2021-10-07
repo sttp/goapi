@@ -96,6 +96,7 @@ func (td *Decoder) SetBuffer(data []byte) {
 }
 
 // TryGetMeasurement attempts to get the next decoded measurement from the working buffer.
+//gocyclo:ignore
 func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *uint32, value *float32) (bool, error) {
 	if td.position == td.lastPosition && td.bitStreamIsEmpty() {
 		td.clearBitStream()
@@ -348,6 +349,7 @@ func (td *Decoder) decodePointID(code byte) error {
 	return nil
 }
 
+//gocyclo:ignore
 func (td *Decoder) decodeTimestamp(code byte) int64 {
 	var timestamp int64
 

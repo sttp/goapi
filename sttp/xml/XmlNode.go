@@ -148,6 +148,7 @@ func SelectNodes(nodes []*XmlNode, xpath string) []*XmlNode {
 
 // SelectNodes finds all nodes matching xpath expression.
 // Predicates currently only support "=" matching.
+//gocyclo:ignore
 func (xn *XmlNode) SelectNodes(xpath string) []*XmlNode {
 	// This is a simple XPath implementation, this can be expanded
 	// as needed, perhaps using github.com/antchfx/xpath

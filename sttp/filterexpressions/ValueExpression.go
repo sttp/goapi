@@ -43,6 +43,7 @@ type ValueExpression struct {
 const debug bool = true
 
 // NewValueExpression creates a new value expression.
+//gocyclo:ignore
 func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
 	if value != nil {
 		switch valueType {

@@ -150,6 +150,7 @@ func (et *ExpressionTree) evaluateUnary(expression Expression) (*ValueExpression
 	}
 }
 
+//gocyclo:ignore
 func (et *ExpressionTree) evaluateColumn(expression Expression) (*ValueExpression, error) {
 	columnExpression := expression.(*ColumnExpression)
 	var column *data.DataColumn
@@ -296,6 +297,7 @@ func (et *ExpressionTree) evaluateInList(expression Expression) (*ValueExpressio
 	return False, nil
 }
 
+//gocyclo:ignore
 func (et *ExpressionTree) evaluateFunction(expression Expression) (*ValueExpression, error) {
 	functionExpression := expression.(*FunctionExpression)
 	arguments := functionExpression.Arguments()
@@ -1174,6 +1176,7 @@ func (et *ExpressionTree) evaluateUtcNow(arguments []Expression) (*ValueExpressi
 	return et.utcNow()
 }
 
+//gocyclo:ignore
 func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpression, error) {
 	operatorExpression := expression.(*OperatorExpression)
 	var err error
@@ -1346,6 +1349,7 @@ func (et *ExpressionTree) coalesce(arguments []Expression) (*ValueExpression, er
 	return testValue, nil
 }
 
+//gocyclo:ignore
 func (et *ExpressionTree) convert(sourceValue, targetType *ValueExpression) (*ValueExpression, error) {
 	if targetType.ValueType() != ExpressionValueType.String {
 		return nil, errors.New("\"Convert\" function target type, second argument, must be a \"String\"")
@@ -1434,6 +1438,7 @@ func (et *ExpressionTree) contains(sourceValue, testValue, ignoreCase *ValueExpr
 	return newValueExpression(ExpressionValueType.Boolean, strings.Contains(sourceValue.stringValue(), testValue.stringValue())), nil
 }
 
+//gocyclo:ignore
 func (et *ExpressionTree) dateAdd(sourceValue, addValue, intervalType *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.DateTime && sourceValue.ValueType() != ExpressionValueType.String {
 		return nil, errors.New("\"DateAdd\" function source value, first argument, must be a \"DateTime\" or a \"String\"")
@@ -1501,6 +1506,7 @@ func (et *ExpressionTree) dateAdd(sourceValue, addValue, intervalType *ValueExpr
 	}
 }
 
+//gocyclo:ignore
 func (et *ExpressionTree) dateDiff(leftValue, rightValue, intervalType *ValueExpression) (*ValueExpression, error) {
 	if leftValue.ValueType() != ExpressionValueType.DateTime && leftValue.ValueType() != ExpressionValueType.String {
 		return nil, errors.New("\"DateDiff\" function left value, first argument, must be a \"DateTime\" or a \"String\"")
@@ -1580,6 +1586,7 @@ func (et *ExpressionTree) dateDiff(leftValue, rightValue, intervalType *ValueExp
 	}
 }
 
+//gocyclo:ignore
 func (et *ExpressionTree) datePart(sourceValue, intervalType *ValueExpression) (*ValueExpression, error) {
 	if sourceValue.ValueType() != ExpressionValueType.DateTime && sourceValue.ValueType() != ExpressionValueType.String {
 		return nil, errors.New("\"DatePart\" function source value, first argument, must be a \"DateTime\" or a \"String\"")
@@ -3054,6 +3061,7 @@ func (et *ExpressionTree) isNotNullOp(leftValue *ValueExpression) *ValueExpressi
 	return newValueExpression(ExpressionValueType.Boolean, !leftValue.IsNull())
 }
 
+//gocyclo:ignore
 func (et *ExpressionTree) likeOp(leftValue, rightValue *ValueExpression, exactMatch bool) (*ValueExpression, error) {
 	// If left is Null, result is Null
 	if leftValue.IsNull() {

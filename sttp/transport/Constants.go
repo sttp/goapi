@@ -321,6 +321,7 @@ var ServerCommand = struct {
 }
 
 // String gets the ServerCommand enumeration value as a string.
+//gocyclo:ignore
 func (sce ServerCommandEnum) String() string {
 	switch sce {
 	case ServerCommand.Connect:
@@ -478,6 +479,7 @@ var ServerResponse = struct {
 }
 
 // String gets the ServerResponse enumeration value as a string.
+//gocyclo:ignore
 func (sre ServerResponseEnum) String() string {
 	switch sre {
 	case ServerResponse.Succeeded:

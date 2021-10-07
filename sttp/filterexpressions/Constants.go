@@ -343,6 +343,7 @@ var ExpressionFunctionType = struct {
 }
 
 // String gets the ExpressionFunctionType enumeration value as a string.
+//gocyclo:ignore
 func (efte ExpressionFunctionTypeEnum) String() string {
 	switch efte {
 	case ExpressionFunctionType.Abs:
@@ -519,6 +520,7 @@ var ExpressionOperatorType = struct {
 }
 
 // String gets the ExpressionOperatorType enumeration value as a string.
+//gocyclo:ignore
 func (eote ExpressionOperatorTypeEnum) String() string {
 	switch eote {
 	case ExpressionOperatorType.Multiply:
@@ -648,6 +650,7 @@ func ParseTimeInterval(name string) (TimeIntervalEnum, error) {
 
 // Operation Value Type Selectors
 
+//gocyclo:ignore
 func (eote ExpressionOperatorTypeEnum) deriveOperationValueType(leftValueType, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
 	switch eote {
 	case ExpressionOperatorType.Multiply:

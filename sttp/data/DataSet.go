@@ -191,6 +191,7 @@ func (ds *DataSet) ParseXmlDocument(doc *xml.XmlDocument) error {
 	return nil
 }
 
+//gocyclo:ignore
 func (ds *DataSet) loadSchema(schema *xml.XmlNode) {
 	schemaPrefix := schema.Prefix()
 
@@ -265,6 +266,7 @@ func (ds *DataSet) loadSchema(schema *xml.XmlNode) {
 	}
 }
 
+//gocyclo:ignore
 func (ds *DataSet) loadRecords(root *xml.XmlNode) {
 	// Each root node child that matches a table name represents a record
 	for _, table := range ds.Tables() {

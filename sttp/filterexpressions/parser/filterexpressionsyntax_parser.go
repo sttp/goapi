@@ -559,7 +559,7 @@ func (p *FilterExpressionSyntaxParser) Err() (localctx IErrContext) {
 		}
 	}()))
 
-	return localctx
+	//return localctx
 }
 
 // IFilterExpressionStatementListContext is an interface to support dynamic dispatch.
@@ -1936,6 +1936,7 @@ func (p *FilterExpressionSyntaxParser) PredicateExpression() (localctx IPredicat
 	return p.predicateExpression(0)
 }
 
+//gocyclo:ignore
 func (p *FilterExpressionSyntaxParser) predicateExpression(_p int) (localctx IPredicateExpressionContext) {
 	var _parentctx antlr.ParserRuleContext = p.GetParserRuleContext()
 	_parentState := p.GetState()
@@ -2281,6 +2282,7 @@ func (p *FilterExpressionSyntaxParser) ValueExpression() (localctx IValueExpress
 	return p.valueExpression(0)
 }
 
+//gocyclo:ignore
 func (p *FilterExpressionSyntaxParser) valueExpression(_p int) (localctx IValueExpressionContext) {
 	var _parentctx antlr.ParserRuleContext = p.GetParserRuleContext()
 	_parentState := p.GetState()

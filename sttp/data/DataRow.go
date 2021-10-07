@@ -180,6 +180,7 @@ func (dr *DataRow) SetValueByName(columnName string, value interface{}) error {
 
 // ColumnValueAsString reads the record value for the specified data column
 // converted to a string. For any errors, an empty string will be returned.
+//gocyclo:ignore
 func (dr *DataRow) ColumnValueAsString(column *DataColumn) string {
 	if column == nil {
 		return ""
