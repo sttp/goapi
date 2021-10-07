@@ -97,8 +97,8 @@ func (g Guid) Components() (a uint32, b, c uint16, d [8]byte) {
 	bytes := [16]byte(g)
 
 	a = (uint32(bytes[3]) << 24) | (uint32(bytes[2]) << 16) | (uint32(bytes[1]) << 8) | uint32(bytes[0])
-	b = (uint16(bytes[5]) << 8) | uint16(bytes[4])
-	c = (uint16(bytes[7]) << 8) | uint16(bytes[6])
+	b = uint16((uint32(bytes[5]) << 8) | uint32(bytes[4]))
+	c = uint16((uint32(bytes[7]) << 8) | uint32(bytes[6]))
 	d[0] = bytes[8]
 	d[1] = bytes[9]
 	d[2] = bytes[10]
