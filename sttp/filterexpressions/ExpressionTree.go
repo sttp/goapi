@@ -3063,11 +3063,29 @@ func (et *ExpressionTree) notLikeOp(leftValue *ValueExpression, rightValue *Valu
 }
 
 func (et *ExpressionTree) andOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(ExpressionValueType.Boolean), nil
+	}
+
+	if leftValue.ValueType() != ExpressionValueType.Boolean || rightValue.ValueType() != ExpressionValueType.Boolean {
+		return nil, errors.New("cannot perform \"AND\" operation on \"" + leftValue.ValueType().String() + "\" and \"" + rightValue.ValueType().String() + "\"")
+	}
+
+	return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValue() && rightValue.booleanValue()), nil
 }
 
 func (et *ExpressionTree) orOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(ExpressionValueType.Boolean), nil
+	}
+
+	if leftValue.ValueType() != ExpressionValueType.Boolean || rightValue.ValueType() != ExpressionValueType.Boolean {
+		return nil, errors.New("cannot perform \"OR\" operation on \"" + leftValue.ValueType().String() + "\" and \"" + rightValue.ValueType().String() + "\"")
+	}
+
+	return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValue() || rightValue.booleanValue()), nil
 }
 
 // https://play.golang.org/p/-zlKH7mfboa
