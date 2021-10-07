@@ -138,7 +138,7 @@ type CompactMeasurement struct {
 }
 
 // NewCompactMeasurement creates a new CompactMeasurement
-func NewCompactMeasurement(signalIndexCache *SignalIndexCache, includeTime bool, useMillisecondResolution bool, baseTimeOffsets *[2]int64) CompactMeasurement {
+func NewCompactMeasurement(signalIndexCache *SignalIndexCache, includeTime, useMillisecondResolution bool, baseTimeOffsets *[2]int64) CompactMeasurement {
 	return CompactMeasurement{
 		Measurement:              Measurement{},
 		signalIndexCache:         signalIndexCache,

@@ -32,7 +32,7 @@ type InListExpression struct {
 }
 
 // NewInListExpression creates a new in-list expression.
-func NewInListExpression(value Expression, arguments []Expression, hasNotkeyWord bool, exactMatch bool) *InListExpression {
+func NewInListExpression(value Expression, arguments []Expression, hasNotkeyWord, exactMatch bool) *InListExpression {
 	return &InListExpression{
 		value:         value,
 		arguments:     arguments,

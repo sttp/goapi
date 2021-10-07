@@ -31,7 +31,7 @@ type OperatorExpression struct {
 }
 
 // NewOperatorExpression creates a new operator expression.
-func NewOperatorExpression(operatorType ExpressionOperatorTypeEnum, leftValue Expression, rightValue Expression) *OperatorExpression {
+func NewOperatorExpression(operatorType ExpressionOperatorTypeEnum, leftValue, rightValue Expression) *OperatorExpression {
 	return &OperatorExpression{
 		operatorType: operatorType,
 		leftValue:    leftValue,

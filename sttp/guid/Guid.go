@@ -83,7 +83,7 @@ func Compare(a, b Guid) int {
 	return 0
 }
 
-func result(left uint32, right uint32) int {
+func result(left, right uint32) int {
 	if left < right {
 		return -1
 	}
@@ -92,7 +92,7 @@ func result(left uint32, right uint32) int {
 }
 
 // Components gets the Guid value as its constituent components.
-func (g Guid) Components() (a uint32, b uint16, c uint16, d [8]byte) {
+func (g Guid) Components() (a uint32, b, c uint16, d [8]byte) {
 
 	bytes := [16]byte(g)
 

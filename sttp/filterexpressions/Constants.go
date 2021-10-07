@@ -648,7 +648,7 @@ func ParseTimeInterval(name string) (TimeIntervalEnum, error) {
 
 // Operation Value Type Selectors
 
-func (eote ExpressionOperatorTypeEnum) deriveOperationValueType(leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+func (eote ExpressionOperatorTypeEnum) deriveOperationValueType(leftValueType, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
 	switch eote {
 	case ExpressionOperatorType.Multiply:
 		fallthrough
@@ -707,7 +707,7 @@ func (eote ExpressionOperatorTypeEnum) deriveOperationValueType(leftValueType Ex
 	}
 }
 
-func (eote ExpressionOperatorTypeEnum) deriveArithmeticOperationValueType(leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+func (eote ExpressionOperatorTypeEnum) deriveArithmeticOperationValueType(leftValueType, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
 	switch leftValueType {
 	case ExpressionValueType.Boolean:
 		return eote.deriveArithmeticOperationValueTypeFromBoolean(rightValueType)
@@ -863,7 +863,7 @@ func (eote ExpressionOperatorTypeEnum) deriveArithmeticOperationValueTypeFromDou
 	}
 }
 
-func (eote ExpressionOperatorTypeEnum) deriveIntegerOperationValueType(leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+func (eote ExpressionOperatorTypeEnum) deriveIntegerOperationValueType(leftValueType, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
 	switch leftValueType {
 	case ExpressionValueType.Boolean:
 		return eote.deriveIntegerOperationValueTypeFromBoolean(rightValueType)
@@ -955,7 +955,7 @@ func (eote ExpressionOperatorTypeEnum) deriveIntegerOperationValueTypeFromInt64(
 	}
 }
 
-func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueType(leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueType(leftValueType, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
 	switch leftValueType {
 	case ExpressionValueType.Boolean:
 		return eote.deriveComparisonOperationValueTypeFromBoolean(rightValueType)
@@ -1139,7 +1139,7 @@ func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueTypeFromDat
 	}
 }
 
-func (eote ExpressionOperatorTypeEnum) deriveBooleanOperationValueType(leftValueType ExpressionValueTypeEnum, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
+func (eote ExpressionOperatorTypeEnum) deriveBooleanOperationValueType(leftValueType, rightValueType ExpressionValueTypeEnum) (ExpressionValueTypeEnum, error) {
 	if leftValueType == ExpressionValueType.Boolean && rightValueType == ExpressionValueType.Boolean {
 		return ExpressionValueType.Boolean, nil
 	}

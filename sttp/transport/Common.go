@@ -31,7 +31,7 @@ import (
 	"io"
 )
 
-func decipherAES(key []byte, iv []byte, data []byte) ([]byte, error) {
+func decipherAES(key, iv, data []byte) ([]byte, error) {
 	var block cipher.Block
 	var err error
 

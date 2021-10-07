@@ -27,17 +27,17 @@ import (
 	"time"
 )
 
-func TestValidateTicksContstants(t *testing.T) {
+func TestValidateTicksConstants(t *testing.T) {
 	if LeapSecondFlag != 0x8000000000000000 {
-		t.Fatalf("ValidateTicksContstants: unexpected ticks leap second flag value")
+		t.Fatalf("ValidateTicksConstants: unexpected ticks leap second flag value")
 	}
 
 	if ValueMask != 0x3FFFFFFFFFFFFFFF {
-		t.Fatalf("ValidateTicksContstants: unexpected ticks value mask value")
+		t.Fatalf("ValidateTicksConstants: unexpected ticks value mask value")
 	}
 
 	if ReservedUTCFlag != 0x4000000000000000 {
-		t.Fatalf("ValidateTicksContstants: unexpected ticks reserved UTC flag value")
+		t.Fatalf("ValidateTicksConstants: unexpected ticks reserved UTC flag value")
 	}
 }
 

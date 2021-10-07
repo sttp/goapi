@@ -168,7 +168,7 @@ func (dt *DataTable) RowCount() int {
 
 // RowValueAsString reads the row record value at the specified columnIndex converted to a string.
 // For columnIndex out of range or any other errors, an empty string will be returned.
-func (dt *DataTable) RowValueAsString(rowIndex int, columnIndex int) string {
+func (dt *DataTable) RowValueAsString(rowIndex, columnIndex int) string {
 	row := dt.Row(rowIndex)
 
 	if row == nil {

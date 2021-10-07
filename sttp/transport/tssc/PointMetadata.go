@@ -126,7 +126,7 @@ type pointMetadata struct {
 	readBits5 func() int32
 }
 
-func newPointMetadata(writeBits func(int32, int32), readBit func() int32, readBits5 func() int32) *pointMetadata {
+func newPointMetadata(writeBits func(int32, int32), readBit, readBits5 func() int32) *pointMetadata {
 	return &pointMetadata{
 		mode:      4,
 		mode41:    codeWords.Value1,
@@ -307,7 +307,7 @@ func (pm *pointMetadata) adaptCommands() error {
 	return nil
 }
 
-func min(lv int32, rv int32) int32 {
+func min(lv, rv int32) int32 {
 	if lv < rv {
 		return lv
 	}

@@ -62,7 +62,7 @@ func (dr *DataRow) getColumnIndex(columnName string) (int, error) {
 	return column.Index(), nil
 }
 
-func (dr *DataRow) validateColumnType(columnIndex int, targetType int, read bool) (*DataColumn, error) {
+func (dr *DataRow) validateColumnType(columnIndex, targetType int, read bool) (*DataColumn, error) {
 	column := dr.parent.Column(columnIndex)
 
 	if column == nil {

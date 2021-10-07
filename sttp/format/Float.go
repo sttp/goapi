@@ -37,7 +37,7 @@ func Float(f float64, prec int) string {
 
 // FloatWith formats a floating-point number with the specified decimalSymbol, e.g., '.',
 // and the specified numeric thousands groupSymbol, e.g., ','.
-func FloatWith(f float64, prec int, decimalSymbol byte, groupSymbol byte) string {
+func FloatWith(f float64, prec int, decimalSymbol, groupSymbol byte) string {
 	in := strconv.FormatFloat(f, 'f', prec, 64)
 	decSymbolAsStr := string([]byte{decimalSymbol})
 

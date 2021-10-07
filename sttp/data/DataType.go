@@ -120,7 +120,7 @@ func (dte DataTypeEnum) String() string {
 // ParseXsdDataType gets the DataType from the provided XSD data type. Return tuple includes
 // boolean value that determines if parse was successful. See XML Schema Language Datatypes
 // for possible xsdTypeName values:  https://www.w3.org/TR/xmlschema-2/
-func ParseXsdDataType(xsdTypeName string, extDataType string) (DataTypeEnum, bool) {
+func ParseXsdDataType(xsdTypeName, extDataType string) (DataTypeEnum, bool) {
 	switch xsdTypeName {
 	case "string":
 		if strings.HasPrefix(extDataType, "System.Guid") {
