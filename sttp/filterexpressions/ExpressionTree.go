@@ -2867,15 +2867,109 @@ func (et *ExpressionTree) lessThanOp(leftValue *ValueExpression, rightValue *Val
 }
 
 func (et *ExpressionTree) lessThanOrEqualOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(valueType), nil
+	}
+
+	if err := convertOperands(&leftValue, &rightValue, valueType); err != nil {
+		return nil, errors.New("less than or equal \"<=\" operator " + err.Error())
+	}
+
+	switch valueType {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt() <= rightValue.booleanValueAsInt()), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.int32Value() <= rightValue.int32Value()), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() <= rightValue.int64Value()), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() <= rightValue.decimalValue()), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() <= rightValue.doubleValue()), nil
+	case ExpressionValueType.String:
+		return newValueExpression(ExpressionValueType.Boolean, strings.ToUpper(leftValue.stringValue()) <= strings.ToUpper(rightValue.stringValue())), nil
+	case ExpressionValueType.Guid:
+		return newValueExpression(ExpressionValueType.Boolean, guid.Compare(leftValue.guidValue(), rightValue.guidValue()) <= 0), nil
+	case ExpressionValueType.DateTime:
+		left := leftValue.dateTimeValue()
+		right := rightValue.dateTimeValue()
+		return newValueExpression(ExpressionValueType.Boolean, left.Before(right) || left.Equal(right)), nil
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply less than or equal \"<=\" operator to \"" + valueType.String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) greaterThanOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(valueType), nil
+	}
+
+	if err := convertOperands(&leftValue, &rightValue, valueType); err != nil {
+		return nil, errors.New("greater than \">\" operator " + err.Error())
+	}
+
+	switch valueType {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt() > rightValue.booleanValueAsInt()), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.int32Value() > rightValue.int32Value()), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() > rightValue.int64Value()), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() > rightValue.decimalValue()), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() > rightValue.doubleValue()), nil
+	case ExpressionValueType.String:
+		return newValueExpression(ExpressionValueType.Boolean, strings.ToUpper(leftValue.stringValue()) > strings.ToUpper(rightValue.stringValue())), nil
+	case ExpressionValueType.Guid:
+		return newValueExpression(ExpressionValueType.Boolean, guid.Compare(leftValue.guidValue(), rightValue.guidValue()) > 0), nil
+	case ExpressionValueType.DateTime:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.dateTimeValue().After(rightValue.dateTimeValue())), nil
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply greater than \">\" operator to \"" + valueType.String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) greaterThanOrEqualOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum) (*ValueExpression, error) {
-	return nil, nil
+	// If left or right value is Null, result is Null
+	if leftValue.IsNull() || rightValue.IsNull() {
+		return NullValue(valueType), nil
+	}
+
+	if err := convertOperands(&leftValue, &rightValue, valueType); err != nil {
+		return nil, errors.New("greater than or equal \">=\" operator " + err.Error())
+	}
+
+	switch valueType {
+	case ExpressionValueType.Boolean:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt() >= rightValue.booleanValueAsInt()), nil
+	case ExpressionValueType.Int32:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.int32Value() >= rightValue.int32Value()), nil
+	case ExpressionValueType.Int64:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() >= rightValue.int64Value()), nil
+	case ExpressionValueType.Decimal:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() >= rightValue.decimalValue()), nil
+	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() >= rightValue.doubleValue()), nil
+	case ExpressionValueType.String:
+		return newValueExpression(ExpressionValueType.Boolean, strings.ToUpper(leftValue.stringValue()) >= strings.ToUpper(rightValue.stringValue())), nil
+	case ExpressionValueType.Guid:
+		return newValueExpression(ExpressionValueType.Boolean, guid.Compare(leftValue.guidValue(), rightValue.guidValue()) >= 0), nil
+	case ExpressionValueType.DateTime:
+		left := leftValue.dateTimeValue()
+		right := rightValue.dateTimeValue()
+		return newValueExpression(ExpressionValueType.Boolean, left.After(right) || left.Equal(right)), nil
+	case ExpressionValueType.Undefined:
+		return nil, errors.New("cannot apply greater than or equal \">=\" operator to \"" + valueType.String() + "\"")
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
 }
 
 func (et *ExpressionTree) equalOp(leftValue *ValueExpression, rightValue *ValueExpression, valueType ExpressionValueTypeEnum, exactMatch bool) (*ValueExpression, error) {
