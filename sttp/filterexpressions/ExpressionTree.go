@@ -3055,11 +3055,99 @@ func (et *ExpressionTree) isNotNullOp(leftValue *ValueExpression) *ValueExpressi
 }
 
 func (et *ExpressionTree) likeOp(leftValue *ValueExpression, rightValue *ValueExpression, exactMatch bool) (*ValueExpression, error) {
-	return nil, nil
+	// If left is Null, result is Null
+	if leftValue.IsNull() {
+		return NullValue(ExpressionValueType.Boolean), nil
+	}
+
+	if leftValue.ValueType() != ExpressionValueType.String || rightValue.ValueType() != ExpressionValueType.String {
+		return nil, errors.New("cannot perform \"LIKE\" operation on \"" + leftValue.ValueType().String() + "\" and \"" + rightValue.ValueType().String() + "\"")
+	}
+
+	if rightValue.IsNull() {
+		return nil, errors.New("right operand of \"LIKE\" expression is null")
+	}
+
+	leftOperand := leftValue.stringValue()
+	rightOperand := rightValue.stringValue()
+	testExpression := strings.ReplaceAll(rightOperand, "%", "*")
+	startsWithWildcard := strings.HasPrefix(testExpression, "*")
+	endsWithWildcard := strings.HasSuffix(testExpression, "*")
+
+	if startsWithWildcard {
+		testExpression = testExpression[1:]
+	}
+
+	if endsWithWildcard && len(testExpression) > 0 {
+		testExpression = testExpression[:len(testExpression)-1]
+	}
+
+	// "*" or "**" expression means match everything
+	if len(testExpression) == 0 {
+		return True, nil
+	}
+
+	// Wild cards in the middle of the string are not supported
+	if strings.ContainsRune(testExpression, '*') {
+		return nil, errors.New("Right operand of \"LIKE\" expression \"" + rightOperand + "\" has an invalid pattern")
+	}
+
+	if startsWithWildcard {
+		if exactMatch {
+			if strings.HasSuffix(leftOperand, testExpression) {
+				return True, nil
+			}
+		} else {
+			if strings.HasSuffix(strings.ToUpper(leftOperand), strings.ToUpper(testExpression)) {
+				return True, nil
+			}
+		}
+	}
+
+	if endsWithWildcard {
+		if exactMatch {
+			if strings.HasPrefix(leftOperand, testExpression) {
+				return True, nil
+			}
+		} else {
+			if strings.HasPrefix(strings.ToUpper(leftOperand), strings.ToUpper(testExpression)) {
+				return True, nil
+			}
+		}
+	}
+
+	if startsWithWildcard && endsWithWildcard {
+		if exactMatch {
+			if strings.Contains(leftOperand, testExpression) {
+				return True, nil
+			}
+		} else {
+			if strings.Contains(strings.ToUpper(leftOperand), strings.ToUpper(testExpression)) {
+				return True, nil
+			}
+		}
+	}
+
+	return False, nil
 }
 
 func (et *ExpressionTree) notLikeOp(leftValue *ValueExpression, rightValue *ValueExpression, exactMatch bool) (*ValueExpression, error) {
-	return nil, nil
+	// If left is Null, result is Null
+	if leftValue.IsNull() {
+		return NullValue(ExpressionValueType.Boolean), nil
+	}
+
+	likeResult, err := et.likeOp(leftValue, rightValue, exactMatch)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if likeResult.booleanValue() {
+		return False, nil
+	}
+
+	return True, nil
 }
 
 func (et *ExpressionTree) andOp(leftValue *ValueExpression, rightValue *ValueExpression) (*ValueExpression, error) {
