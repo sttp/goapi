@@ -26,8 +26,11 @@ package filterexpressions
 import (
 	"errors"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/araddon/dateparse"
 	"github.com/sttp/goapi/sttp/data"
 	"github.com/sttp/goapi/sttp/filterexpressions/parser"
 	"github.com/sttp/goapi/sttp/guid"
@@ -94,6 +97,22 @@ func NewFilterExpressionParser(filterExpression string, suppressConsoleErrorOutp
 	fep.parser.AddErrorListener(fep.errorListener)
 
 	return fep
+}
+
+// TableIDFields gets the table ID fields associated with the specified tableName; or nil if not found.
+func (fep *FilterExpressionParser) TableIDFields(tableName string) *TableIDFields {
+	tableIDFields, ok := fep.tableIDFields[tableName]
+
+	if ok {
+		return tableIDFields
+	}
+
+	return nil
+}
+
+// RegisterTableIDFields associates the tableIDFields value with the specified tableName.
+func (fep *FilterExpressionParser) RegisterTableIDFields(tableName string, tableIDFields *TableIDFields) {
+	fep.tableIDFields[tableName] = tableIDFields
 }
 
 // RegisterParsingExceptionCallback registers a callback for receiving parsing exception messsages.
@@ -178,6 +197,32 @@ func (fep *FilterExpressionParser) addMatchedRow(row *data.DataRow, signalIDColu
 	}
 }
 
+func (fep *FilterExpressionParser) mapMatchedFieldRow(primaryTable *data.DataTable, columnName string, matchValue string, signalIDColumnIndex int) {
+	column := primaryTable.ColumnByName(columnName)
+
+	if column == nil {
+		return
+	}
+
+	matchValue = strings.ToUpper(matchValue)
+	columnIndex := column.Index()
+
+	for i := 0; i < primaryTable.RowCount(); i++ {
+		row := primaryTable.Row(i)
+
+		if row == nil {
+			continue
+		}
+
+		value, null, err := row.StringValue(columnIndex)
+
+		if !null && err == nil && matchValue == strings.ToUpper(value) {
+			fep.addMatchedRow(row, signalIDColumnIndex)
+			return
+		}
+	}
+}
+
 // Evaluate parses each statement in the filter expression and tracks the results.
 func (fep *FilterExpressionParser) Evaluate() error {
 	if fep.DataSet == nil {
@@ -227,14 +272,6 @@ func (fep *FilterExpressionParser) Evaluate() error {
 
 	return nil
 }
-
-// func (fep *FilterExpressionParser) tryGetExpr(context antlr.ParserRuleContext) (Expression, bool) {
-// 	if expression, ok := fep.expressions[context]; ok {
-// 		return expression, true
-// 	}
-
-// 	return nil, false
-// }
 
 // GetExpressionTrees gets the expression trees, parsing the filter expression if needed.
 func (fep *FilterExpressionParser) GetExpressionTrees() []*ExpressionTree {
@@ -325,6 +362,103 @@ func (fep *FilterExpressionParser) EnterFilterStatement(ctx *parser.FilterStatem
 	}
 }
 
+/*
+   identifierStatement
+    : GUID_LITERAL
+    | MEASUREMENT_KEY_LITERAL
+    | POINT_TAG_LITERAL
+    ;
+*/
+
+// ExitIdentifierStatement is called when production identifierStatement is exited.
+func (fep *FilterExpressionParser) ExitIdentifierStatement(ctx *parser.IdentifierStatementContext) {
+	signalID := guid.Empty
+
+	if ctx.GUID_LITERAL() != nil {
+		signalID = parseGuidLiteral(ctx.GUID_LITERAL().GetText())
+
+		if !fep.TrackFilteredRows && !fep.TrackFilteredSignalIDs {
+			// Handle edge case of encountering standalone Guid when not tracking rows or table identifiers.
+			// In this scenario the filter expression parser would only be used to generate expression trees
+			// for general expression parsing, e.g., for a DataColumn expression, so here the Guid should be
+			// treated as a literal expression value instead of an identifier to track:
+			fep.EnterExpression(nil)
+			fep.activeExpressionTree.Root = newValueExpression(ExpressionValueType.Guid, signalID)
+			return
+		}
+
+		if fep.TrackFilteredSignalIDs && !signalID.IsZero() {
+			if fep.filterExpressionStatementCount > 1 {
+				if fep.filteredSignalIDSet.Add(signalID) {
+					fep.filteredSignalIDs = append(fep.filteredSignalIDs, signalID)
+				}
+			} else {
+				fep.filteredSignalIDs = append(fep.filteredSignalIDs, signalID)
+			}
+		}
+
+		if !fep.TrackFilteredRows {
+			return
+		}
+	}
+
+	primaryTable := fep.DataSet.Table(fep.PrimaryTableName)
+
+	if primaryTable == nil {
+		return
+	}
+
+	primaryTableIDFields, ok := fep.tableIDFields[fep.PrimaryTableName]
+
+	if !ok || primaryTableIDFields == nil {
+		return
+	}
+
+	signalIDColumn := primaryTable.ColumnByName(primaryTableIDFields.SignalIDFieldName)
+
+	if signalIDColumn == nil {
+		return
+	}
+
+	signalIDColumnIndex := signalIDColumn.Index()
+
+	if fep.TrackFilteredRows && !signalID.IsZero() {
+		// Map matching row for manually specified Guid
+		for i := 0; i < primaryTable.RowCount(); i++ {
+			row := primaryTable.Row(i)
+
+			if row == nil {
+				continue
+			}
+
+			value, null, err := row.GuidValue(signalIDColumnIndex)
+
+			if !null && err == nil && value == signalID {
+				if fep.filterExpressionStatementCount > 1 {
+					if fep.filteredRowSet.Add(row) {
+						fep.filteredRows = append(fep.filteredRows, row)
+					}
+				} else {
+					fep.filteredRows = append(fep.filteredRows, row)
+				}
+
+				return
+			}
+		}
+
+		return
+	}
+
+	if ctx.MEASUREMENT_KEY_LITERAL() != nil {
+		fep.mapMatchedFieldRow(primaryTable, primaryTableIDFields.MeasurementKeyFieldName, ctx.MEASUREMENT_KEY_LITERAL().GetText(), signalIDColumnIndex)
+		return
+	}
+
+	if ctx.POINT_TAG_LITERAL() != nil {
+		fep.mapMatchedFieldRow(primaryTable, primaryTableIDFields.PointTagFieldName, parsePointTagLiteral(ctx.POINT_TAG_LITERAL().GetText()), signalIDColumnIndex)
+	}
+}
+
 // Select evaluates the specified expression tree returning matching rows.
 func (fep *FilterExpressionParser) Select(expressionTree *ExpressionTree) []*data.DataRow {
 	matchedRows := make([]*data.DataRow, 0)
@@ -332,4 +466,46 @@ func (fep *FilterExpressionParser) Select(expressionTree *ExpressionTree) []*dat
 	// TODO...
 
 	return matchedRows
+}
+
+func parseStringLiteral(stringLiteral string) string {
+	// Remove any surrounding quotes from string, ANTLR grammar already
+	// ensures strings starting with quote also ends with one
+	if stringLiteral[0] == '\'' {
+		return stringLiteral[1 : len(stringLiteral)-1]
+	}
+
+	return stringLiteral
+}
+
+func parseGuidLiteral(guidLiteral string) guid.Guid {
+	// Remove any quotes from GUID (boost currently only handles optional braces),
+	// ANTLR grammar already ensures GUID starting with quote also ends with one
+	if guidLiteral[0] == '\'' {
+		guidLiteral = guidLiteral[1 : len(guidLiteral)-1]
+	}
+
+	g, _ := guid.Parse(guidLiteral)
+	return g
+}
+
+func parseDateTimeLiteral(dateTimeLiteral string) time.Time {
+	// Remove any surrounding '#' symbols from date/time, ANTLR grammar already
+	// ensures date/time starting with '#' symbol will also end with one
+	if dateTimeLiteral[0] == '#' {
+		dateTimeLiteral = dateTimeLiteral[1 : len(dateTimeLiteral)-1]
+	}
+
+	dt, _ := dateparse.ParseAny(dateTimeLiteral)
+	return dt
+}
+
+func parsePointTagLiteral(pointTagLiteral string) string {
+	// Remove any double-quotes from point tag literal, ANTLR grammar already
+	// ensures tag starting with quote also ends with one
+	if pointTagLiteral[0] == '"' {
+		return pointTagLiteral[1 : len(pointTagLiteral)-1]
+	}
+
+	return pointTagLiteral
 }
