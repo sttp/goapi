@@ -39,6 +39,7 @@ const (
 	gsz string = "{00000000-0000-0000-0000-000000000000}"
 )
 
+//gocyclo: ignore
 func TestGuidParsing(t *testing.T) {
 	var g1, g2, g3, g4 Guid
 	var err error
@@ -117,6 +118,7 @@ func TestNewGuidRandomness(t *testing.T) {
 	}
 }
 
+//gocyclo: ignore
 func TestZeroGuid(t *testing.T) {
 	var gz, zero Guid
 	var err error
@@ -164,6 +166,7 @@ func TestZeroGuid(t *testing.T) {
 	}
 }
 
+//gocyclo: ignore
 func TestGuidCompare(t *testing.T) {
 	var g1, g2, g3, g4, g5, g6 Guid
 	var err error

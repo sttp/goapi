@@ -61,7 +61,7 @@ func (ile *InListExpression) HasNotKeyword() bool {
 	return ile.hasNotkeyWord
 }
 
-// ExactMatch gets a flags that determines if the InListExpression has the "BINARY" or "===" keyword.
+// ExtactMatch gets a flags that determines if the InListExpression has the "BINARY" or "===" keyword.
 func (ile *InListExpression) ExtactMatch() bool {
 	return ile.exactMatch
 }

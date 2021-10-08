@@ -68,7 +68,7 @@ var settingsDefaults = Settings{
 	ProcessingInterval: -1,
 }
 
-// NewSettings creates a new Settings instance initalized with default values.
+// NewSettings creates a new Settings instance initialized with default values.
 func NewSettings() *Settings {
 	settings := settingsDefaults
 	return &settings

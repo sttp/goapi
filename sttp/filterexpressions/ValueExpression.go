@@ -89,19 +89,19 @@ func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *V
 			value:     value,
 			valueType: valueType,
 		}
-	} else {
-		return newValueExpression(valueType, value)
 	}
+
+	return newValueExpression(valueType, value)
 }
 
 func newValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *ValueExpression {
 	if debug {
 		return NewValueExpression(valueType, value)
-	} else {
-		return &ValueExpression{
-			value:     value,
-			valueType: valueType,
-		}
+	}
+
+	return &ValueExpression{
+		value:     value,
+		valueType: valueType,
 	}
 }
 

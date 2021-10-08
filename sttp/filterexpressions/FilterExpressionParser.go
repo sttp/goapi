@@ -371,6 +371,7 @@ func (fep *FilterExpressionParser) EnterFilterStatement(ctx *parser.FilterStatem
 */
 
 // ExitIdentifierStatement is called when production identifierStatement is exited.
+//gocyclo: ignore
 func (fep *FilterExpressionParser) ExitIdentifierStatement(ctx *parser.IdentifierStatementContext) {
 	signalID := guid.Empty
 
