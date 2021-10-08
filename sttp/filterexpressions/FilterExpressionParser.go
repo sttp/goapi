@@ -223,6 +223,16 @@ func (fep *FilterExpressionParser) mapMatchedFieldRow(primaryTable *data.DataTab
 	}
 }
 
+func (fep *FilterExpressionParser) tryGetExpr(ctx antlr.ParserRuleContext, value *Expression) bool {
+	var ok bool
+	*value, ok = fep.expressions[ctx]
+	return ok
+}
+
+func (fep *FilterExpressionParser) addExpr(ctx antlr.ParserRuleContext, value Expression) {
+	fep.expressions[ctx] = value
+}
+
 // Evaluate parses each statement in the filter expression and tracks the results.
 func (fep *FilterExpressionParser) Evaluate() error {
 	if fep.DataSet == nil {
@@ -291,7 +301,7 @@ func (fep *FilterExpressionParser) GetExpressionTrees() []*ExpressionTree {
 */
 
 // EnterFilterExpressionStatement is called when production filterExpressionStatement is entered.
-func (fep *FilterExpressionParser) EnterFilterExpressionStatement(ctx *parser.FilterExpressionStatementContext) {
+func (fep *FilterExpressionParser) EnterFilterExpressionStatement(context *parser.FilterExpressionStatementContext) {
 	// One filter expression can contain multiple filter statements separated by semi-colon,
 	// so we track each as an independent expression tree
 	fep.expressions = make(map[antlr.ParserRuleContext]Expression)
@@ -320,8 +330,8 @@ func (fep *FilterExpressionParser) EnterFilterExpressionStatement(ctx *parser.Fi
 */
 
 // EnterFilterStatement is called when production filterStatement is entered.
-func (fep *FilterExpressionParser) EnterFilterStatement(ctx *parser.FilterStatementContext) {
-	tableName := ctx.TableName().GetText()
+func (fep *FilterExpressionParser) EnterFilterStatement(context *parser.FilterStatementContext) {
+	tableName := context.TableName().GetText()
 	table := fep.DataSet.Table(tableName)
 
 	if table == nil {
@@ -331,8 +341,8 @@ func (fep *FilterExpressionParser) EnterFilterStatement(ctx *parser.FilterStatem
 	fep.activeExpressionTree = NewExpressionTree(table)
 	fep.expressionTrees = append(fep.expressionTrees, fep.activeExpressionTree)
 
-	if ctx.K_TOP() != nil {
-		topLimit, err := strconv.Atoi(ctx.TopLimit().GetText())
+	if context.K_TOP() != nil {
+		topLimit, err := strconv.Atoi(context.TopLimit().GetText())
 
 		if err == nil {
 			fep.activeExpressionTree.TopLimit = topLimit
@@ -341,8 +351,8 @@ func (fep *FilterExpressionParser) EnterFilterStatement(ctx *parser.FilterStatem
 		}
 	}
 
-	if ctx.K_ORDER() != nil && ctx.K_BY() != nil {
-		orderingTerms := ctx.AllOrderingTerm()
+	if context.K_ORDER() != nil && context.K_BY() != nil {
+		orderingTerms := context.AllOrderingTerm()
 
 		for i := 0; i < len(orderingTerms); i++ {
 			orderingTerm := orderingTerms[i].(*parser.OrderingTermContext)
@@ -350,7 +360,7 @@ func (fep *FilterExpressionParser) EnterFilterStatement(ctx *parser.FilterStatem
 			orderByColumn := table.ColumnByName(orderByColumnName)
 
 			if orderByColumn == nil {
-				panic("Failed to find order by field \"" + orderByColumnName + "\" for table \"" + table.Name() + "\"")
+				panic("failed to find order by field \"" + orderByColumnName + "\" for table \"" + table.Name() + "\"")
 			}
 
 			fep.activeExpressionTree.OrderByTerms = append(fep.activeExpressionTree.OrderByTerms, &OrderByTerm{
@@ -372,11 +382,11 @@ func (fep *FilterExpressionParser) EnterFilterStatement(ctx *parser.FilterStatem
 
 // ExitIdentifierStatement is called when production identifierStatement is exited.
 //gocyclo: ignore
-func (fep *FilterExpressionParser) ExitIdentifierStatement(ctx *parser.IdentifierStatementContext) {
+func (fep *FilterExpressionParser) ExitIdentifierStatement(context *parser.IdentifierStatementContext) {
 	signalID := guid.Empty
 
-	if ctx.GUID_LITERAL() != nil {
-		signalID = parseGuidLiteral(ctx.GUID_LITERAL().GetText())
+	if context.GUID_LITERAL() != nil {
+		signalID = parseGuidLiteral(context.GUID_LITERAL().GetText())
 
 		if !fep.TrackFilteredRows && !fep.TrackFilteredSignalIDs {
 			// Handle edge case of encountering standalone Guid when not tracking rows or table identifiers.
@@ -450,13 +460,13 @@ func (fep *FilterExpressionParser) ExitIdentifierStatement(ctx *parser.Identifie
 		return
 	}
 
-	if ctx.MEASUREMENT_KEY_LITERAL() != nil {
-		fep.mapMatchedFieldRow(primaryTable, primaryTableIDFields.MeasurementKeyFieldName, ctx.MEASUREMENT_KEY_LITERAL().GetText(), signalIDColumnIndex)
+	if context.MEASUREMENT_KEY_LITERAL() != nil {
+		fep.mapMatchedFieldRow(primaryTable, primaryTableIDFields.MeasurementKeyFieldName, context.MEASUREMENT_KEY_LITERAL().GetText(), signalIDColumnIndex)
 		return
 	}
 
-	if ctx.POINT_TAG_LITERAL() != nil {
-		fep.mapMatchedFieldRow(primaryTable, primaryTableIDFields.PointTagFieldName, parsePointTagLiteral(ctx.POINT_TAG_LITERAL().GetText()), signalIDColumnIndex)
+	if context.POINT_TAG_LITERAL() != nil {
+		fep.mapMatchedFieldRow(primaryTable, primaryTableIDFields.PointTagFieldName, parsePointTagLiteral(context.POINT_TAG_LITERAL().GetText()), signalIDColumnIndex)
 	}
 }
 
@@ -469,18 +479,99 @@ func (fep *FilterExpressionParser) ExitIdentifierStatement(ctx *parser.Identifie
 */
 
 // EnterExpression is called when production expression is entered.
-func (fep *FilterExpressionParser) EnterExpression(ctx *parser.ExpressionContext) {
+func (fep *FilterExpressionParser) EnterExpression(*parser.ExpressionContext) {
 	// Handle case of encountering a standalone expression, i.e., an expression not within a filter statement context
 	if fep.activeExpressionTree == nil {
 		table := fep.DataSet.Table(fep.PrimaryTableName)
 
 		if table == nil {
-			panic("Failed to find table \"" + fep.PrimaryTableName + "\"")
+			panic("failed to find table \"" + fep.PrimaryTableName + "\"")
 		}
 
 		fep.activeExpressionTree = NewExpressionTree(table)
 		fep.expressionTrees = append(fep.expressionTrees, fep.activeExpressionTree)
 	}
+}
+
+/*
+   expression
+    : notOperator expression
+    | expression logicalOperator expression
+    | predicateExpression
+    ;
+*/
+
+// ExitExpression is called when production expression is exited.
+func (fep *FilterExpressionParser) ExitExpression(context *parser.ExpressionContext) {
+	var value Expression
+
+	// Check for predicate expressions (see explicit visit function)
+	predicateExpression := context.PredicateExpression()
+
+	if predicateExpression != nil {
+		if fep.tryGetExpr(predicateExpression, &value) {
+			fep.addExpr(context, value)
+			return
+		}
+
+		panic("failed to find predicate expression \"" + predicateExpression.GetText() + "\"")
+	}
+
+	// Check for not operator expressions
+	notOperator := context.NotOperator()
+
+	if notOperator != nil {
+		expressions := context.AllExpression()
+
+		if len(expressions) != 1 {
+			panic("not operator expression is malformed: \"" + context.GetText() + "\"")
+		}
+
+		if !fep.tryGetExpr(expressions[0], &value) {
+			panic("failed to find not operator expression \"" + context.GetText() + "\"")
+		}
+
+		fep.addExpr(context, NewUnaryExpression(ExpressionUnaryType.Not, value))
+		return
+	}
+
+	// Check for logical operator expressions
+	logicalOperator := context.LogicalOperator()
+
+	if logicalOperator != nil {
+		logicalOperatorContext := logicalOperator.(*parser.LogicalOperatorContext)
+		var leftValue, rightValue Expression
+		var operatorType ExpressionOperatorTypeEnum
+		expressions := context.AllExpression()
+
+		if len(expressions) != 2 {
+			panic("operator expression, in logical operator expression context, is malformed: \"" + context.GetText() + "\"")
+		}
+
+		if !fep.tryGetExpr(expressions[0], &leftValue) {
+			panic("failed to find left operator expression \"" + expressions[0].GetText() + "\"")
+		}
+
+		if !fep.tryGetExpr(expressions[1], &rightValue) {
+			panic("failed to find right operator expression \"" + expressions[1].GetText() + "\"")
+		}
+
+		operatorSymbol := logicalOperatorContext.GetText()
+
+		// Check for boolean operations
+		if logicalOperatorContext.K_AND() != nil || operatorSymbol == "&&" {
+			operatorType = ExpressionOperatorType.And
+		} else if logicalOperatorContext.K_OR() != nil || operatorSymbol == "||" {
+			operatorType = ExpressionOperatorType.Or
+		} else {
+			panic("unexpected logical operator \"" + operatorSymbol + "\"")
+		}
+
+		fep.addExpr(context, NewOperatorExpression(operatorType, leftValue, rightValue))
+		return
+	}
+
+	panic("unexpected expression \"" + context.GetText() + "\"")
 }
 
 // Select evaluates the specified expression tree returning matching rows.
