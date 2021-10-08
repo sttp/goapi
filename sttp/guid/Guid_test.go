@@ -279,6 +279,11 @@ func TestGuidToFromBytes(t *testing.T) {
 	testGuidToFromBytes(g3, gs3, true, t)
 	testGuidToFromBytes(g4, gs4, true, t)
 	testGuidToFromBytes(gz, gsz, true, t)
+
+	// Test negative case
+	if _, err := FromBytes([]byte{0, 0}, false); err == nil {
+		t.Fatalf("TestGuidToFromBytes: unexpected success, short slice expected to fail guid parse")
+	}
 }
 
 func testGuidToFromBytes(g Guid, gs string, swapEndianness bool, t *testing.T) {

@@ -24,14 +24,17 @@
 package guid
 
 import (
+	"errors"
+	"strconv"
+
 	"github.com/google/uuid"
 )
 
-// Guid is a standard UUID value that can handle alternate wire serialization encodings.
-type Guid uuid.UUID
+// Guid is a standard 128-bit UUID value (16-bytes) that can handle alternate wire serialization encodings.
+type Guid [16]byte
 
 // Empty is a Guid with a zero value.
-var Empty Guid = Guid(uuid.Nil)
+var Empty Guid = Guid{}
 
 // New creates a new random Guid value.
 func New() Guid {
@@ -50,11 +53,8 @@ func (g Guid) Equal(other Guid) bool {
 
 // Equal returns true if the a and b Guid values are equal.
 func Equal(a, b Guid) bool {
-	g1 := [16]byte(a)
-	g2 := [16]byte(b)
-
 	for i := 0; i < 16; i++ {
-		if g1[i] != g2[i] {
+		if a[i] != b[i] {
 			return false
 		}
 	}
@@ -103,20 +103,17 @@ func result(left, right uint32) int {
 
 // Components gets the Guid value as its constituent components.
 func (g Guid) Components() (a uint32, b, c uint16, d [8]byte) {
-
-	bytes := [16]byte(g)
-
-	a = (uint32(bytes[0]) << 24) | (uint32(bytes[1]) << 16) | (uint32(bytes[2]) << 8) | uint32(bytes[3])
-	b = uint16((uint32(bytes[4]) << 8) | uint32(bytes[5]))
-	c = uint16((uint32(bytes[6]) << 8) | uint32(bytes[7]))
-	d[0] = bytes[8]
-	d[1] = bytes[9]
-	d[2] = bytes[10]
-	d[3] = bytes[11]
-	d[4] = bytes[12]
-	d[5] = bytes[13]
-	d[6] = bytes[14]
-	d[7] = bytes[15]
+	a = (uint32(g[0]) << 24) | (uint32(g[1]) << 16) | (uint32(g[2]) << 8) | uint32(g[3])
+	b = uint16((uint32(g[4]) << 8) | uint32(g[5]))
+	c = uint16((uint32(g[6]) << 8) | uint32(g[7]))
+	d[0] = g[8]
+	d[1] = g[9]
+	d[2] = g[10]
+	d[3] = g[11]
+	d[4] = g[12]
+	d[5] = g[13]
+	d[6] = g[14]
+	d[7] = g[15]
 
 	return
 }
@@ -135,21 +132,25 @@ func (g Guid) String() string {
 // STTP standard implementations, including C#, already use RFC encoding, the endiananness
 // parameters exist for interop with implementations using non-RFC wire serializations:
 
-// FromBytes creates a new Guid from a byte slice.
+// FromBytes creates a new Guid from a byte slice. Only first 16 bytes of slice are used.
+// Returns an error if slice length is less than 16. Bytes are copied from the slice.
 func FromBytes(data []byte, swapEndianness bool) (Guid, error) {
 	if swapEndianness {
 		swapGuidEndianness(&data)
 	}
 
-	guid, err := uuid.FromBytes(data)
+	if len(data) < 16 {
+		return Empty, errors.New("Guid is 16 bytes in length, received " + strconv.Itoa(len(data)))
+	}
 
-	return Guid(guid), err
+	var g Guid
+	copy(g[:], data[:16])
+	return g, nil
 }
 
 // ToBytes creates a byte slice from a Guid.
 func (g Guid) ToBytes(swapEndianness bool) []byte {
-	bytes := [16]byte(g)
-	data := bytes[:16]
+	data := g[:]
 
 	if swapEndianness {
 		swapGuidEndianness(&data)
