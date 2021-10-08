@@ -459,6 +459,29 @@ func (fep *FilterExpressionParser) ExitIdentifierStatement(ctx *parser.Identifie
 	}
 }
 
+/*
+   expression
+    : notOperator expression
+    | expression logicalOperator expression
+    | predicateExpression
+    ;
+*/
+
+// EnterExpression is called when production expression is entered.
+func (fep *FilterExpressionParser) EnterExpression(ctx *parser.ExpressionContext) {
+	// Handle case of encountering a standalone expression, i.e., an expression not within a filter statement context
+	if fep.activeExpressionTree == nil {
+		table := fep.DataSet.Table(fep.PrimaryTableName)
+
+		if table == nil {
+			panic("Failed to find table \"" + fep.PrimaryTableName + "\"")
+		}
+
+		fep.activeExpressionTree = NewExpressionTree(table)
+		fep.expressionTrees = append(fep.expressionTrees, fep.activeExpressionTree)
+	}
+}
+
 // Select evaluates the specified expression tree returning matching rows.
 func (fep *FilterExpressionParser) Select(expressionTree *ExpressionTree) []*data.DataRow {
 	matchedRows := make([]*data.DataRow, 0)
