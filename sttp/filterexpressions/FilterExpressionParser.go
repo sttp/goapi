@@ -944,6 +944,7 @@ func (fep *FilterExpressionParser) ExitValueExpression(context *parser.ValueExpr
 */
 
 // ExitLiteralValue is called when production literalValue is exited.
+//gocyclo: ignore
 func (fep *FilterExpressionParser) ExitLiteralValue(context *parser.LiteralValueContext) {
 	var result *ValueExpression
 
@@ -1031,6 +1032,130 @@ func (fep *FilterExpressionParser) ExitColumnName(context *parser.ColumnNameCont
 	}
 
 	fep.addExpr(context, NewColumnExpression(dataColumn))
+}
+
+/*
+   functionExpression
+    : functionName '(' expressionList? ')'
+    ;
+*/
+
+// ExitFunctionExpression is called when production functionExpression is exited.
+//gocyclo: ignore
+func (fep *FilterExpressionParser) ExitFunctionExpression(context *parser.FunctionExpressionContext) {
+	functionNameContext := context.FunctionName().(*parser.FunctionNameContext)
+	var functionType ExpressionFunctionTypeEnum
+
+	switch {
+	case functionNameContext.K_ABS() != nil:
+		functionType = ExpressionFunctionType.Abs
+	case functionNameContext.K_CEILING() != nil:
+		functionType = ExpressionFunctionType.Ceiling
+	case functionNameContext.K_COALESCE() != nil:
+		functionType = ExpressionFunctionType.Coalesce
+	case functionNameContext.K_CONVERT() != nil:
+		functionType = ExpressionFunctionType.Convert
+	case functionNameContext.K_CONTAINS() != nil:
+		functionType = ExpressionFunctionType.Contains
+	case functionNameContext.K_DATEADD() != nil:
+		functionType = ExpressionFunctionType.DateAdd
+	case functionNameContext.K_DATEDIFF() != nil:
+		functionType = ExpressionFunctionType.DateDiff
+	case functionNameContext.K_DATEPART() != nil:
+		functionType = ExpressionFunctionType.DatePart
+	case functionNameContext.K_ENDSWITH() != nil:
+		functionType = ExpressionFunctionType.EndsWith
+	case functionNameContext.K_FLOOR() != nil:
+		functionType = ExpressionFunctionType.Floor
+	case functionNameContext.K_IIF() != nil:
+		functionType = ExpressionFunctionType.IIf
+	case functionNameContext.K_INDEXOF() != nil:
+		functionType = ExpressionFunctionType.IndexOf
+	case functionNameContext.K_ISDATE() != nil:
+		functionType = ExpressionFunctionType.IsDate
+	case functionNameContext.K_ISINTEGER() != nil:
+		functionType = ExpressionFunctionType.IsInteger
+	case functionNameContext.K_ISGUID() != nil:
+		functionType = ExpressionFunctionType.IsGuid
+	case functionNameContext.K_ISNULL() != nil:
+		functionType = ExpressionFunctionType.IsNull
+	case functionNameContext.K_ISNUMERIC() != nil:
+		functionType = ExpressionFunctionType.IsNumeric
+	case functionNameContext.K_LASTINDEXOF() != nil:
+		functionType = ExpressionFunctionType.LastIndexOf
+	case functionNameContext.K_LEN() != nil:
+		functionType = ExpressionFunctionType.Len
+	case functionNameContext.K_LOWER() != nil:
+		functionType = ExpressionFunctionType.Lower
+	case functionNameContext.K_MAXOF() != nil:
+		functionType = ExpressionFunctionType.MaxOf
+	case functionNameContext.K_MINOF() != nil:
+		functionType = ExpressionFunctionType.MinOf
+	case functionNameContext.K_NOW() != nil:
+		functionType = ExpressionFunctionType.Now
+	case functionNameContext.K_NTHINDEXOF() != nil:
+		functionType = ExpressionFunctionType.NthIndexOf
+	case functionNameContext.K_POWER() != nil:
+		functionType = ExpressionFunctionType.Power
+	case functionNameContext.K_REGEXMATCH() != nil:
+		functionType = ExpressionFunctionType.RegExMatch
+	case functionNameContext.K_REGEXVAL() != nil:
+		functionType = ExpressionFunctionType.RegExVal
+	case functionNameContext.K_REPLACE() != nil:
+		functionType = ExpressionFunctionType.Replace
+	case functionNameContext.K_REVERSE() != nil:
+		functionType = ExpressionFunctionType.Reverse
+	case functionNameContext.K_ROUND() != nil:
+		functionType = ExpressionFunctionType.Round
+	case functionNameContext.K_SPLIT() != nil:
+		functionType = ExpressionFunctionType.Split
+	case functionNameContext.K_SQRT() != nil:
+		functionType = ExpressionFunctionType.Sqrt
+	case functionNameContext.K_STARTSWITH() != nil:
+		functionType = ExpressionFunctionType.StartsWith
+	case functionNameContext.K_STRCOUNT() != nil:
+		functionType = ExpressionFunctionType.StrCount
+	case functionNameContext.K_STRCMP() != nil:
+		functionType = ExpressionFunctionType.StrCmp
+	case functionNameContext.K_SUBSTR() != nil:
+		functionType = ExpressionFunctionType.SubStr
+	case functionNameContext.K_TRIM() != nil:
+		functionType = ExpressionFunctionType.Trim
+	case functionNameContext.K_TRIMLEFT() != nil:
+		functionType = ExpressionFunctionType.TrimLeft
+	case functionNameContext.K_TRIMRIGHT() != nil:
+		functionType = ExpressionFunctionType.TrimRight
+	case functionNameContext.K_UPPER() != nil:
+		functionType = ExpressionFunctionType.Upper
+	case functionNameContext.K_UTCNOW() != nil:
+		functionType = ExpressionFunctionType.UtcNow
+	default:
+		panic("unexpected function type \"" + functionNameContext.GetText() + "\"")
+	}
+
+	expressionList := context.ExpressionList()
+	var arguments []Expression
+
+	if expressionList != nil {
+		expressionListContext := expressionList.(*parser.ExpressionListContext)
+		expressions := expressionListContext.AllExpression()
+		argumentCount := len(expressions)
+		arguments = make([]Expression, 0, argumentCount)
+
+		for i := 0; i < argumentCount; i++ {
+			var argument Expression
+
+			if fep.tryGetExpr(expressions[i], &argument) {
+				arguments = append(arguments, argument)
+			} else {
+				panic("failed to find argument expression " + strconv.Itoa(i) + " \"" + expressions[i].GetText() + "\" for function \"" + functionNameContext.GetText() + "\"")
+			}
+		}
+	} else {
+		arguments = make([]Expression, 0)
+	}
+
+	fep.addExpr(context, NewFunctionExpression(functionType, arguments))
 }
 
 // Select evaluates the specified expression tree returning matching rows.
