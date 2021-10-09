@@ -25,12 +25,14 @@ package filterexpressions
 
 import (
 	"errors"
+	"math"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/araddon/dateparse"
+	"github.com/shopspring/decimal"
 	"github.com/sttp/goapi/sttp/data"
 	"github.com/sttp/goapi/sttp/filterexpressions/parser"
 	"github.com/sttp/goapi/sttp/guid"
@@ -927,6 +929,90 @@ func (fep *FilterExpressionParser) ExitValueExpression(context *parser.ValueExpr
 	}
 
 	panic("unexpected value expression \"" + context.GetText() + "\"")
+}
+
+/*
+   literalValue
+    : INTEGER_LITERAL
+    | NUMERIC_LITERAL
+    | STRING_LITERAL
+    | DATETIME_LITERAL
+    | GUID_LITERAL
+    | BOOLEAN_LITERAL
+    | K_NULL
+    ;
+*/
+
+// ExitLiteralValue is called when production literalValue is exited.
+func (fep *FilterExpressionParser) ExitLiteralValue(context *parser.LiteralValueContext) {
+	var result *ValueExpression
+
+	if integerLiteral := context.INTEGER_LITERAL(); integerLiteral != nil {
+		literal := integerLiteral.GetText()
+
+		if i64, err := strconv.ParseInt(literal, 10, 64); err == nil {
+			if i64 < math.MinInt32 || i64 > math.MaxInt32 {
+				result = newValueExpression(ExpressionValueType.Int64, i64)
+			} else {
+				result = newValueExpression(ExpressionValueType.Int32, int32(i64))
+			}
+		} else if ui64, err := strconv.ParseUint(literal, 10, 64); err == nil {
+			if ui64 > math.MaxInt64 {
+				result = parseNumericLiteral(literal)
+			} else if ui64 > math.MaxInt32 {
+				result = newValueExpression(ExpressionValueType.Int64, int64(ui64))
+			} else {
+				result = newValueExpression(ExpressionValueType.Int32, int32(ui64))
+			}
+		} else if d, err := decimal.NewFromString(literal); err == nil {
+			result = newValueExpression(ExpressionValueType.Decimal, d)
+		} else {
+			result = newValueExpression(ExpressionValueType.String, literal)
+		}
+	} else if numericLiteral := context.NUMERIC_LITERAL(); numericLiteral != nil {
+		literal := numericLiteral.GetText()
+
+		// Real literals using scientific notation are parsed as double
+		if strings.ContainsAny(literal, "Ee") {
+			if f64, err := strconv.ParseFloat(literal, 64); err == nil {
+				result = newValueExpression(ExpressionValueType.Double, f64)
+			} else {
+				result = parseNumericLiteral(literal)
+			}
+		} else {
+			result = parseNumericLiteral(literal)
+		}
+	} else if stringLiteral := context.STRING_LITERAL(); stringLiteral != nil {
+		result = newValueExpression(ExpressionValueType.String, parseStringLiteral(stringLiteral.GetText()))
+	} else if dataTimeLiteral := context.DATETIME_LITERAL(); dataTimeLiteral != nil {
+		result = newValueExpression(ExpressionValueType.DateTime, parseDateTimeLiteral(dataTimeLiteral.GetText()))
+	} else if guidLiteral := context.GUID_LITERAL(); guidLiteral != nil {
+		result = newValueExpression(ExpressionValueType.DateTime, parseGuidLiteral(guidLiteral.GetText()))
+	} else if booleanLiteral := context.BOOLEAN_LITERAL(); booleanLiteral != nil {
+		if strings.ToUpper(booleanLiteral.GetText()) == "TRUE" {
+			result = True
+		} else {
+			result = False
+		}
+	} else if context.K_NULL() != nil {
+		result = NullValue(ExpressionValueType.Undefined)
+	}
+
+	if result != nil {
+		fep.addExpr(context, result)
+	}
+}
+
+func parseNumericLiteral(literal string) *ValueExpression {
+	if d, err := decimal.NewFromString(literal); err == nil {
+		return newValueExpression(ExpressionValueType.Decimal, d)
+	}
+
+	if f64, err := strconv.ParseFloat(literal, 64); err == nil {
+		return newValueExpression(ExpressionValueType.Double, f64)
+	}
+
+	return newValueExpression(ExpressionValueType.String, literal)
 }
 
 // Select evaluates the specified expression tree returning matching rows.
