@@ -23,6 +23,7 @@
         "ISINTEGER",
         "ISNULL",
         "ISNUMERIC",
+        "LASTINDEXOF",
         "MAXOF",
         "MINOF",
         "msdata",
