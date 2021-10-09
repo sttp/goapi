@@ -68,10 +68,52 @@ func (et *ExpressionTree) Table() *data.DataTable {
 	return et.table
 }
 
-// Evaluate executes the filter expression parser for the specified row for the ExpressionTree.
+// Select returns the rows matching the specified expression tree.
+func (et *ExpressionTree) Select() ([]*data.DataRow, error) {
+	matchedRows := make([]*data.DataRow, 0)
+
+	table := et.Table()
+
+	// Find rows matching expression tree
+	for i := 0; i < table.RowCount(); i++ {
+		if et.TopLimit > -1 && len(matchedRows) >= et.TopLimit {
+			break
+		}
+
+		row := table.Row(i)
+
+		if row == nil {
+			continue
+		}
+
+		resultExpression, err := et.Evaluate(row)
+
+		if err != nil {
+			return nil, err
+		}
+
+		// Final expression should have a boolean data type (it's part of a WHERE clause)
+		if resultExpression.ValueType() != ExpressionValueType.Boolean {
+			return nil, errors.New("final expression tree evaluation did not result in a boolean value, result data type is \"" + resultExpression.ValueType().String() + "\"")
+		}
+
+		// If final result is Null, i.e., has no value due to Null propagation, treat result as False
+		if resultExpression.booleanValue() {
+			matchedRows = append(matchedRows, row)
+		}
+	}
+
+	if len(matchedRows) > 0 && len(et.OrderByTerms) > 0 {
+		// TODO: Sort matched rows by order by terms
+	}
+
+	return matchedRows, nil
+}
+
+// Evaluate executes the filter expression parser for the specified dataRow for the ExpressionTree.
 // Root expression should be assigned before calling Evaluate.
-func (et *ExpressionTree) Evaluate(row *data.DataRow) (*ValueExpression, error) {
-	et.currentRow = row
+func (et *ExpressionTree) Evaluate(dataRow *data.DataRow) (*ValueExpression, error) {
+	et.currentRow = dataRow
 	return et.evaluate(et.Root)
 }
 

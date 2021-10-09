@@ -39,7 +39,7 @@ type TableIDFields struct {
 }
 
 // DefaultTableIDFields defines the common default table ID field names.
-var DefaultTableIDFields TableIDFields = TableIDFields{
+var DefaultTableIDFields = &TableIDFields{
 	SignalIDFieldName:       "SignalID",
 	MeasurementKeyFieldName: "ID",
 	PointTagFieldName:       "PointTag",

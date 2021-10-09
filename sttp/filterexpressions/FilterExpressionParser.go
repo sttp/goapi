@@ -101,6 +101,28 @@ func NewFilterExpressionParser(filterExpression string, suppressConsoleErrorOutp
 	return fep
 }
 
+// FilteredRows gets the rows matching the parsed filter expression.
+func (fep *FilterExpressionParser) FilteredRows() []*data.DataRow {
+	return fep.filteredRows
+}
+
+// FilteredRows gets the unique row set matching the parsed filter expression.
+func (fep *FilterExpressionParser) FilteredRowSet() data.DataRowHashSet {
+	fep.initializeSetOperations()
+	return fep.filteredRowSet
+}
+
+// FilteredSignalIDs gets the Guid-based signalIDs matching the parsed filter expression.
+func (fep *FilterExpressionParser) FilteredSignalIDs() []guid.Guid {
+	return fep.filteredSignalIDs
+}
+
+// FilteredSignalIDs gets the unique Guid-based signalID set matching the parsed filter expression.
+func (fep *FilterExpressionParser) FilteredSignalIDSet() guid.HashSet {
+	fep.initializeSetOperations()
+	return fep.filteredSignalIDSet
+}
+
 // TableIDFields gets the table ID fields associated with the specified tableName; or nil if not found.
 func (fep *FilterExpressionParser) TableIDFields(tableName string) *TableIDFields {
 	tableIDFields, ok := fep.tableIDFields[tableName]
@@ -261,7 +283,12 @@ func (fep *FilterExpressionParser) Evaluate() error {
 
 	// Each statement in the filter expression will have its own expression tree, evaluate each
 	for _, expressionTree := range fep.expressionTrees {
-		matchedRows := fep.Select(expressionTree)
+		matchedRows, err := expressionTree.Select()
+
+		if err != nil {
+			return err
+		}
+
 		signalIDColumnIndex := -1
 
 		if fep.TrackFilteredSignalIDs {
@@ -290,12 +317,14 @@ func (fep *FilterExpressionParser) Evaluate() error {
 }
 
 // GetExpressionTrees gets the expression trees, parsing the filter expression if needed.
-func (fep *FilterExpressionParser) GetExpressionTrees() []*ExpressionTree {
+func (fep *FilterExpressionParser) GetExpressionTrees() ([]*ExpressionTree, error) {
 	if len(fep.expressionTrees) == 0 {
-		fep.visitParseTreeNodes()
+		if err := fep.visitParseTreeNodes(); err != nil {
+			return nil, err
+		}
 	}
 
-	return fep.expressionTrees
+	return fep.expressionTrees, nil
 }
 
 /*
@@ -1158,13 +1187,76 @@ func (fep *FilterExpressionParser) ExitFunctionExpression(context *parser.Functi
 	fep.addExpr(context, NewFunctionExpression(functionType, arguments))
 }
 
-// Select evaluates the specified expression tree returning matching rows.
-func (fep *FilterExpressionParser) Select(expressionTree *ExpressionTree) []*data.DataRow {
-	matchedRows := make([]*data.DataRow, 0)
+// GenerateExpressionTreesFromDataSet produces a set of expression trees for the provided filterExpression and dataSet.
+// One expression tree will be produced per filter expression statement encountered in the specified filterExpression.
+func GenerateExpressionTreesFromDataSet(dataSet *data.DataSet, primaryTable string, filterExpression string, suppressConsoleErrorOutput bool) ([]*ExpressionTree, error) {
+	parser := NewFilterExpressionParser(filterExpression, suppressConsoleErrorOutput)
 
-	// TODO...
+	parser.DataSet = dataSet
+	parser.PrimaryTableName = primaryTable
+	parser.TrackFilteredRows = false
 
-	return matchedRows
+	return parser.GetExpressionTrees()
+}
+
+// GenerateExpressionTrees produces a set of expression trees for the provided filterExpression and dataTable.
+// One expression tree will be produced per filter expression statement encountered in the specified filterExpression.
+func GenerateExpressionTrees(dataTable *data.DataTable, filterExpression string, suppressConsoleErrorOutput bool) ([]*ExpressionTree, error) {
+	return GenerateExpressionTreesFromDataSet(dataTable.Parent(), dataTable.Name(), filterExpression, suppressConsoleErrorOutput)
+}
+
+// GenerateExpressionTree gets the first produced expression trees for the provided filterExpression and dataTable.
+func GenerateExpressionTree(dataTable *data.DataTable, filterExpression string, suppressConsoleErrorOutput bool) (*ExpressionTree, error) {
+	expressionTrees, err := GenerateExpressionTrees(dataTable, filterExpression, suppressConsoleErrorOutput)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(expressionTrees) > 0 {
+		return expressionTrees[0], nil
+	}
+
+	return nil, errors.New("no expression trees generated with filter expression \"" + filterExpression + "\" for table \"" + dataTable.Name() + "\"")
+}
+
+// Evaluates the provided filterExpression on the specified dataRow.
+func Evaluate(dataRow *data.DataRow, filterExpression string, suppressConsoleErrorOutput bool) (*ValueExpression, error) {
+	expressionTree, err := GenerateExpressionTree(dataRow.Parent(), filterExpression, suppressConsoleErrorOutput)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return expressionTree.Evaluate(dataRow)
+}
+
+// SelectFromDataSet returns the rows matching the provided filterExpression and dataSet.
+func SelectFromDataSet(dataSet *data.DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) ([]*data.DataRow, error) {
+	parser := NewFilterExpressionParser(filterExpression, suppressConsoleErrorOutput)
+
+	parser.DataSet = dataSet
+
+	if len(primaryTable) > 0 {
+		parser.PrimaryTableName = primaryTable
+
+		if tableIDFields == nil {
+			parser.RegisterTableIDFields(primaryTable, DefaultTableIDFields)
+		} else {
+			parser.RegisterTableIDFields(primaryTable, tableIDFields)
+		}
+	}
+
+	if err := parser.Evaluate(); err != nil {
+		return nil, err
+	}
+
+	return parser.FilteredRows(), nil
+}
+
+// Select returns the rows matching the provided filterExpression and dataTable.
+func Select(dataTable *data.DataTable, filterExpression string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) ([]*data.DataRow, error) {
+	return SelectFromDataSet(dataTable.Parent(), filterExpression, dataTable.Name(), tableIDFields, suppressConsoleErrorOutput)
 }
 
 func parseStringLiteral(stringLiteral string) string {
