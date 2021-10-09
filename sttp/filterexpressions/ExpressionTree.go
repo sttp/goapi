@@ -1291,7 +1291,7 @@ func (et *ExpressionTree) abs(sourceValue *ValueExpression) (*ValueExpression, e
 
 		return newValueExpression(ExpressionValueType.Int64, abs(sourceValue.int64Value())), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Decimal, math.Abs(sourceValue.decimalValue())), nil
+		return newValueExpression(ExpressionValueType.Decimal, sourceValue.decimalValue().Abs()), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Double, math.Abs(sourceValue.doubleValue())), nil
 	default:
@@ -1315,7 +1315,7 @@ func (et *ExpressionTree) ceiling(sourceValue *ValueExpression) (*ValueExpressio
 
 	switch sourceValue.ValueType() {
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Decimal, math.Ceil(sourceValue.decimalValue())), nil
+		return newValueExpression(ExpressionValueType.Decimal, sourceValue.decimalValue().Ceil()), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Double, math.Ceil(sourceValue.doubleValue())), nil
 	default:
@@ -1692,7 +1692,7 @@ func (et *ExpressionTree) floor(sourceValue *ValueExpression) (*ValueExpression,
 
 	switch sourceValue.ValueType() {
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Decimal, math.Floor(sourceValue.decimalValue())), nil
+		return newValueExpression(ExpressionValueType.Decimal, sourceValue.decimalValue().Floor()), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Double, math.Floor(sourceValue.doubleValue())), nil
 	default:
@@ -2053,7 +2053,7 @@ func (et *ExpressionTree) power(sourceValue, exponentValue *ValueExpression) (*V
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Int64, int64(math.Pow(float64(sourceValue.int64Value()), float64(exponentValue.int64Value())))), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Decimal, math.Pow(sourceValue.decimalValue(), exponentValue.decimalValue())), nil
+		return newValueExpression(ExpressionValueType.Decimal, sourceValue.decimalValue().Pow(exponentValue.decimalValue())), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Double, math.Pow(sourceValue.doubleValue(), exponentValue.doubleValue())), nil
 	default:
@@ -2193,7 +2193,7 @@ func (et *ExpressionTree) round(sourceValue *ValueExpression) (*ValueExpression,
 
 	switch sourceValue.ValueType() {
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Decimal, math.Round(sourceValue.decimalValue())), nil
+		return newValueExpression(ExpressionValueType.Decimal, sourceValue.decimalValue().Round(0)), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Double, math.Round(sourceValue.doubleValue())), nil
 	default:
@@ -2267,7 +2267,8 @@ func (et *ExpressionTree) sqrt(sourceValue *ValueExpression) (*ValueExpression, 
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Double, math.Sqrt(float64(sourceValue.int64Value()))), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Decimal, math.Sqrt(sourceValue.decimalValue())), nil
+		f64, _ := sourceValue.decimalValue().Float64()
+		return newValueExpression(ExpressionValueType.Double, math.Sqrt(f64)), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Double, math.Sqrt(sourceValue.doubleValue())), nil
 	default:
@@ -2507,7 +2508,7 @@ func (et *ExpressionTree) multiplyOp(leftValue, rightValue *ValueExpression, val
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()*rightValue.int64Value())), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Decimal, float64(leftValue.decimalValue()*rightValue.decimalValue())), nil
+		return newValueExpression(ExpressionValueType.Decimal, leftValue.decimalValue().Mul(rightValue.decimalValue())), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Double, float64(leftValue.doubleValue()*rightValue.doubleValue())), nil
 	case ExpressionValueType.Boolean:
@@ -2541,7 +2542,7 @@ func (et *ExpressionTree) divideOp(leftValue, rightValue *ValueExpression, value
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()/rightValue.int64Value())), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Decimal, float64(leftValue.decimalValue()/rightValue.decimalValue())), nil
+		return newValueExpression(ExpressionValueType.Decimal, leftValue.decimalValue().Div(rightValue.decimalValue())), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Double, float64(leftValue.doubleValue()/rightValue.doubleValue())), nil
 	case ExpressionValueType.Boolean:
@@ -2574,11 +2575,11 @@ func (et *ExpressionTree) modulusOp(leftValue, rightValue *ValueExpression, valu
 		return newValueExpression(ExpressionValueType.Int32, int32(leftValue.int32Value()%rightValue.int32Value())), nil
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()%rightValue.int64Value())), nil
-	case ExpressionValueType.Boolean:
-		fallthrough
 	case ExpressionValueType.Decimal:
-		fallthrough
+		return newValueExpression(ExpressionValueType.Decimal, leftValue.decimalValue().Mod(rightValue.decimalValue())), nil
 	case ExpressionValueType.Double:
+		return newValueExpression(ExpressionValueType.Double, math.Mod(leftValue.doubleValue(), rightValue.doubleValue())), nil
+	case ExpressionValueType.Boolean:
 		fallthrough
 	case ExpressionValueType.String:
 		fallthrough
@@ -2611,7 +2612,7 @@ func (et *ExpressionTree) addOp(leftValue, rightValue *ValueExpression, valueTyp
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()+rightValue.int64Value())), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Decimal, float64(leftValue.decimalValue()+rightValue.decimalValue())), nil
+		return newValueExpression(ExpressionValueType.Decimal, leftValue.decimalValue().Add(rightValue.decimalValue())), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Double, float64(leftValue.doubleValue()+rightValue.doubleValue())), nil
 	case ExpressionValueType.String:
@@ -2645,7 +2646,7 @@ func (et *ExpressionTree) subtractOp(leftValue, rightValue *ValueExpression, val
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()-rightValue.int64Value())), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Decimal, float64(leftValue.decimalValue()-rightValue.decimalValue())), nil
+		return newValueExpression(ExpressionValueType.Decimal, leftValue.decimalValue().Sub(rightValue.decimalValue())), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Double, float64(leftValue.doubleValue()-rightValue.doubleValue())), nil
 	case ExpressionValueType.String:
@@ -2857,7 +2858,7 @@ func (et *ExpressionTree) lessThanOp(leftValue, rightValue *ValueExpression, val
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() < rightValue.int64Value()), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() < rightValue.decimalValue()), nil
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue().Cmp(rightValue.decimalValue()) < 0), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() < rightValue.doubleValue()), nil
 	case ExpressionValueType.String:
@@ -2891,7 +2892,7 @@ func (et *ExpressionTree) lessThanOrEqualOp(leftValue, rightValue *ValueExpressi
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() <= rightValue.int64Value()), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() <= rightValue.decimalValue()), nil
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue().Cmp(rightValue.decimalValue()) <= 0), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() <= rightValue.doubleValue()), nil
 	case ExpressionValueType.String:
@@ -2927,7 +2928,7 @@ func (et *ExpressionTree) greaterThanOp(leftValue, rightValue *ValueExpression, 
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() > rightValue.int64Value()), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() > rightValue.decimalValue()), nil
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue().Cmp(rightValue.decimalValue()) > 0), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() > rightValue.doubleValue()), nil
 	case ExpressionValueType.String:
@@ -2961,7 +2962,7 @@ func (et *ExpressionTree) greaterThanOrEqualOp(leftValue, rightValue *ValueExpre
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() >= rightValue.int64Value()), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() >= rightValue.decimalValue()), nil
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue().Cmp(rightValue.decimalValue()) >= 0), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() >= rightValue.doubleValue()), nil
 	case ExpressionValueType.String:
@@ -2997,7 +2998,7 @@ func (et *ExpressionTree) equalOp(leftValue, rightValue *ValueExpression, valueT
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() == rightValue.int64Value()), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() == rightValue.decimalValue()), nil
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue().Equal(rightValue.decimalValue())), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() == rightValue.doubleValue()), nil
 	case ExpressionValueType.String:
@@ -3006,7 +3007,7 @@ func (et *ExpressionTree) equalOp(leftValue, rightValue *ValueExpression, valueT
 		}
 		return newValueExpression(ExpressionValueType.Boolean, strings.EqualFold(leftValue.stringValue(), rightValue.stringValue())), nil
 	case ExpressionValueType.Guid:
-		return newValueExpression(ExpressionValueType.Boolean, guid.Compare(leftValue.guidValue(), rightValue.guidValue()) == 0), nil
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.guidValue().Equal(rightValue.guidValue())), nil
 	case ExpressionValueType.DateTime:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.dateTimeValue().Equal(rightValue.dateTimeValue())), nil
 	case ExpressionValueType.Undefined:
@@ -3034,7 +3035,7 @@ func (et *ExpressionTree) notEqualOp(leftValue, rightValue *ValueExpression, val
 	case ExpressionValueType.Int64:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.int64Value() != rightValue.int64Value()), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(ExpressionValueType.Boolean, leftValue.decimalValue() != rightValue.decimalValue()), nil
+		return newValueExpression(ExpressionValueType.Boolean, !leftValue.decimalValue().Equal(rightValue.decimalValue())), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(ExpressionValueType.Boolean, leftValue.doubleValue() != rightValue.doubleValue()), nil
 	case ExpressionValueType.String:
@@ -3043,7 +3044,7 @@ func (et *ExpressionTree) notEqualOp(leftValue, rightValue *ValueExpression, val
 		}
 		return newValueExpression(ExpressionValueType.Boolean, !strings.EqualFold(leftValue.stringValue(), rightValue.stringValue())), nil
 	case ExpressionValueType.Guid:
-		return newValueExpression(ExpressionValueType.Boolean, guid.Compare(leftValue.guidValue(), rightValue.guidValue()) != 0), nil
+		return newValueExpression(ExpressionValueType.Boolean, !leftValue.guidValue().Equal(rightValue.guidValue())), nil
 	case ExpressionValueType.DateTime:
 		return newValueExpression(ExpressionValueType.Boolean, !leftValue.dateTimeValue().Equal(rightValue.dateTimeValue())), nil
 	case ExpressionValueType.Undefined:

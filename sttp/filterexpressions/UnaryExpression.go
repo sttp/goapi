@@ -23,7 +23,11 @@
 
 package filterexpressions
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/shopspring/decimal"
+)
 
 // UnaryExpression represents a unary expression.
 type UnaryExpression struct {
@@ -99,12 +103,14 @@ func (ue *UnaryExpression) unaryInt64(value int64) (*ValueExpression, error) {
 	return newValueExpression(ExpressionValueType.Int64, value), nil
 }
 
-func (ue *UnaryExpression) unaryDecimal(value float64) (*ValueExpression, error) {
+var minusOneDec decimal.Decimal = decimal.NewFromInt(-1)
+
+func (ue *UnaryExpression) unaryDecimal(value decimal.Decimal) (*ValueExpression, error) {
 	switch ue.unaryType {
 	case ExpressionUnaryType.Plus:
-		value = +value
+		// no-op
 	case ExpressionUnaryType.Minus:
-		value = -value
+		value = value.Mul(minusOneDec)
 	case ExpressionUnaryType.Not:
 		return nil, errors.New("cannot apply unary \"~\" operator to \"Decimal\"")
 	default:

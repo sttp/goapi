@@ -90,7 +90,7 @@ var ExpressionValueType = struct {
 	Int32 ExpressionValueTypeEnum
 	// Int64 defines an int64 value type for an expression.
 	Int64 ExpressionValueTypeEnum
-	// Decimal defines a decimal (currently evaluated as a float64 in Go) value type for an expression.
+	// Decimal defines a decimal.Decimal value type for an expression.
 	Decimal ExpressionValueTypeEnum
 	// Double defines a float64 value type for an expression.
 	Double ExpressionValueTypeEnum

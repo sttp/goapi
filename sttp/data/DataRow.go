@@ -30,6 +30,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/sttp/goapi/sttp/guid"
 )
 
@@ -293,7 +294,7 @@ func (dr *DataRow) stringValueFromDecimal(index int) string {
 		return result
 	}
 
-	return strconv.FormatFloat(value, 'f', 6, 64)
+	return value.String()
 }
 
 func (dr *DataRow) stringValueFromGuid(index int) string {
@@ -628,47 +629,47 @@ func (dr *DataRow) DoubleValueByName(columnName string) (float64, bool, error) {
 	return dr.DoubleValue(index)
 }
 
-// DecimalValue gets the record value at the specified columnIndex cast as a float64.
+// DecimalValue gets the record value at the specified columnIndex cast as a decimal.Decimal.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Decimal.
-func (dr *DataRow) DecimalValue(columnIndex int) (float64, bool, error) {
+func (dr *DataRow) DecimalValue(columnIndex int) (decimal.Decimal, bool, error) {
 	column, err := dr.validateColumnType(columnIndex, int(DataType.Decimal), true)
 
 	if err != nil {
-		return 0.0, false, err
+		return decimal.Zero, false, err
 	}
 
 	if column.Computed() {
 		value, err := dr.getComputedValue(column)
 
 		if err != nil {
-			return 0.0, false, err
+			return decimal.Zero, false, err
 		}
 
 		if value == nil {
-			return 0.0, true, nil
+			return decimal.Zero, true, nil
 		}
 
-		return value.(float64), false, nil
+		return value.(decimal.Decimal), false, nil
 	}
 
 	value := dr.values[columnIndex]
 
 	if value == nil {
-		return 0.0, true, nil
+		return decimal.Zero, true, nil
 	}
 
-	return value.(float64), false, nil
+	return value.(decimal.Decimal), false, nil
 }
 
-// DecimalValueByName gets the record value for the specified columnName cast as a float64.
+// DecimalValueByName gets the record value for the specified columnName cast as a decimal.Decimal.
 // Second parameter in tuple return value indicates if original value was nil.
 // An error will be returned if column type is not DataType.Decimal.
-func (dr *DataRow) DecimalValueByName(columnName string) (float64, bool, error) {
+func (dr *DataRow) DecimalValueByName(columnName string) (decimal.Decimal, bool, error) {
 	index, err := dr.getColumnIndex(columnName)
 
 	if err != nil {
-		return 0.0, false, err
+		return decimal.Zero, false, err
 	}
 
 	return dr.DecimalValue(index)

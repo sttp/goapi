@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	"github.com/shopspring/decimal"
 	"github.com/sttp/goapi/sttp/data"
 	"github.com/sttp/goapi/sttp/guid"
 )
@@ -60,8 +61,8 @@ func NewValueExpression(valueType ExpressionValueTypeEnum, value interface{}) *V
 				panic("cannot create Int64 value expression; value is not int64")
 			}
 		case ExpressionValueType.Decimal:
-			if _, ok := value.(float64); !ok {
-				panic("cannot create Decimal value expression; value is not float64")
+			if _, ok := value.(decimal.Decimal); !ok {
+				panic("cannot create Decimal value expression; value is not decimal.Decimal")
 			}
 		case ExpressionValueType.Double:
 			if _, ok := value.(float64); !ok {
@@ -130,7 +131,7 @@ func (ve *ValueExpression) String() string {
 	case ExpressionValueType.Int64:
 		return strconv.FormatInt(ve.int64Value(), 10)
 	case ExpressionValueType.Decimal:
-		return strconv.FormatFloat(ve.decimalValue(), 'f', 6, 64)
+		return ve.decimalValue().String()
 	case ExpressionValueType.Double:
 		return strconv.FormatFloat(ve.doubleValue(), 'f', 6, 64)
 	case ExpressionValueType.String:
@@ -271,24 +272,24 @@ func (ve *ValueExpression) int64Value() int64 {
 	return ve.value.(int64)
 }
 
-// DecimalValue gets the ValueExpression value cast as a float64.
+// DecimalValue gets the ValueExpression value cast as a decimal.Decimal.
 // An error will be returned if value type is not ExpressionValueType.Decimal.
-func (ve *ValueExpression) DecimalValue() (float64, error) {
+func (ve *ValueExpression) DecimalValue() (decimal.Decimal, error) {
 	err := ve.validateValueType(ExpressionValueType.Decimal)
 
 	if err != nil {
-		return 0.0, err
+		return decimal.Zero, err
 	}
 
 	return ve.decimalValue(), nil
 }
 
-func (ve *ValueExpression) decimalValue() float64 {
+func (ve *ValueExpression) decimalValue() decimal.Decimal {
 	if ve.value == nil {
-		return 0.0
+		return decimal.Zero
 	}
 
-	return ve.value.(float64)
+	return ve.value.(decimal.Decimal)
 }
 
 // DoubleValue gets the ValueExpression value cast as a float64.
@@ -414,7 +415,7 @@ func (ve *ValueExpression) convertFromBoolean(targetValueType ExpressionValueTyp
 	case ExpressionValueType.Int64:
 		return newValueExpression(targetValueType, int64(value)), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(targetValueType, float64(value)), nil
+		return newValueExpression(targetValueType, decimal.NewFromInt(int64(value))), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(targetValueType, float64(value)), nil
 	case ExpressionValueType.String:
@@ -439,7 +440,7 @@ func (ve *ValueExpression) convertFromInt32(targetValueType ExpressionValueTypeE
 	case ExpressionValueType.Int64:
 		return newValueExpression(targetValueType, int64(value)), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(targetValueType, float64(value)), nil
+		return newValueExpression(targetValueType, decimal.NewFromInt(int64(value))), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(targetValueType, float64(value)), nil
 	case ExpressionValueType.String:
@@ -464,7 +465,7 @@ func (ve *ValueExpression) convertFromInt64(targetValueType ExpressionValueTypeE
 	case ExpressionValueType.Int64:
 		return newValueExpression(targetValueType, value), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(targetValueType, float64(value)), nil
+		return newValueExpression(targetValueType, decimal.NewFromInt(value)), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(targetValueType, float64(value)), nil
 	case ExpressionValueType.String:
@@ -483,15 +484,16 @@ func (ve *ValueExpression) convertFromDecimal(targetValueType ExpressionValueTyp
 
 	switch targetValueType {
 	case ExpressionValueType.Boolean:
-		return newValueExpression(targetValueType, value != 0.0), nil
+		return newValueExpression(targetValueType, !value.Equal(decimal.Zero)), nil
 	case ExpressionValueType.Int32:
-		return newValueExpression(targetValueType, int32(value)), nil
+		return newValueExpression(targetValueType, int32(value.IntPart())), nil
 	case ExpressionValueType.Int64:
-		return newValueExpression(targetValueType, int64(value)), nil
+		return newValueExpression(targetValueType, value.IntPart()), nil
 	case ExpressionValueType.Decimal:
 		return newValueExpression(targetValueType, value), nil
 	case ExpressionValueType.Double:
-		return newValueExpression(targetValueType, float64(value)), nil
+		f64, _ := value.Float64()
+		return newValueExpression(targetValueType, f64), nil
 	case ExpressionValueType.String:
 		return newValueExpression(targetValueType, ve.String()), nil
 	case ExpressionValueType.Guid:
@@ -514,7 +516,7 @@ func (ve *ValueExpression) convertFromDouble(targetValueType ExpressionValueType
 	case ExpressionValueType.Int64:
 		return newValueExpression(targetValueType, int64(value)), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(targetValueType, float64(value)), nil
+		return newValueExpression(targetValueType, decimal.NewFromFloat(value)), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(targetValueType, value), nil
 	case ExpressionValueType.String:
@@ -542,7 +544,7 @@ func (ve *ValueExpression) convertFromString(targetValueType ExpressionValueType
 		targetValue, _ := strconv.ParseInt(value, 10, 64)
 		return newValueExpression(targetValueType, targetValue), nil
 	case ExpressionValueType.Decimal:
-		targetValue, _ := strconv.ParseFloat(value, 64)
+		targetValue, _ := decimal.NewFromString(value)
 		return newValueExpression(targetValueType, targetValue), nil
 	case ExpressionValueType.Double:
 		targetValue, _ := strconv.ParseFloat(value, 64)
@@ -593,9 +595,9 @@ func (ve *ValueExpression) convertFromDateTime(targetValueType ExpressionValueTy
 	case ExpressionValueType.Int32:
 		return newValueExpression(targetValueType, int32(value)), nil
 	case ExpressionValueType.Int64:
-		return newValueExpression(targetValueType, int64(value)), nil
+		return newValueExpression(targetValueType, value), nil
 	case ExpressionValueType.Decimal:
-		return newValueExpression(targetValueType, float64(value)), nil
+		return newValueExpression(targetValueType, decimal.NewFromInt(value)), nil
 	case ExpressionValueType.Double:
 		return newValueExpression(targetValueType, float64(value)), nil
 	case ExpressionValueType.String:

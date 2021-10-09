@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/sttp/goapi/sttp/guid"
 	"github.com/sttp/goapi/sttp/xml"
 )
@@ -299,11 +300,12 @@ func (ds *DataSet) loadRecords(root *xml.XmlNode) {
 				case DataType.Single:
 					f32, _ := strconv.ParseFloat(value, 32)
 					dataRow.SetValue(columnIndex, float32(f32))
-				case DataType.Decimal:
-					fallthrough // Just using float64 for decimal type in Go
 				case DataType.Double:
 					f64, _ := strconv.ParseFloat(value, 64)
 					dataRow.SetValue(columnIndex, f64)
+				case DataType.Decimal:
+					d, _ := decimal.NewFromString(value)
+					dataRow.SetValue(columnIndex, d)
 				case DataType.Guid:
 					g, _ := guid.Parse(value)
 					dataRow.SetValue(columnIndex, g)

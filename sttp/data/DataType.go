@@ -40,7 +40,8 @@ var DataType = struct {
 	Single DataTypeEnum
 	// Double represents a Go float64 data type.
 	Double DataTypeEnum
-	// Decimal represents a Go float64 data type.
+	// Decimal represents a Go decimal.Decimal data type.
+	// Type defined in github.com/shopspring/decimal.
 	Decimal DataTypeEnum
 	// Guid represents a Go guid.Guid data type.
 	// Type defined in github.com/sttp/goapi/sttp/guid.
@@ -120,7 +121,7 @@ func (dte DataTypeEnum) String() string {
 
 // ParseXsdDataType gets the DataType from the provided XSD data type. Return tuple includes
 // boolean value that determines if parse was successful. See XML Schema Language Datatypes
-// for possible xsdTypeName values:  https://www.w3.org/TR/xmlschema-2/
+// for possible xsdTypeName values: https://www.w3.org/TR/xmlschema-2/
 //gocyclo:ignore
 func ParseXsdDataType(xsdTypeName, extDataType string) (DataTypeEnum, bool) {
 	switch xsdTypeName {
