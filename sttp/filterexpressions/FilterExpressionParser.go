@@ -1015,6 +1015,24 @@ func parseNumericLiteral(literal string) *ValueExpression {
 	return newValueExpression(ExpressionValueType.String, literal)
 }
 
+/*
+   columnName
+    : IDENTIFIER
+    ;
+*/
+
+// ExitColumnName is called when production columnName is exited.
+func (fep *FilterExpressionParser) ExitColumnName(context *parser.ColumnNameContext) {
+	columnName := context.IDENTIFIER().GetText()
+	dataColumn := fep.activeExpressionTree.Table().ColumnByName(columnName)
+
+	if dataColumn == nil {
+		panic("failed to find column \"" + columnName + "\" in table \"" + fep.activeExpressionTree.Table().Name() + "\"")
+	}
+
+	fep.addExpr(context, NewColumnExpression(dataColumn))
+}
+
 // Select evaluates the specified expression tree returning matching rows.
 func (fep *FilterExpressionParser) Select(expressionTree *ExpressionTree) []*data.DataRow {
 	matchedRows := make([]*data.DataRow, 0)
