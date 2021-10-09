@@ -234,6 +234,8 @@ func (fep *FilterExpressionParser) addExpr(ctx antlr.ParserRuleContext, value Ex
 }
 
 // Evaluate parses each statement in the filter expression and tracks the results.
+// Calling evaluate will yield filtered rows and/or signal IDs that match the
+// specified STTP filter expression.
 func (fep *FilterExpressionParser) Evaluate() error {
 	if fep.DataSet == nil {
 		return errors.New("cannot evaluate filter expression, no DataSet has been defined")
@@ -251,7 +253,9 @@ func (fep *FilterExpressionParser) Evaluate() error {
 	fep.expressionTrees = make([]*ExpressionTree, 0)
 	fep.expressions = make(map[antlr.ParserRuleContext]Expression)
 
-	fep.visitParseTreeNodes()
+	if err := fep.visitParseTreeNodes(); err != nil {
+		return err
+	}
 
 	// Each statement in the filter expression will have its own expression tree, evaluate each
 	for _, expressionTree := range fep.expressionTrees {
@@ -480,7 +484,8 @@ func (fep *FilterExpressionParser) ExitIdentifierStatement(context *parser.Ident
 
 // EnterExpression is called when production expression is entered.
 func (fep *FilterExpressionParser) EnterExpression(*parser.ExpressionContext) {
-	// Handle case of encountering a standalone expression, i.e., an expression not within a filter statement context
+	// Handle case of encountering a standalone expression, i.e., an expression not
+	// within a filter statement context
 	if fep.activeExpressionTree == nil {
 		table := fep.DataSet.Table(fep.PrimaryTableName)
 
@@ -572,6 +577,172 @@ func (fep *FilterExpressionParser) ExitExpression(context *parser.ExpressionCont
 	}
 
 	panic("unexpected expression \"" + context.GetText() + "\"")
+}
+
+/*
+   predicateExpression
+    : predicateExpression notOperator? K_IN exactMatchModifier? '(' expressionList ')'
+    | predicateExpression K_IS notOperator? K_NULL
+    | predicateExpression comparisonOperator predicateExpression
+    | predicateExpression notOperator? K_LIKE exactMatchModifier? predicateExpression
+    | valueExpression
+    ;
+*/
+
+// ExitPredicateExpression is called when production predicateExpression is exited.
+func (fep *FilterExpressionParser) ExitPredicateExpression(context *parser.PredicateExpressionContext) {
+	var value Expression
+
+	// Check for value expressions (see explicit visit function)
+	valueExpression := context.ValueExpression()
+
+	if valueExpression != nil {
+		if fep.tryGetExpr(valueExpression, &value) {
+			fep.addExpr(context, value)
+			return
+		}
+
+		panic("failed to find value expression \"" + valueExpression.GetText() + "\"")
+	}
+
+	notOperator := context.NotOperator()
+	exactMatchModifier := context.ExactMatchModifier()
+
+	// Check for IN expressions
+	if context.K_IN() != nil {
+		predicates := context.AllPredicateExpression()
+
+		// IN expression expects one predicate
+		if len(predicates) != 1 {
+			panic("\"IN\" expression is malformed: \"" + context.GetText() + "\"")
+		}
+
+		if !fep.tryGetExpr(predicates[0], &value) {
+			panic("failed to find \"IN\" predicate expression \"" + predicates[0].GetText() + "\"")
+		}
+
+		expressionListContext := context.ExpressionList().(*parser.ExpressionListContext)
+		expressions := expressionListContext.AllExpression()
+		argumentCount := len(expressions)
+
+		if argumentCount < 1 {
+			panic("not enough expressions found for \"IN\" operation")
+		}
+
+		arguments := make([]Expression, 0, argumentCount)
+
+		for i := 0; i < argumentCount; i++ {
+			var argument Expression
+
+			if fep.tryGetExpr(expressions[i], &argument) {
+				arguments = append(arguments, argument)
+			} else {
+				panic("failed to find argument expression " + strconv.Itoa(i) + " \"" + expressions[i].GetText() + "\" for \"IN\" operation")
+			}
+		}
+
+		fep.addExpr(context, NewInListExpression(value, arguments, notOperator != nil, exactMatchModifier != nil))
+		return
+	}
+
+	// Check for IS NULL expressions
+	if context.K_IS() != nil && context.K_NULL() != nil {
+		var operatorType ExpressionOperatorTypeEnum
+
+		if notOperator == nil {
+			operatorType = ExpressionOperatorType.IsNull
+		} else {
+			operatorType = ExpressionOperatorType.IsNotNull
+		}
+
+		predicates := context.AllPredicateExpression()
+
+		// IS NULL expression expects one predicate
+		if len(predicates) != 1 {
+			panic("\"IS NULL\" expression is malformed: \"" + context.GetText() + "\"")
+		}
+
+		if fep.tryGetExpr(predicates[0], &value) {
+			fep.addExpr(context, NewOperatorExpression(operatorType, value, nil))
+			return
+		}
+
+		panic("failed to find \"IS NULL\" predicate expression \"" + predicates[0].GetText() + "\"")
+	}
+
+	// Remaining operators require two predicate expressions
+	predicates := context.AllPredicateExpression()
+
+	if len(predicates) != 2 {
+		panic("operator expression, in predicate expression context, is malformed: \"" + context.GetText() + "\"")
+	}
+
+	var leftValue, rightValue Expression
+	var operatorType ExpressionOperatorTypeEnum
+
+	if !fep.tryGetExpr(predicates[0], &leftValue) {
+		panic("failed to find left operator predicate expression \"" + predicates[0].GetText() + "\"")
+	}
+
+	if !fep.tryGetExpr(predicates[1], &rightValue) {
+		panic("failed to find right operator predicate expression \"" + predicates[1].GetText() + "\"")
+	}
+
+	// Check for comparison operator expressions
+	comparisonOperator := context.ComparisonOperator()
+
+	if comparisonOperator != nil {
+		operatorSymbol := comparisonOperator.GetText()
+
+		// Check for comparison operations
+		switch operatorSymbol {
+		case "<":
+			operatorType = ExpressionOperatorType.LessThan
+		case "<=":
+			operatorType = ExpressionOperatorType.LessThanOrEqual
+		case ">":
+			operatorType = ExpressionOperatorType.GreaterThan
+		case ">=":
+			operatorType = ExpressionOperatorType.GreaterThanOrEqual
+		case "=", "==":
+			operatorType = ExpressionOperatorType.Equal
+		case "===":
+			operatorType = ExpressionOperatorType.EqualExactMatch
+		case "<>", "!=":
+			operatorType = ExpressionOperatorType.NotEqual
+		case "!==":
+			operatorType = ExpressionOperatorType.NotEqualExactMatch
+		default:
+			panic("Unexpected comparison operator \"" + operatorSymbol + "\"")
+		}
+
+		fep.addExpr(context, NewOperatorExpression(operatorType, leftValue, rightValue))
+		return
+	}
+
+	// Check for LIKE expressions
+	if context.K_LIKE() != nil {
+		var operatorType ExpressionOperatorTypeEnum
+
+		if exactMatchModifier == nil {
+			if notOperator == nil {
+				operatorType = ExpressionOperatorType.Like
+			} else {
+				operatorType = ExpressionOperatorType.NotLike
+			}
+		} else {
+			if notOperator == nil {
+				operatorType = ExpressionOperatorType.LikeExactMatch
+			} else {
+				operatorType = ExpressionOperatorType.NotLikeExactMatch
+			}
+		}
+
+		fep.addExpr(context, NewOperatorExpression(operatorType, leftValue, rightValue))
+		return
+	}
+
+	panic("unexpected predicate expression \"" + context.GetText() + "\"")
 }
 
 // Select evaluates the specified expression tree returning matching rows.
