@@ -590,6 +590,7 @@ func (fep *FilterExpressionParser) ExitExpression(context *parser.ExpressionCont
 */
 
 // ExitPredicateExpression is called when production predicateExpression is exited.
+//gocyclo: ignore
 func (fep *FilterExpressionParser) ExitPredicateExpression(context *parser.PredicateExpressionContext) {
 	var value Expression
 
@@ -743,6 +744,189 @@ func (fep *FilterExpressionParser) ExitPredicateExpression(context *parser.Predi
 	}
 
 	panic("unexpected predicate expression \"" + context.GetText() + "\"")
+}
+
+/*
+   valueExpression
+    : literalValue
+    | columnName
+    | functionExpression
+    | unaryOperator valueExpression
+    | '(' expression ')'
+    | valueExpression mathOperator valueExpression
+    | valueExpression bitwiseOperator valueExpression
+	;
+*/
+
+// ExitValueExpression is called when production valueExpression is exited.
+//gocyclo: ignore
+func (fep *FilterExpressionParser) ExitValueExpression(context *parser.ValueExpressionContext) {
+	var value Expression
+
+	// Check for literal values (see explicit visit function)
+	literalValue := context.LiteralValue()
+
+	if literalValue != nil {
+		if fep.tryGetExpr(literalValue, &value) {
+			fep.addExpr(context, value)
+			return
+		}
+
+		panic("failed to find literal value \"" + literalValue.GetText() + "\"")
+	}
+
+	// Check for column names (see explicit visit function)
+	columnName := context.ColumnName()
+
+	if columnName != nil {
+		if fep.tryGetExpr(columnName, &value) {
+			fep.addExpr(context, value)
+			return
+		}
+
+		panic("failed to find column name \"" + columnName.GetText() + "\"")
+	}
+
+	// Check for function expressions (see explicit visit function)
+	functionExpression := context.FunctionExpression()
+
+	if functionExpression != nil {
+		if fep.tryGetExpr(functionExpression, &value) {
+			fep.addExpr(context, value)
+			return
+		}
+
+		panic("failed to find function expression \"" + functionExpression.GetText() + "\"")
+	}
+
+	// Check for unary operators
+	unaryOperator := context.UnaryOperator()
+
+	if unaryOperator != nil {
+		valueExpressions := context.AllValueExpression()
+
+		if len(valueExpressions) != 1 {
+			panic("unary operator value expression is malformed: \"" + context.GetText() + "\"")
+		}
+
+		if fep.tryGetExpr(valueExpressions[0], &value) {
+			var unaryType ExpressionUnaryTypeEnum
+			unaryOperatorContext := unaryOperator.(*parser.UnaryOperatorContext)
+
+			// Check for unary operators
+			if unaryOperatorContext.K_NOT() == nil {
+				operatorSymbol := unaryOperatorContext.GetText()
+
+				switch operatorSymbol {
+				case "+":
+					unaryType = ExpressionUnaryType.Plus
+				case "-":
+					unaryType = ExpressionUnaryType.Minus
+				case "~", "!":
+					unaryType = ExpressionUnaryType.Not
+				default:
+					panic("unexpected unary operator type \"" + operatorSymbol + "\"")
+				}
+			} else {
+				unaryType = ExpressionUnaryType.Not
+			}
+
+			fep.addExpr(context, NewUnaryExpression(unaryType, value))
+			return
+		}
+
+		panic("failed to find unary operator value expression \"" + context.GetText() + "\"")
+	}
+
+	// Check for sub-expressions, i.e., "(" expression ")"
+	expression := context.Expression()
+
+	if expression != nil {
+		if fep.tryGetExpr(expression, &value) {
+			fep.addExpr(context, value)
+			return
+		}
+
+		panic("failed to find sub-expression \"" + expression.GetText() + "\"")
+	}
+
+	// Remaining operators require two value expressions
+	valueExpressions := context.AllValueExpression()
+
+	if len(valueExpressions) != 2 {
+		panic("operator expression, in value expression context, is malformed: \"" + context.GetText() + "\"")
+	}
+
+	var leftValue, rightValue Expression
+	var operatorType ExpressionOperatorTypeEnum
+
+	if !fep.tryGetExpr(valueExpressions[0], &leftValue) {
+		panic("Failed to find left operator value expression \"" + valueExpressions[0].GetText() + "\"")
+	}
+
+	if !fep.tryGetExpr(valueExpressions[1], &rightValue) {
+		panic("Failed to find right operator value expression \"" + valueExpressions[1].GetText() + "\"")
+	}
+
+	// Check for math operator expressions
+	mathOperator := context.MathOperator()
+
+	if mathOperator != nil {
+		operatorSymbol := mathOperator.GetText()
+
+		// Check for arithmetic operators
+		switch operatorSymbol {
+		case "*":
+			operatorType = ExpressionOperatorType.Multiply
+		case "/":
+			operatorType = ExpressionOperatorType.Divide
+		case "%":
+			operatorType = ExpressionOperatorType.Modulus
+		case "+":
+			operatorType = ExpressionOperatorType.Add
+		case "-":
+			operatorType = ExpressionOperatorType.Subtract
+		default:
+			panic("unexpected math operator \"" + operatorSymbol + "\"")
+		}
+
+		fep.addExpr(context, NewOperatorExpression(operatorType, leftValue, rightValue))
+		return
+	}
+
+	// Check for bitwise operator expressions
+	bitwiseOperator := context.BitwiseOperator()
+
+	if bitwiseOperator != nil {
+		bitwiseOperatorContext := bitwiseOperator.(*parser.BitwiseOperatorContext)
+
+		// Check for bitwise operators
+		if bitwiseOperatorContext.K_XOR() == nil {
+			operatorSymbol := bitwiseOperatorContext.GetText()
+
+			switch operatorSymbol {
+			case "<<":
+				operatorType = ExpressionOperatorType.BitShiftLeft
+			case ">>":
+				operatorType = ExpressionOperatorType.BitShiftRight
+			case "&":
+				operatorType = ExpressionOperatorType.BitwiseAnd
+			case "|":
+				operatorType = ExpressionOperatorType.BitwiseOr
+			case "^":
+				operatorType = ExpressionOperatorType.BitwiseXor
+			default:
+				panic("unexpected bitwise operator \"" + operatorSymbol + "\"")
+			}
+		} else {
+			operatorType = ExpressionOperatorType.BitwiseXor
+		}
+
+		fep.addExpr(context, NewOperatorExpression(operatorType, leftValue, rightValue))
+		return
+	}
+
+	panic("unexpected value expression \"" + context.GetText() + "\"")
 }
 
 // Select evaluates the specified expression tree returning matching rows.
