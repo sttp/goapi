@@ -159,6 +159,7 @@ func (dr *DataRow) getComputedValue(column *DataColumn) (interface{}, error) {
 	}
 }
 
+//gocyclo:ignore
 func convertFromBoolean(value bool, targetType DataTypeEnum) (interface{}, error) {
 	var valueAsInt int
 
@@ -202,6 +203,7 @@ func convertFromBoolean(value bool, targetType DataTypeEnum) (interface{}, error
 	}
 }
 
+//gocyclo:ignore
 func convertFromInt32(value int32, targetType DataTypeEnum) (interface{}, error) {
 	switch targetType {
 	case DataType.String:
@@ -239,6 +241,7 @@ func convertFromInt32(value int32, targetType DataTypeEnum) (interface{}, error)
 	}
 }
 
+//gocyclo:ignore
 func convertFromInt64(value int64, targetType DataTypeEnum) (interface{}, error) {
 	switch targetType {
 	case DataType.String:
@@ -276,6 +279,7 @@ func convertFromInt64(value int64, targetType DataTypeEnum) (interface{}, error)
 	}
 }
 
+//gocyclo:ignore
 func convertFromDecimal(value decimal.Decimal, targetType DataTypeEnum) (interface{}, error) {
 	switch targetType {
 	case DataType.String:
@@ -287,7 +291,7 @@ func convertFromDecimal(value decimal.Decimal, targetType DataTypeEnum) (interfa
 		return float32(f64), nil
 	case DataType.Double:
 		f64, _ := value.Float64()
-		return float64(f64), nil
+		return f64, nil
 	case DataType.Decimal:
 		return value, nil
 	case DataType.Int8:
@@ -315,6 +319,7 @@ func convertFromDecimal(value decimal.Decimal, targetType DataTypeEnum) (interfa
 	}
 }
 
+//gocyclo:ignore
 func convertFromDouble(value float64, targetType DataTypeEnum) (interface{}, error) {
 	switch targetType {
 	case DataType.String:
@@ -352,6 +357,7 @@ func convertFromDouble(value float64, targetType DataTypeEnum) (interface{}, err
 	}
 }
 
+//gocyclo:ignore
 func convertFromString(value string, targetType DataTypeEnum) (interface{}, error) {
 	switch targetType {
 	case DataType.String:
@@ -380,7 +386,7 @@ func convertFromString(value string, targetType DataTypeEnum) (interface{}, erro
 		return int32(i), err
 	case DataType.Int64:
 		i, err := strconv.ParseInt(value, 10, 64)
-		return int64(i), err
+		return i, err
 	case DataType.UInt8:
 		ui, err := strconv.ParseUint(value, 10, 8)
 		return uint8(ui), err
@@ -392,12 +398,13 @@ func convertFromString(value string, targetType DataTypeEnum) (interface{}, erro
 		return uint32(ui), err
 	case DataType.UInt64:
 		ui, err := strconv.ParseUint(value, 10, 64)
-		return uint64(ui), err
+		return ui, err
 	default:
 		return nil, errors.New("unexpected column data type encountered")
 	}
 }
 
+//gocyclo:ignore
 func convertFromGuid(value guid.Guid, targetType DataTypeEnum) (interface{}, error) {
 	switch targetType {
 	case DataType.String:
@@ -435,6 +442,7 @@ func convertFromGuid(value guid.Guid, targetType DataTypeEnum) (interface{}, err
 	}
 }
 
+//gocyclo:ignore
 func convertFromDateTime(value time.Time, targetType DataTypeEnum) (interface{}, error) {
 	seconds := value.Unix()
 
@@ -458,7 +466,7 @@ func convertFromDateTime(value time.Time, targetType DataTypeEnum) (interface{},
 	case DataType.Int32:
 		return int32(seconds), nil
 	case DataType.Int64:
-		return int64(seconds), nil
+		return seconds, nil
 	case DataType.UInt8:
 		return uint8(seconds), nil
 	case DataType.UInt16:
