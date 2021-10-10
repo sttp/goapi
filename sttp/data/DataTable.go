@@ -24,6 +24,8 @@
 package data
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/sttp/goapi/sttp/format"
@@ -210,4 +212,29 @@ func (dt *DataTable) String() string {
 	image.WriteString(" rows")
 
 	return image.String()
+}
+
+// Select returns the rows matching the filterExpression criteria in the specified sort order.
+// The filterExpression parameter should be in WHERE SQL syntax but does not include the
+// WHERE keyword. The sortOrder parameter should be a field name within the DataTable and can
+// have an ASC or DESC suffix; defaults to ASC when no suffix is provided. Set sortOrder to an
+// empty string to return records in natural order. Set limit to -1 for all matching rows.
+func (dt *DataTable) Select(filterExpression string, sortOrder string, limit int) ([]*DataRow, error) {
+	if limit > 0 {
+		filterExpression = fmt.Sprintf("FILTER TOP %d %s WHERE %s", limit, dt.name, filterExpression)
+	} else {
+		filterExpression = fmt.Sprintf("FILTER %s WHERE %s", dt.name, filterExpression)
+	}
+
+	if len(sortOrder) > 0 {
+		filterExpression = fmt.Sprintf("%s ORDER BY %s", filterExpression, sortOrder)
+	}
+
+	expressionTree, err := GenerateExpressionTree(dt, filterExpression, true)
+
+	if err != nil {
+		return nil, errors.New("failed to parse filter expression: " + err.Error())
+	}
+
+	return expressionTree.Select()
 }

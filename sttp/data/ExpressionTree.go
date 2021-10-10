@@ -67,7 +67,9 @@ func (et *ExpressionTree) Table() *DataTable {
 	return et.table
 }
 
-// Select returns the rows matching the the ExpressionTree.
+// Select returns the rows matching the the ExpressionTree. The expression tree
+// result type is expected to be a Boolean for this filtering operation. This
+// works like the "WHERE" clause of a SQL expression.
 func (et *ExpressionTree) Select() ([]*DataRow, error) {
 	matchedRows := make([]*DataRow, 0)
 
