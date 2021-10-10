@@ -30,6 +30,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/araddon/dateparse"
 	"github.com/shopspring/decimal"
 	"github.com/sttp/goapi/sttp/guid"
 )
@@ -92,42 +93,385 @@ func (dr *DataRow) validateColumnType(columnIndex, targetType int, read bool) (*
 	return column, nil
 }
 
-// func (dr *DataRow) getExpressionTree(column *DataColumn) (*filterexpressions.ExpressionTree, error) {
-// 	columnIndex := column.Index()
+func (dr *DataRow) expressionTree(column *DataColumn) (*ExpressionTree, error) {
+	columnIndex := column.Index()
 
-// 	if dr.values[columnIndex] == nil {
-// 		dataTable := column.Parent()
-// 		parser := filterexpressions.NewFilterExpressionParser(column.Expression(), true)
+	if dr.values[columnIndex] == nil {
+		dataTable := column.Parent()
+		parser := NewFilterExpressionParser(column.Expression(), true)
 
-// 		parser.DataSet = dataTable.Parent()
-// 		parser.PrimaryTableName = dataTable.Name()
-// 		parser.TrackFilteredSignalIDs = false
-// 		parser.TrackFilteredRows = false
+		parser.DataSet = dataTable.Parent()
+		parser.PrimaryTableName = dataTable.Name()
+		parser.TrackFilteredSignalIDs = false
+		parser.TrackFilteredRows = false
 
-// 		expressionTrees := parser.GetExpressionTrees()
+		expressionTrees, err := parser.ExpressionTrees()
 
-// 		if len(expressionTrees) == 0 {
-// 			return nil, errors.New("expression defined for computed DataColumn \"" + column.Name() + "\" for table \"" + dr.parent.Name() + "\" cannot produce a value")
-// 		}
+		if err != nil {
+			return nil, errors.New("failed to parse expression defined for computed DataColumn \"" + column.Name() + "\" for table \"" + dr.parent.Name() + "\": " + err.Error())
+		}
 
-// 		dr.values[columnIndex] = parser
-// 		return expressionTrees[0]
-// 	}
+		if len(expressionTrees) == 0 {
+			return nil, errors.New("expression defined for computed DataColumn \"" + column.Name() + "\" for table \"" + dr.parent.Name() + "\" cannot produce a value")
+		}
 
-// 	return dr.values[columnIndex].(*FilterExpressionParser).GetExpressionTrees()[0]
-// }
+		dr.values[columnIndex] = expressionTrees[0]
+		return expressionTrees[0], nil
+	}
+
+	return dr.values[columnIndex].(*ExpressionTree), nil
+}
 
 func (dr *DataRow) getComputedValue(column *DataColumn) (interface{}, error) {
-	// TODO: Evaluate expression using ANTLR grammar:
-	// https://github.com/sttp/cppapi/blob/master/src/lib/filterexpressions/FilterExpressionSyntax.g4
-	// expressionTree, err := dr.getExpressionTree(column)
-	// sourceValue = expressionTree.Evaluate()
+	expressionTree, err := dr.expressionTree(column)
 
-	// switch sourceValue.ValueType {
-	// case ExpressionValueType.Boolean:
-	// }
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	sourceValue, err := expressionTree.Evaluate(dr)
+
+	if err != nil {
+		return nil, errors.New("failed to evaluate expression defined for computed DataColumn \"" + column.Name() + "\" for table \"" + dr.parent.Name() + "\": " + err.Error())
+	}
+
+	targetType := column.Type()
+
+	switch sourceValue.ValueType() {
+	case ExpressionValueType.Boolean:
+		return convertFromBoolean(sourceValue.booleanValue(), targetType)
+	case ExpressionValueType.Int32:
+		return convertFromInt32(sourceValue.int32Value(), targetType)
+	case ExpressionValueType.Int64:
+		return convertFromInt64(sourceValue.int64Value(), targetType)
+	case ExpressionValueType.Decimal:
+		return convertFromDecimal(sourceValue.decimalValue(), targetType)
+	case ExpressionValueType.Double:
+		return convertFromDouble(sourceValue.doubleValue(), targetType)
+	case ExpressionValueType.String:
+		return convertFromString(sourceValue.stringValue(), targetType)
+	case ExpressionValueType.Guid:
+		return convertFromGuid(sourceValue.guidValue(), targetType)
+	case ExpressionValueType.DateTime:
+		return convertFromDateTime(sourceValue.dateTimeValue(), targetType)
+	default:
+		return nil, errors.New("unexpected expression value type encountered")
+	}
+}
+
+func convertFromBoolean(value bool, targetType DataTypeEnum) (interface{}, error) {
+	var valueAsInt int
+
+	if value {
+		valueAsInt = 1
+	}
+
+	switch targetType {
+	case DataType.String:
+		return strconv.FormatBool(value), nil
+	case DataType.Boolean:
+		return value, nil
+	case DataType.Single:
+		return float32(valueAsInt), nil
+	case DataType.Double:
+		return float64(valueAsInt), nil
+	case DataType.Decimal:
+		return decimal.NewFromInt(int64(valueAsInt)), nil
+	case DataType.Int8:
+		return int8(valueAsInt), nil
+	case DataType.Int16:
+		return int16(valueAsInt), nil
+	case DataType.Int32:
+		return int32(valueAsInt), nil
+	case DataType.Int64:
+		return int64(valueAsInt), nil
+	case DataType.UInt8:
+		return uint8(valueAsInt), nil
+	case DataType.UInt16:
+		return uint16(valueAsInt), nil
+	case DataType.UInt32:
+		return uint32(valueAsInt), nil
+	case DataType.UInt64:
+		return uint64(valueAsInt), nil
+	case DataType.DateTime:
+		fallthrough
+	case DataType.Guid:
+		return nil, errors.New("cannot convert \"Boolean\" expression value to \"" + targetType.String() + "\" column")
+	default:
+		return nil, errors.New("unexpected column data type encountered")
+	}
+}
+
+func convertFromInt32(value int32, targetType DataTypeEnum) (interface{}, error) {
+	switch targetType {
+	case DataType.String:
+		return strconv.FormatInt(int64(value), 10), nil
+	case DataType.Boolean:
+		return value != 0, nil
+	case DataType.Single:
+		return float32(value), nil
+	case DataType.Double:
+		return float64(value), nil
+	case DataType.Decimal:
+		return decimal.NewFromInt32(value), nil
+	case DataType.Int8:
+		return int8(value), nil
+	case DataType.Int16:
+		return int16(value), nil
+	case DataType.Int32:
+		return value, nil
+	case DataType.Int64:
+		return int64(value), nil
+	case DataType.UInt8:
+		return uint8(value), nil
+	case DataType.UInt16:
+		return uint16(value), nil
+	case DataType.UInt32:
+		return uint32(value), nil
+	case DataType.UInt64:
+		return uint64(value), nil
+	case DataType.DateTime:
+		fallthrough
+	case DataType.Guid:
+		return nil, errors.New("cannot convert \"Int32\" expression value to \"" + targetType.String() + "\" column")
+	default:
+		return nil, errors.New("unexpected column data type encountered")
+	}
+}
+
+func convertFromInt64(value int64, targetType DataTypeEnum) (interface{}, error) {
+	switch targetType {
+	case DataType.String:
+		return strconv.FormatInt(value, 10), nil
+	case DataType.Boolean:
+		return value != 0, nil
+	case DataType.Single:
+		return float32(value), nil
+	case DataType.Double:
+		return float64(value), nil
+	case DataType.Decimal:
+		return decimal.NewFromInt(value), nil
+	case DataType.Int8:
+		return int8(value), nil
+	case DataType.Int16:
+		return int16(value), nil
+	case DataType.Int32:
+		return int32(value), nil
+	case DataType.Int64:
+		return value, nil
+	case DataType.UInt8:
+		return uint8(value), nil
+	case DataType.UInt16:
+		return uint16(value), nil
+	case DataType.UInt32:
+		return uint32(value), nil
+	case DataType.UInt64:
+		return uint64(value), nil
+	case DataType.DateTime:
+		fallthrough
+	case DataType.Guid:
+		return nil, errors.New("cannot convert \"Int64\" expression value to \"" + targetType.String() + "\" column")
+	default:
+		return nil, errors.New("unexpected column data type encountered")
+	}
+}
+
+func convertFromDecimal(value decimal.Decimal, targetType DataTypeEnum) (interface{}, error) {
+	switch targetType {
+	case DataType.String:
+		return value.String(), nil
+	case DataType.Boolean:
+		return !value.Equal(decimal.Zero), nil
+	case DataType.Single:
+		f64, _ := value.Float64()
+		return float32(f64), nil
+	case DataType.Double:
+		f64, _ := value.Float64()
+		return float64(f64), nil
+	case DataType.Decimal:
+		return value, nil
+	case DataType.Int8:
+		return int8(value.IntPart()), nil
+	case DataType.Int16:
+		return int16(value.IntPart()), nil
+	case DataType.Int32:
+		return int32(value.IntPart()), nil
+	case DataType.Int64:
+		return value.IntPart(), nil
+	case DataType.UInt8:
+		return uint8(value.IntPart()), nil
+	case DataType.UInt16:
+		return uint16(value.IntPart()), nil
+	case DataType.UInt32:
+		return uint32(value.IntPart()), nil
+	case DataType.UInt64:
+		return uint64(value.IntPart()), nil
+	case DataType.DateTime:
+		fallthrough
+	case DataType.Guid:
+		return nil, errors.New("cannot convert \"Decimal\" expression value to \"" + targetType.String() + "\" column")
+	default:
+		return nil, errors.New("unexpected column data type encountered")
+	}
+}
+
+func convertFromDouble(value float64, targetType DataTypeEnum) (interface{}, error) {
+	switch targetType {
+	case DataType.String:
+		return strconv.FormatFloat(value, 'f', 6, 64), nil
+	case DataType.Boolean:
+		return value != 0.0, nil
+	case DataType.Single:
+		return float32(value), nil
+	case DataType.Double:
+		return value, nil
+	case DataType.Decimal:
+		return decimal.NewFromFloat(value), nil
+	case DataType.Int8:
+		return int8(value), nil
+	case DataType.Int16:
+		return int16(value), nil
+	case DataType.Int32:
+		return int32(value), nil
+	case DataType.Int64:
+		return int64(value), nil
+	case DataType.UInt8:
+		return uint8(value), nil
+	case DataType.UInt16:
+		return uint16(value), nil
+	case DataType.UInt32:
+		return uint32(value), nil
+	case DataType.UInt64:
+		return uint64(value), nil
+	case DataType.DateTime:
+		fallthrough
+	case DataType.Guid:
+		return nil, errors.New("cannot convert \"Double\" expression value to \"" + targetType.String() + "\" column")
+	default:
+		return nil, errors.New("unexpected column data type encountered")
+	}
+}
+
+func convertFromString(value string, targetType DataTypeEnum) (interface{}, error) {
+	switch targetType {
+	case DataType.String:
+		return value, nil
+	case DataType.Boolean:
+		return strconv.ParseBool(value)
+	case DataType.DateTime:
+		return dateparse.ParseAny(value)
+	case DataType.Single:
+		f64, err := strconv.ParseFloat(value, 64)
+		return float32(f64), err
+	case DataType.Double:
+		return strconv.ParseFloat(value, 64)
+	case DataType.Decimal:
+		return decimal.NewFromString(value)
+	case DataType.Guid:
+		return guid.Parse(value)
+	case DataType.Int8:
+		i, err := strconv.ParseInt(value, 10, 8)
+		return int8(i), err
+	case DataType.Int16:
+		i, err := strconv.ParseInt(value, 10, 16)
+		return int16(i), err
+	case DataType.Int32:
+		i, err := strconv.ParseInt(value, 10, 32)
+		return int32(i), err
+	case DataType.Int64:
+		i, err := strconv.ParseInt(value, 10, 64)
+		return int64(i), err
+	case DataType.UInt8:
+		ui, err := strconv.ParseUint(value, 10, 8)
+		return uint8(ui), err
+	case DataType.UInt16:
+		ui, err := strconv.ParseUint(value, 10, 16)
+		return uint16(ui), err
+	case DataType.UInt32:
+		ui, err := strconv.ParseUint(value, 10, 32)
+		return uint32(ui), err
+	case DataType.UInt64:
+		ui, err := strconv.ParseUint(value, 10, 64)
+		return uint64(ui), err
+	default:
+		return nil, errors.New("unexpected column data type encountered")
+	}
+}
+
+func convertFromGuid(value guid.Guid, targetType DataTypeEnum) (interface{}, error) {
+	switch targetType {
+	case DataType.String:
+		return value.String(), nil
+	case DataType.Guid:
+		return value, nil
+	case DataType.Boolean:
+		fallthrough
+	case DataType.DateTime:
+		fallthrough
+	case DataType.Single:
+		fallthrough
+	case DataType.Double:
+		fallthrough
+	case DataType.Decimal:
+		fallthrough
+	case DataType.Int8:
+		fallthrough
+	case DataType.Int16:
+		fallthrough
+	case DataType.Int32:
+		fallthrough
+	case DataType.Int64:
+		fallthrough
+	case DataType.UInt8:
+		fallthrough
+	case DataType.UInt16:
+		fallthrough
+	case DataType.UInt32:
+		fallthrough
+	case DataType.UInt64:
+		return nil, errors.New("cannot convert \"Guid\" expression value to \"" + targetType.String() + "\" column")
+	default:
+		return nil, errors.New("unexpected column data type encountered")
+	}
+}
+
+func convertFromDateTime(value time.Time, targetType DataTypeEnum) (interface{}, error) {
+	seconds := value.Unix()
+
+	switch targetType {
+	case DataType.String:
+		return value.Format(DateTimeFormat), nil
+	case DataType.Boolean:
+		return seconds == 0, nil
+	case DataType.DateTime:
+		return value, nil
+	case DataType.Single:
+		return float32(seconds), nil
+	case DataType.Double:
+		return float64(seconds), nil
+	case DataType.Decimal:
+		return decimal.NewFromInt(seconds), nil
+	case DataType.Int8:
+		return int8(seconds), nil
+	case DataType.Int16:
+		return int16(seconds), nil
+	case DataType.Int32:
+		return int32(seconds), nil
+	case DataType.Int64:
+		return int64(seconds), nil
+	case DataType.UInt8:
+		return uint8(seconds), nil
+	case DataType.UInt16:
+		return uint16(seconds), nil
+	case DataType.UInt32:
+		return uint32(seconds), nil
+	case DataType.UInt64:
+		return uint64(seconds), nil
+	case DataType.Guid:
+		return nil, errors.New("cannot convert \"DateTime\" expression value to \"" + targetType.String() + "\" column")
+	default:
+		return nil, errors.New("unexpected column data type encountered")
+	}
 }
 
 // Value reads the record value at the specified columnIndex.
@@ -1118,10 +1462,10 @@ func (dr *DataRow) String() string {
 	return image.String()
 }
 
-// CompareDataRowColumn returns an integer comparing two DataRow column values for the
+// CompareDataRowColumns returns an integer comparing two DataRow column values for the
 // specified column index. The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
 //gocyclo:ignore
-func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatch bool) (int, error) {
+func CompareDataRowColumns(leftRow, rightRow *DataRow, columnIndex int, exactMatch bool) (int, error) {
 	leftColumn := leftRow.parent.Column(columnIndex)
 	rightColumn := rightRow.parent.Column(columnIndex)
 
@@ -1151,15 +1495,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return strings.Compare(strings.ToUpper(leftValue), strings.ToUpper(rightValue)), nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.Boolean:
 		leftValue, leftNull, leftErr := leftRow.BooleanValue(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.BooleanValue(columnIndex)
@@ -1178,15 +1514,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.DateTime:
 		leftValue, leftNull, leftErr := leftRow.DateTimeValue(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.DateTimeValue(columnIndex)
@@ -1205,15 +1533,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.Single:
 		leftValue, leftNull, leftErr := leftRow.SingleValue(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.SingleValue(columnIndex)
@@ -1232,15 +1552,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.Double:
 		leftValue, leftNull, leftErr := leftRow.DoubleValue(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.DoubleValue(columnIndex)
@@ -1259,15 +1571,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.Decimal:
 		leftValue, leftNull, leftErr := leftRow.DecimalValue(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.DecimalValue(columnIndex)
@@ -1286,15 +1590,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.Guid:
 		leftValue, leftNull, leftErr := leftRow.GuidValue(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.GuidValue(columnIndex)
@@ -1313,15 +1609,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.Int8:
 		leftValue, leftNull, leftErr := leftRow.Int8Value(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.Int8Value(columnIndex)
@@ -1340,15 +1628,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.Int16:
 		leftValue, leftNull, leftErr := leftRow.Int16Value(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.Int16Value(columnIndex)
@@ -1367,15 +1647,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.Int32:
 		leftValue, leftNull, leftErr := leftRow.Int32Value(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.Int32Value(columnIndex)
@@ -1394,15 +1666,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.Int64:
 		leftValue, leftNull, leftErr := leftRow.Int64Value(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.Int64Value(columnIndex)
@@ -1421,15 +1685,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.UInt8:
 		leftValue, leftNull, leftErr := leftRow.UInt8Value(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.UInt8Value(columnIndex)
@@ -1448,15 +1704,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.UInt16:
 		leftValue, leftNull, leftErr := leftRow.UInt16Value(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.UInt16Value(columnIndex)
@@ -1475,15 +1723,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.UInt32:
 		leftValue, leftNull, leftErr := leftRow.UInt32Value(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.UInt32Value(columnIndex)
@@ -1502,15 +1742,7 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	case DataType.UInt64:
 		leftValue, leftNull, leftErr := leftRow.UInt64Value(columnIndex)
 		rightValue, rightNull, rightErr := rightRow.UInt64Value(columnIndex)
@@ -1529,16 +1761,20 @@ func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatc
 			return 0, nil
 		}
 
-		if !leftHasValue && !rightHasValue {
-			return 0, nil
-		}
-
-		if leftHasValue {
-			return 1, nil
-		}
-
-		return -1, nil
+		return nullCompare(leftHasValue, rightHasValue), nil
 	default:
 		return 0, errors.New("unexpected column data type encountered")
 	}
+}
+
+func nullCompare(leftHasValue, rightHasValue bool) int {
+	if !leftHasValue && !rightHasValue {
+		return 0
+	}
+
+	if leftHasValue {
+		return 1
+	}
+
+	return -1
 }
