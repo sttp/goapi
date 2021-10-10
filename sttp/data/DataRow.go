@@ -98,25 +98,14 @@ func (dr *DataRow) expressionTree(column *DataColumn) (*ExpressionTree, error) {
 
 	if dr.values[columnIndex] == nil {
 		dataTable := column.Parent()
-		parser := NewFilterExpressionParser(column.Expression(), true)
-
-		parser.DataSet = dataTable.Parent()
-		parser.PrimaryTableName = dataTable.Name()
-		parser.TrackFilteredSignalIDs = false
-		parser.TrackFilteredRows = false
-
-		expressionTrees, err := parser.ExpressionTrees()
+		expressionTree, err := GenerateExpressionTree(dataTable, column.Expression(), true)
 
 		if err != nil {
 			return nil, errors.New("failed to parse expression defined for computed DataColumn \"" + column.Name() + "\" for table \"" + dr.parent.Name() + "\": " + err.Error())
 		}
 
-		if len(expressionTrees) == 0 {
-			return nil, errors.New("expression defined for computed DataColumn \"" + column.Name() + "\" for table \"" + dr.parent.Name() + "\" cannot produce a value")
-		}
-
-		dr.values[columnIndex] = expressionTrees[0]
-		return expressionTrees[0], nil
+		dr.values[columnIndex] = expressionTree
+		return expressionTree, nil
 	}
 
 	return dr.values[columnIndex].(*ExpressionTree), nil
