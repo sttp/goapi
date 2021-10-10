@@ -20,8 +20,7 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
-
-package filterexpressions
+package data
 
 import (
 	"errors"
@@ -33,7 +32,6 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
-	"github.com/sttp/goapi/sttp/data"
 	"github.com/sttp/goapi/sttp/guid"
 )
 
@@ -41,8 +39,8 @@ var whitespace string = " \t\n\v\f\r\x85\xA0"
 
 // ExpressionTree represents a tree of expressions for evaluation.
 type ExpressionTree struct {
-	currentRow *data.DataRow
-	table      *data.DataTable
+	currentRow *DataRow
+	table      *DataTable
 
 	// TopLimit represents the parsed value associated with the "TOP" keyword.
 	TopLimit int
@@ -57,7 +55,7 @@ type ExpressionTree struct {
 }
 
 // NewExpressionTree creates a new expression tree.
-func NewExpressionTree(table *data.DataTable) *ExpressionTree {
+func NewExpressionTree(table *DataTable) *ExpressionTree {
 	return &ExpressionTree{
 		table:    table,
 		TopLimit: -1,
@@ -65,13 +63,13 @@ func NewExpressionTree(table *data.DataTable) *ExpressionTree {
 }
 
 // Table gets reference to the data table associated with the ExpressionTree.
-func (et *ExpressionTree) Table() *data.DataTable {
+func (et *ExpressionTree) Table() *DataTable {
 	return et.table
 }
 
 // Select returns the rows matching the the ExpressionTree.
-func (et *ExpressionTree) Select() ([]*data.DataRow, error) {
-	matchedRows := make([]*data.DataRow, 0)
+func (et *ExpressionTree) Select() ([]*DataRow, error) {
+	matchedRows := make([]*DataRow, 0)
 
 	table := et.Table()
 
@@ -110,7 +108,7 @@ func (et *ExpressionTree) Select() ([]*data.DataRow, error) {
 			rightMatchedRow := matchedRows[j]
 
 			for _, orderByTerm := range et.OrderByTerms {
-				var leftRow, rightRow *data.DataRow
+				var leftRow, rightRow *DataRow
 
 				if orderByTerm.Ascending {
 					leftRow = leftMatchedRow
@@ -120,7 +118,7 @@ func (et *ExpressionTree) Select() ([]*data.DataRow, error) {
 					rightRow = leftMatchedRow
 				}
 
-				result, _ := data.CompareDataRowColumn(leftRow, rightRow, orderByTerm.Column.Index(), orderByTerm.ExactMatch)
+				result, _ := CompareDataRowColumns(leftRow, rightRow, orderByTerm.Column.Index(), orderByTerm.ExactMatch)
 
 				if result < 0 {
 					return true
@@ -142,7 +140,7 @@ func (et *ExpressionTree) Select() ([]*data.DataRow, error) {
 
 // Evaluate executes the filter expression parser for the specified dataRow for the ExpressionTree.
 // Root expression should be assigned before calling Evaluate.
-func (et *ExpressionTree) Evaluate(dataRow *data.DataRow) (*ValueExpression, error) {
+func (et *ExpressionTree) Evaluate(dataRow *DataRow) (*ValueExpression, error) {
 	et.currentRow = dataRow
 	return et.evaluate(et.Root)
 }
@@ -225,7 +223,7 @@ func (et *ExpressionTree) evaluateUnary(expression Expression) (*ValueExpression
 //gocyclo:ignore
 func (et *ExpressionTree) evaluateColumn(expression Expression) (*ValueExpression, error) {
 	columnExpression := expression.(*ColumnExpression)
-	var column *data.DataColumn
+	var column *DataColumn
 	var err error
 
 	if column = columnExpression.DataColumn(); column == nil {
@@ -239,61 +237,61 @@ func (et *ExpressionTree) evaluateColumn(expression Expression) (*ValueExpressio
 
 	// Map column DataType to ExpressionType, storing equivalent literal value (can be nil)
 	switch column.Type() {
-	case data.DataType.String:
+	case DataType.String:
 		valueType = ExpressionValueType.String
 		value, isNull, err = et.currentRow.StringValue(columnIndex)
-	case data.DataType.Boolean:
+	case DataType.Boolean:
 		valueType = ExpressionValueType.Boolean
 		value, isNull, err = et.currentRow.BooleanValue(columnIndex)
-	case data.DataType.DateTime:
+	case DataType.DateTime:
 		valueType = ExpressionValueType.DateTime
 		value, isNull, err = et.currentRow.DateTimeValue(columnIndex)
-	case data.DataType.Single:
+	case DataType.Single:
 		var f32 float32
 		valueType = ExpressionValueType.Double
 		f32, isNull, err = et.currentRow.SingleValue(columnIndex)
 		value = float64(f32)
-	case data.DataType.Double:
+	case DataType.Double:
 		valueType = ExpressionValueType.Double
 		value, isNull, err = et.currentRow.DoubleValue(columnIndex)
-	case data.DataType.Decimal:
+	case DataType.Decimal:
 		valueType = ExpressionValueType.Decimal
 		value, isNull, err = et.currentRow.DecimalValue(columnIndex)
-	case data.DataType.Guid:
+	case DataType.Guid:
 		valueType = ExpressionValueType.Guid
 		value, isNull, err = et.currentRow.GuidValue(columnIndex)
-	case data.DataType.Int8:
+	case DataType.Int8:
 		var i8 int8
 		valueType = ExpressionValueType.Int32
 		i8, isNull, err = et.currentRow.Int8Value(columnIndex)
 		value = int32(i8)
-	case data.DataType.Int16:
+	case DataType.Int16:
 		var i16 int16
 		valueType = ExpressionValueType.Int32
 		i16, isNull, err = et.currentRow.Int16Value(columnIndex)
 		value = int32(i16)
-	case data.DataType.Int32:
+	case DataType.Int32:
 		valueType = ExpressionValueType.Int32
 		value, isNull, err = et.currentRow.Int32Value(columnIndex)
-	case data.DataType.Int64:
+	case DataType.Int64:
 		valueType = ExpressionValueType.Int64
 		value, isNull, err = et.currentRow.Int64Value(columnIndex)
-	case data.DataType.UInt8:
+	case DataType.UInt8:
 		var ui8 uint8
 		valueType = ExpressionValueType.Int32
 		ui8, isNull, err = et.currentRow.UInt8Value(columnIndex)
 		value = int32(ui8)
-	case data.DataType.UInt16:
+	case DataType.UInt16:
 		var ui16 uint16
 		valueType = ExpressionValueType.Int32
 		ui16, isNull, err = et.currentRow.UInt16Value(columnIndex)
 		value = int32(ui16)
-	case data.DataType.UInt32:
+	case DataType.UInt32:
 		var ui32 uint32
 		valueType = ExpressionValueType.Int64
 		ui32, isNull, err = et.currentRow.UInt32Value(columnIndex)
 		value = int64(ui32)
-	case data.DataType.UInt64:
+	case DataType.UInt64:
 		var ui64 uint64
 		ui64, isNull, err = et.currentRow.UInt64Value(columnIndex)
 

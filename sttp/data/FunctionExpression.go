@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  OperatorExpression.go - Gbtc
+//  FunctionExpression.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -20,41 +20,33 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
+package data
 
-package filterexpressions
-
-// OperatorExpression represents an operator expression.
-type OperatorExpression struct {
-	operatorType ExpressionOperatorTypeEnum
-	leftValue    Expression
-	rightValue   Expression
+// FunctionExpression represents a function expression.
+type FunctionExpression struct {
+	functionType ExpressionFunctionTypeEnum
+	arguments    []Expression
 }
 
-// NewOperatorExpression creates a new operator expression.
-func NewOperatorExpression(operatorType ExpressionOperatorTypeEnum, leftValue, rightValue Expression) *OperatorExpression {
-	return &OperatorExpression{
-		operatorType: operatorType,
-		leftValue:    leftValue,
-		rightValue:   rightValue,
+// NewFunctionExpression creates a new function expression.
+func NewFunctionExpression(functionType ExpressionFunctionTypeEnum, arguments []Expression) *FunctionExpression {
+	return &FunctionExpression{
+		functionType: functionType,
+		arguments:    arguments,
 	}
 }
 
-// Type gets expression type of the OperatorExpression.
-func (*OperatorExpression) Type() ExpressionTypeEnum {
-	return ExpressionType.Operator
+// Type gets expression type of the FunctionExpression.
+func (*FunctionExpression) Type() ExpressionTypeEnum {
+	return ExpressionType.Function
 }
 
-// OperatorType gets operator type of the OperatorExpression.
-func (oe *OperatorExpression) OperatorType() ExpressionOperatorTypeEnum {
-	return oe.operatorType
+// FunctionType gets function type of the FunctionExpression.
+func (fe *FunctionExpression) FunctionType() ExpressionFunctionTypeEnum {
+	return fe.functionType
 }
 
-// LeftValue gets the left value expression of the OperatorExpression.
-func (oe *OperatorExpression) LeftValue() Expression {
-	return oe.leftValue
-}
-
-// RightValue gets the right value expression of the OperatorExpression.
-func (oe *OperatorExpression) RightValue() Expression {
-	return oe.rightValue
+// Arguments gets the expression arguments of the FunctionExpression.
+func (fe *FunctionExpression) Arguments() []Expression {
+	return fe.arguments
 }

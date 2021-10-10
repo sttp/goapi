@@ -20,15 +20,12 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
-
-package filterexpressions
-
-import "github.com/sttp/goapi/sttp/data"
+package data
 
 // OrderByTerm represents the elements parsed from a column specified in the "ORDER BY" keyword.
 type OrderByTerm struct {
 	// Column is the data column reference of the OrderByTerm.
-	Column *data.DataColumn
+	Column *DataColumn
 
 	// Ascending is a flag that determines if the OrderByTerm is sorted in ascending order.
 	Ascending bool

@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  TableIDFields.go - Gbtc
+//  OperatorExpression.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -16,31 +16,44 @@
 //
 //  Code Modification History:
 //  ----------------------------------------------------------------------------------------------------
-//  10/07/2021 - J. Ritchie Carroll
+//  10/01/2021 - J. Ritchie Carroll
 //       Generated original version of source code.
 //
 //******************************************************************************************************
+package data
 
-package filterexpressions
-
-// TableIDFields represents the primary identification field names for a metadata
-// table that is being used as the source for an STTP filter expression. See:
-// https://sttp.github.io/documentation/filter-expressions/#activemeasurements
-type TableIDFields struct {
-	// SignalIDFieldName defines the field name of the signal ID field, type Guid.
-	// Common value is "SignalID".
-	SignalIDFieldName string
-	// MeasurementKeyFieldName defines the name of the measurement key field
-	// (format like "instance:id"), type string. Common value is "ID".
-	MeasurementKeyFieldName string
-	// PointTagFieldName defines the name of the point tag field, type string.
-	// Common value is "PointTag".
-	PointTagFieldName string
+// OperatorExpression represents an operator expression.
+type OperatorExpression struct {
+	operatorType ExpressionOperatorTypeEnum
+	leftValue    Expression
+	rightValue   Expression
 }
 
-// DefaultTableIDFields defines the common default table ID field names.
-var DefaultTableIDFields = &TableIDFields{
-	SignalIDFieldName:       "SignalID",
-	MeasurementKeyFieldName: "ID",
-	PointTagFieldName:       "PointTag",
+// NewOperatorExpression creates a new operator expression.
+func NewOperatorExpression(operatorType ExpressionOperatorTypeEnum, leftValue, rightValue Expression) *OperatorExpression {
+	return &OperatorExpression{
+		operatorType: operatorType,
+		leftValue:    leftValue,
+		rightValue:   rightValue,
+	}
+}
+
+// Type gets expression type of the OperatorExpression.
+func (*OperatorExpression) Type() ExpressionTypeEnum {
+	return ExpressionType.Operator
+}
+
+// OperatorType gets operator type of the OperatorExpression.
+func (oe *OperatorExpression) OperatorType() ExpressionOperatorTypeEnum {
+	return oe.operatorType
+}
+
+// LeftValue gets the left value expression of the OperatorExpression.
+func (oe *OperatorExpression) LeftValue() Expression {
+	return oe.leftValue
+}
+
+// RightValue gets the right value expression of the OperatorExpression.
+func (oe *OperatorExpression) RightValue() Expression {
+	return oe.rightValue
 }

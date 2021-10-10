@@ -20,8 +20,7 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
-
-package filterexpressions
+package data
 
 import (
 	"errors"
@@ -31,7 +30,6 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/shopspring/decimal"
-	"github.com/sttp/goapi/sttp/data"
 	"github.com/sttp/goapi/sttp/guid"
 )
 
@@ -139,7 +137,7 @@ func (ve *ValueExpression) String() string {
 	case ExpressionValueType.Guid:
 		return ve.guidValue().String()
 	case ExpressionValueType.DateTime:
-		return ve.dateTimeValue().Format(data.DateTimeFormat)
+		return ve.dateTimeValue().Format(DateTimeFormat)
 	default:
 		return ""
 	}

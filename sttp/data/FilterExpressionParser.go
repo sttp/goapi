@@ -20,8 +20,7 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
-
-package filterexpressions
+package data
 
 import (
 	"errors"
@@ -33,8 +32,7 @@ import (
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/araddon/dateparse"
 	"github.com/shopspring/decimal"
-	"github.com/sttp/goapi/sttp/data"
-	"github.com/sttp/goapi/sttp/filterexpressions/parser"
+	"github.com/sttp/goapi/sttp/data/parser"
 	"github.com/sttp/goapi/sttp/guid"
 )
 
@@ -48,8 +46,8 @@ type FilterExpressionParser struct {
 	parser        *parser.FilterExpressionSyntaxParser
 	errorListener *CallbackErrorListener
 
-	filteredRows   []*data.DataRow
-	filteredRowSet data.DataRowHashSet
+	filteredRows   []*DataRow
+	filteredRowSet DataRowHashSet
 
 	filteredSignalIDs   []guid.Guid
 	filteredSignalIDSet guid.HashSet
@@ -61,7 +59,7 @@ type FilterExpressionParser struct {
 	expressions          map[antlr.ParserRuleContext]Expression
 
 	// DataSet defines the source metadata used for parsing the filter expression.
-	DataSet *data.DataSet
+	DataSet *DataSet
 
 	// PrimaryTableName defines the name of the table to use in the DataSet when filter
 	// expressions do not specify a table name, e.g., direct signal identification. See:
@@ -120,7 +118,7 @@ func (fep *FilterExpressionParser) Evaluate() error {
 	}
 
 	fep.filterExpressionStatementCount = 0
-	fep.filteredRows = make([]*data.DataRow, 0)
+	fep.filteredRows = make([]*DataRow, 0)
 	fep.filteredRowSet = nil
 	fep.filteredSignalIDs = make([]guid.Guid, 0)
 	fep.filteredSignalIDSet = nil
@@ -178,12 +176,12 @@ func (fep *FilterExpressionParser) ExpressionTrees() ([]*ExpressionTree, error) 
 }
 
 // FilteredRows gets the rows matching the parsed filter expression.
-func (fep *FilterExpressionParser) FilteredRows() []*data.DataRow {
+func (fep *FilterExpressionParser) FilteredRows() []*DataRow {
 	return fep.filteredRows
 }
 
 // FilteredRows gets the unique row set matching the parsed filter expression.
-func (fep *FilterExpressionParser) FilteredRowSet() data.DataRowHashSet {
+func (fep *FilterExpressionParser) FilteredRowSet() DataRowHashSet {
 	fep.initializeSetOperations()
 	return fep.filteredRowSet
 }
@@ -229,7 +227,7 @@ func (fep *FilterExpressionParser) initializeSetOperations() {
 	// HastSet is not an option because results can be sorted with the "ORDER BY" clause.
 	if fep.TrackFilteredRows && fep.filteredRowSet == nil {
 		count := len(fep.filteredRows)
-		fep.filteredRowSet = make(data.DataRowHashSet, count)
+		fep.filteredRowSet = make(DataRowHashSet, count)
 
 		for i := 0; i < count; i++ {
 			fep.filteredRowSet.Add(fep.filteredRows[i])
@@ -246,7 +244,7 @@ func (fep *FilterExpressionParser) initializeSetOperations() {
 	}
 }
 
-func (fep *FilterExpressionParser) addMatchedRow(row *data.DataRow, signalIDColumnIndex int) {
+func (fep *FilterExpressionParser) addMatchedRow(row *DataRow, signalIDColumnIndex int) {
 	if fep.filterExpressionStatementCount > 1 {
 		// Set operations
 		if fep.TrackFilteredRows && fep.filteredRowSet.Add(row) {
@@ -276,7 +274,7 @@ func (fep *FilterExpressionParser) addMatchedRow(row *data.DataRow, signalIDColu
 	}
 }
 
-func (fep *FilterExpressionParser) mapMatchedFieldRow(primaryTable *data.DataTable, columnName string, matchValue string, signalIDColumnIndex int) {
+func (fep *FilterExpressionParser) mapMatchedFieldRow(primaryTable *DataTable, columnName string, matchValue string, signalIDColumnIndex int) {
 	column := primaryTable.ColumnByName(columnName)
 
 	if column == nil {
@@ -1178,7 +1176,7 @@ func (fep *FilterExpressionParser) ExitFunctionExpression(context *parser.Functi
 
 // GenerateExpressionTreesFromDataSet produces a set of expression trees for the provided filterExpression and dataSet.
 // One expression tree will be produced per filter expression statement encountered in the specified filterExpression.
-func GenerateExpressionTreesFromDataSet(dataSet *data.DataSet, primaryTable string, filterExpression string, suppressConsoleErrorOutput bool) ([]*ExpressionTree, error) {
+func GenerateExpressionTreesFromDataSet(dataSet *DataSet, primaryTable string, filterExpression string, suppressConsoleErrorOutput bool) ([]*ExpressionTree, error) {
 	parser := NewFilterExpressionParser(filterExpression, suppressConsoleErrorOutput)
 
 	parser.DataSet = dataSet
@@ -1190,12 +1188,12 @@ func GenerateExpressionTreesFromDataSet(dataSet *data.DataSet, primaryTable stri
 
 // GenerateExpressionTrees produces a set of expression trees for the provided filterExpression and dataTable.
 // One expression tree will be produced per filter expression statement encountered in the specified filterExpression.
-func GenerateExpressionTrees(dataTable *data.DataTable, filterExpression string, suppressConsoleErrorOutput bool) ([]*ExpressionTree, error) {
+func GenerateExpressionTrees(dataTable *DataTable, filterExpression string, suppressConsoleErrorOutput bool) ([]*ExpressionTree, error) {
 	return GenerateExpressionTreesFromDataSet(dataTable.Parent(), dataTable.Name(), filterExpression, suppressConsoleErrorOutput)
 }
 
 // GenerateExpressionTree gets the first produced expression trees for the provided filterExpression and dataTable.
-func GenerateExpressionTree(dataTable *data.DataTable, filterExpression string, suppressConsoleErrorOutput bool) (*ExpressionTree, error) {
+func GenerateExpressionTree(dataTable *DataTable, filterExpression string, suppressConsoleErrorOutput bool) (*ExpressionTree, error) {
 	expressionTrees, err := GenerateExpressionTrees(dataTable, filterExpression, suppressConsoleErrorOutput)
 
 	if err != nil {
@@ -1210,7 +1208,7 @@ func GenerateExpressionTree(dataTable *data.DataTable, filterExpression string, 
 }
 
 // Evaluates the provided filterExpression on the specified dataRow.
-func Evaluate(dataRow *data.DataRow, filterExpression string, suppressConsoleErrorOutput bool) (*ValueExpression, error) {
+func Evaluate(dataRow *DataRow, filterExpression string, suppressConsoleErrorOutput bool) (*ValueExpression, error) {
 	expressionTree, err := GenerateExpressionTree(dataRow.Parent(), filterExpression, suppressConsoleErrorOutput)
 
 	if err != nil {
@@ -1221,7 +1219,7 @@ func Evaluate(dataRow *data.DataRow, filterExpression string, suppressConsoleErr
 }
 
 // SelectFromDataSet returns the rows matching the provided filterExpression and dataSet.
-func SelectFromDataSet(dataSet *data.DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) ([]*data.DataRow, error) {
+func SelectFromDataSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) ([]*DataRow, error) {
 	parser := NewFilterExpressionParser(filterExpression, suppressConsoleErrorOutput)
 
 	parser.DataSet = dataSet
@@ -1244,7 +1242,7 @@ func SelectFromDataSet(dataSet *data.DataSet, filterExpression string, primaryTa
 }
 
 // Select returns the rows matching the provided filterExpression and dataTable.
-func Select(dataTable *data.DataTable, filterExpression string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) ([]*data.DataRow, error) {
+func Select(dataTable *DataTable, filterExpression string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) ([]*DataRow, error) {
 	return SelectFromDataSet(dataTable.Parent(), filterExpression, dataTable.Name(), tableIDFields, suppressConsoleErrorOutput)
 }
 

@@ -20,8 +20,7 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
-
-package filterexpressions
+package data
 
 import (
 	"errors"

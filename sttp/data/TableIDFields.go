@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  FunctionExpression.go - Gbtc
+//  TableIDFields.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -16,38 +16,30 @@
 //
 //  Code Modification History:
 //  ----------------------------------------------------------------------------------------------------
-//  10/01/2021 - J. Ritchie Carroll
+//  10/07/2021 - J. Ritchie Carroll
 //       Generated original version of source code.
 //
 //******************************************************************************************************
+package data
 
-package filterexpressions
-
-// FunctionExpression represents a function expression.
-type FunctionExpression struct {
-	functionType ExpressionFunctionTypeEnum
-	arguments    []Expression
+// TableIDFields represents the primary identification field names for a metadata
+// table that is being used as the source for an STTP filter expression. See:
+// https://sttp.github.io/documentation/filter-expressions/#activemeasurements
+type TableIDFields struct {
+	// SignalIDFieldName defines the field name of the signal ID field, type Guid.
+	// Common value is "SignalID".
+	SignalIDFieldName string
+	// MeasurementKeyFieldName defines the name of the measurement key field
+	// (format like "instance:id"), type string. Common value is "ID".
+	MeasurementKeyFieldName string
+	// PointTagFieldName defines the name of the point tag field, type string.
+	// Common value is "PointTag".
+	PointTagFieldName string
 }
 
-// NewFunctionExpression creates a new function expression.
-func NewFunctionExpression(functionType ExpressionFunctionTypeEnum, arguments []Expression) *FunctionExpression {
-	return &FunctionExpression{
-		functionType: functionType,
-		arguments:    arguments,
-	}
-}
-
-// Type gets expression type of the FunctionExpression.
-func (*FunctionExpression) Type() ExpressionTypeEnum {
-	return ExpressionType.Function
-}
-
-// FunctionType gets function type of the FunctionExpression.
-func (fe *FunctionExpression) FunctionType() ExpressionFunctionTypeEnum {
-	return fe.functionType
-}
-
-// Arguments gets the expression arguments of the FunctionExpression.
-func (fe *FunctionExpression) Arguments() []Expression {
-	return fe.arguments
+// DefaultTableIDFields defines the common default table ID field names.
+var DefaultTableIDFields = &TableIDFields{
+	SignalIDFieldName:       "SignalID",
+	MeasurementKeyFieldName: "ID",
+	PointTagFieldName:       "PointTag",
 }

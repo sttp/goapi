@@ -20,8 +20,7 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
-
-package filterexpressions
+package data
 
 // InListExpression represents an in-list expression.
 type InListExpression struct {

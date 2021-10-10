@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  CallbackErrorListener.go - Gbtc
+//  ColumnExpression.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -16,36 +16,30 @@
 //
 //  Code Modification History:
 //  ----------------------------------------------------------------------------------------------------
-//  10/07/2021 - J. Ritchie Carroll
+//  10/01/2021 - J. Ritchie Carroll
 //       Generated original version of source code.
 //
 //******************************************************************************************************
+package data
 
-package filterexpressions
-
-import "github.com/antlr/antlr4/runtime/Go/antlr"
-
-// CallbackErrorListener defines a implementation of an ANTLR error listener
-// that reports any parsing exceptions to a user defined callback.
-type CallbackErrorListener struct {
-	*antlr.DefaultErrorListener
-
-	// ParsingExceptionCallback defines a callback for reporting ANTLR parsing exceptions.
-	ParsingExceptionCallback func(message string)
+// ColumnExpression represents a column expression.
+type ColumnExpression struct {
+	dataColumn *DataColumn
 }
 
-// NewCallbackErrorListener creates a new NewCallbackErrorListener.
-func NewCallbackErrorListener() *CallbackErrorListener {
-	return &CallbackErrorListener{
-		DefaultErrorListener: antlr.NewDefaultErrorListener(),
+// NewColumnExpression creates a new column expression.
+func NewColumnExpression(dataColumn *DataColumn) *ColumnExpression {
+	return &ColumnExpression{
+		dataColumn: dataColumn,
 	}
 }
 
-// SyntaxError is called when ANTLR parser encounters a syntax error.
-func (cel *CallbackErrorListener) SyntaxError(recognizer antlr.Recognizer, offendingSymbol interface{}, line, column int, msg string, e antlr.RecognitionException) {
-	if cel.ParsingExceptionCallback == nil {
-		return
-	}
+// Type gets expression type of the ColumnExpression.
+func (*ColumnExpression) Type() ExpressionTypeEnum {
+	return ExpressionType.Column
+}
 
-	cel.ParsingExceptionCallback(msg)
+// DataColumn gets the data column of the ColumnExpression.
+func (ce *ColumnExpression) DataColumn() *DataColumn {
+	return ce.dataColumn
 }
