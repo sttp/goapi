@@ -122,6 +122,10 @@ type DataSubscriber struct {
 	// Version defines the STTP protocol version used by this library
 	Version byte
 
+	// SwapGuidEndianness determines if Guid wire serialization should swap endianness. This should only be enabled for
+	// implementations using non-RFC Guid byte ordering, i.e., little-endian. Default to false.
+	SwapGuidEndianness bool
+
 	// STTPSourceInfo defines the STTP library API title as identification information of DataSubscriber to a DataPublisher.
 	STTPSourceInfo string
 
@@ -160,6 +164,7 @@ func NewDataSubscriber() *DataSubscriber {
 		CompressMetadata:         true, // Defaults to Gzip
 		CompressSignalIndexCache: true, // Defaults to Gzip
 		Version:                  2,
+		SwapGuidEndianness:       false,
 		STTPSourceInfo:           version.STTPSource,
 		STTPVersionInfo:          version.STTPVersion,
 		STTPUpdatedOnInfo:        version.STTPUpdatedOn,

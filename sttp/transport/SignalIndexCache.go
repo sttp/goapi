@@ -194,7 +194,7 @@ func (sic *SignalIndexCache) decode(ds *DataSubscriber, buffer []byte, subscribe
 	var err error
 
 	// Subscriber ID
-	*subscriberID, err = guid.FromBytes(buffer[offset:], false)
+	*subscriberID, err = guid.FromBytes(buffer[offset:], ds.SwapGuidEndianness)
 
 	if err != nil {
 		return errors.New("failed to parse SubscriberID: " + err.Error())
@@ -214,7 +214,7 @@ func (sic *SignalIndexCache) decode(ds *DataSubscriber, buffer []byte, subscribe
 		offset += 4
 
 		// Signal ID
-		signalID, err := guid.FromBytes(buffer[offset:], false)
+		signalID, err := guid.FromBytes(buffer[offset:], ds.SwapGuidEndianness)
 
 		if err != nil {
 			return errors.New("failed to parse SignalID: " + err.Error())

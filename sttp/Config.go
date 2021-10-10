@@ -69,6 +69,10 @@ type Config struct {
 
 	// Version defines the target STTP protocol version. This currently defaults to 2.
 	Version byte
+
+	// RfcGuidEncoding determines if Guid wire serialization should use RFC encoding.
+	// This defaults to true.
+	RfcGuidEncoding bool
 }
 
 // configDefaults define the default values for an STTP connection Config.
@@ -83,6 +87,7 @@ var configDefaults = Config{
 	CompressMetadata:         true,
 	CompressSignalIndexCache: true,
 	Version:                  2,
+	RfcGuidEncoding:          true,
 }
 
 // NewConfig creates a new Config instance initialzed with default values.

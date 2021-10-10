@@ -199,6 +199,7 @@ func (sb *Subscriber) connect(hostname string, port uint16) {
 	ds.CompressMetadata = sb.config.CompressMetadata
 	ds.CompressSignalIndexCache = sb.config.CompressSignalIndexCache
 	ds.Version = sb.config.Version
+	ds.SwapGuidEndianness = !sb.config.RfcGuidEncoding
 
 	// Register direct Subscriber callbacks
 	con.ErrorMessageCallback = sb.errorMessageLogger
