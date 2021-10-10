@@ -27,6 +27,7 @@ import (
 	"errors"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -104,7 +105,36 @@ func (et *ExpressionTree) Select() ([]*data.DataRow, error) {
 	}
 
 	if len(matchedRows) > 0 && len(et.OrderByTerms) > 0 {
-		// TODO: Sort matched rows by order by terms
+		sort.Slice(matchedRows, func(i, j int) bool {
+			leftMatchedRow := matchedRows[i]
+			rightMatchedRow := matchedRows[j]
+
+			for _, orderByTerm := range et.OrderByTerms {
+				var leftRow, rightRow *data.DataRow
+
+				if orderByTerm.Ascending {
+					leftRow = leftMatchedRow
+					rightRow = rightMatchedRow
+				} else {
+					leftRow = rightMatchedRow
+					rightRow = leftMatchedRow
+				}
+
+				result, _ := data.CompareDataRowColumn(leftRow, rightRow, orderByTerm.Column.Index(), orderByTerm.ExactMatch)
+
+				if result < 0 {
+					return true
+				}
+
+				if result > 0 {
+					return false
+				}
+
+				// Last compare result was equal, continue sort based on next order-by term
+			}
+
+			return false
+		})
 	}
 
 	return matchedRows, nil

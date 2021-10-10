@@ -1117,3 +1117,428 @@ func (dr *DataRow) String() string {
 
 	return image.String()
 }
+
+// CompareDataRowColumn returns an integer comparing two DataRow column values for the
+// specified column index. The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
+//gocyclo:ignore
+func CompareDataRowColumn(leftRow, rightRow *DataRow, columnIndex int, exactMatch bool) (int, error) {
+	leftColumn := leftRow.parent.Column(columnIndex)
+	rightColumn := rightRow.parent.Column(columnIndex)
+
+	if leftColumn == nil || rightColumn == nil {
+		return 0, errors.New("cannot compare, column index out of range")
+	}
+
+	leftType := leftColumn.Type()
+	rightType := rightColumn.Type()
+
+	if leftType != rightType {
+		return 0, errors.New("cannot compare, types do not match")
+	}
+
+	switch leftType {
+	case DataType.String:
+		leftValue, leftNull, leftErr := leftRow.StringValue(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.StringValue(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if exactMatch {
+				return strings.Compare(leftValue, rightValue), nil
+			}
+
+			return strings.Compare(strings.ToUpper(leftValue), strings.ToUpper(rightValue)), nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.Boolean:
+		leftValue, leftNull, leftErr := leftRow.BooleanValue(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.BooleanValue(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue && !rightValue {
+				return -1, nil
+			}
+
+			if !leftValue && rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.DateTime:
+		leftValue, leftNull, leftErr := leftRow.DateTimeValue(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.DateTimeValue(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue.Before(rightValue) {
+				return -1, nil
+			}
+
+			if leftValue.After(rightValue) {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.Single:
+		leftValue, leftNull, leftErr := leftRow.SingleValue(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.SingleValue(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue < rightValue {
+				return -1, nil
+			}
+
+			if leftValue > rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.Double:
+		leftValue, leftNull, leftErr := leftRow.DoubleValue(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.DoubleValue(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue < rightValue {
+				return -1, nil
+			}
+
+			if leftValue > rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.Decimal:
+		leftValue, leftNull, leftErr := leftRow.DecimalValue(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.DecimalValue(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue.Cmp(rightValue) < 0 {
+				return -1, nil
+			}
+
+			if leftValue.Cmp(rightValue) > 0 {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.Guid:
+		leftValue, leftNull, leftErr := leftRow.GuidValue(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.GuidValue(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue.Compare(rightValue) < 0 {
+				return -1, nil
+			}
+
+			if leftValue.Compare(rightValue) > 0 {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.Int8:
+		leftValue, leftNull, leftErr := leftRow.Int8Value(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.Int8Value(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue < rightValue {
+				return -1, nil
+			}
+
+			if leftValue > rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.Int16:
+		leftValue, leftNull, leftErr := leftRow.Int16Value(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.Int16Value(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue < rightValue {
+				return -1, nil
+			}
+
+			if leftValue > rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.Int32:
+		leftValue, leftNull, leftErr := leftRow.Int32Value(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.Int32Value(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue < rightValue {
+				return -1, nil
+			}
+
+			if leftValue > rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.Int64:
+		leftValue, leftNull, leftErr := leftRow.Int64Value(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.Int64Value(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue < rightValue {
+				return -1, nil
+			}
+
+			if leftValue > rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.UInt8:
+		leftValue, leftNull, leftErr := leftRow.UInt8Value(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.UInt8Value(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue < rightValue {
+				return -1, nil
+			}
+
+			if leftValue > rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.UInt16:
+		leftValue, leftNull, leftErr := leftRow.UInt16Value(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.UInt16Value(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue < rightValue {
+				return -1, nil
+			}
+
+			if leftValue > rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.UInt32:
+		leftValue, leftNull, leftErr := leftRow.UInt32Value(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.UInt32Value(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue < rightValue {
+				return -1, nil
+			}
+
+			if leftValue > rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	case DataType.UInt64:
+		leftValue, leftNull, leftErr := leftRow.UInt64Value(columnIndex)
+		rightValue, rightNull, rightErr := rightRow.UInt64Value(columnIndex)
+		leftHasValue := !leftNull && leftErr == nil
+		rightHasValue := !rightNull && rightErr == nil
+
+		if leftHasValue && rightHasValue {
+			if leftValue < rightValue {
+				return -1, nil
+			}
+
+			if leftValue > rightValue {
+				return 1, nil
+			}
+
+			return 0, nil
+		}
+
+		if !leftHasValue && !rightHasValue {
+			return 0, nil
+		}
+
+		if leftHasValue {
+			return 1, nil
+		}
+
+		return -1, nil
+	default:
+		return 0, errors.New("unexpected column data type encountered")
+	}
+}
