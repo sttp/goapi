@@ -135,12 +135,12 @@ func (g Guid) String() string {
 // FromBytes creates a new Guid from a byte slice. Only first 16 bytes of slice are used.
 // Returns an error if slice length is less than 16. Bytes are copied from the slice.
 func FromBytes(data []byte, swapEndianness bool) (Guid, error) {
-	if swapEndianness {
-		swapGuidEndianness(&data)
-	}
-
 	if len(data) < 16 {
 		return Empty, errors.New("Guid is 16 bytes in length, received " + strconv.Itoa(len(data)))
+	}
+
+	if swapEndianness {
+		swapGuidEndianness(&data)
 	}
 
 	var g Guid
