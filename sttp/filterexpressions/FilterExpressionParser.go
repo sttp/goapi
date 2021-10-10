@@ -302,14 +302,18 @@ func (fep *FilterExpressionParser) mapMatchedFieldRow(primaryTable *data.DataTab
 	}
 }
 
-func (fep *FilterExpressionParser) tryGetExpr(ctx antlr.ParserRuleContext, value *Expression) bool {
+func (fep *FilterExpressionParser) tryGetExpr(context antlr.ParserRuleContext, expression *Expression) bool {
 	var ok bool
-	*value, ok = fep.expressions[ctx]
+	*expression, ok = fep.expressions[context]
 	return ok
 }
 
-func (fep *FilterExpressionParser) addExpr(ctx antlr.ParserRuleContext, value Expression) {
-	fep.expressions[ctx] = value
+func (fep *FilterExpressionParser) addExpr(context antlr.ParserRuleContext, expression Expression) {
+	// Track expression in parser rule context map
+	fep.expressions[context] = expression
+
+	// Update active expression tree root
+	fep.activeExpressionTree.Root = expression
 }
 
 /*

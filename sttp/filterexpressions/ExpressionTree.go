@@ -51,8 +51,8 @@ type ExpressionTree struct {
 	OrderByTerms []*OrderByTerm
 
 	// Root is the starting Expression for evaluation of the expression tree, or nil if
-	// there is not one. This is the root expression of the ExpressionTree. Assign root
-	// value before calling Evaluate.
+	// there is not one. This is the root expression of the ExpressionTree. Root is
+	// automatically managed by FilterExpressionParser.
 	Root Expression
 }
 
@@ -69,7 +69,7 @@ func (et *ExpressionTree) Table() *data.DataTable {
 	return et.table
 }
 
-// Select returns the rows matching the specified expression tree.
+// Select returns the rows matching the the ExpressionTree.
 func (et *ExpressionTree) Select() ([]*data.DataRow, error) {
 	matchedRows := make([]*data.DataRow, 0)
 
