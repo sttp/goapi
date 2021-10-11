@@ -214,12 +214,17 @@ func (dt *DataTable) String() string {
 	return image.String()
 }
 
-// Select returns the rows matching the filterExpression criteria in the specified sort order.
-// The filterExpression parameter should be in WHERE SQL syntax but does not include the
-// WHERE keyword. The sortOrder parameter should be a field name within the DataTable and can
-// have an ASC or DESC suffix; defaults to ASC when no suffix is provided. Set sortOrder to an
-// empty string to return records in natural order. Set limit to -1 for all matching rows.
+// Select returns the rows matching the filterExpression criteria in the specified sort order. The filterExpression parameter
+// should be in the syntax of a SQL WHERE expression but should not include the WHERE keyword. The sortOrder parameter defines
+// field names, separated by commas, that exist in the DataTable used to order the results. Each field specified in the
+// sortOrder can have an ASC or DESC suffix; defaults to ASC when no suffix is provided. When sortOrder is an empty string,
+// records will be returned in natural order. Set limit parameter to -1 for all matching rows. When filterExpression is an
+// empty string, all records will be returned; any specified sortOrder and limit will still be respected.
 func (dt *DataTable) Select(filterExpression string, sortOrder string, limit int) ([]*DataRow, error) {
+	if len(filterExpression) == 0 {
+		filterExpression = "True" // Return all records
+	}
+
 	if limit > 0 {
 		filterExpression = fmt.Sprintf("FILTER TOP %d %s WHERE %s", limit, dt.name, filterExpression)
 	} else {
@@ -233,8 +238,8 @@ func (dt *DataTable) Select(filterExpression string, sortOrder string, limit int
 	expressionTree, err := GenerateExpressionTree(dt, filterExpression, true)
 
 	if err != nil {
-		return nil, errors.New("failed to parse filter expression: " + err.Error())
+		return nil, errors.New("failed to parse filter expression, " + err.Error())
 	}
 
-	return expressionTree.Select()
+	return expressionTree.Select(dt)
 }

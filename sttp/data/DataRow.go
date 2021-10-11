@@ -1459,8 +1459,9 @@ func (dr *DataRow) String() string {
 	return image.String()
 }
 
-// CompareDataRowColumns returns an integer comparing two DataRow column values for the
-// specified column index. The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
+// CompareDataRowColumns returns an integer comparing two DataRow column values for the specified column index.
+// The result will be 0 if leftRow==rightRow, -1 if leftRow < rightRow, and +1 if leftRow > rightRow.
+// An error will br returned if column index is out of range of either row, or row types do not match.
 //gocyclo:ignore
 func CompareDataRowColumns(leftRow, rightRow *DataRow, columnIndex int, exactMatch bool) (int, error) {
 	leftColumn := leftRow.parent.Column(columnIndex)

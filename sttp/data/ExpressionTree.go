@@ -40,40 +40,39 @@ var whitespace string = " \t\n\v\f\r\x85\xA0"
 // ExpressionTree represents a tree of expressions for evaluation.
 type ExpressionTree struct {
 	currentRow *DataRow
-	table      *DataTable
 
-	// TopLimit represents the parsed value associated with the "TOP" keyword.
+	// TableName represents the associated table name parsed from "FILTER" statement, if any.
+	TableName string
+
+	// TopLimit represents the parsed value associated with the "TOP" keyword, if any.
 	TopLimit int
 
-	// OrderByTerms represents the order by elements parsed from the "ORDER BY" keyword.
+	// OrderByTerms represents the order by elements parsed from the "ORDER BY" keyword, if any.
 	OrderByTerms []*OrderByTerm
 
-	// Root is the starting Expression for evaluation of the expression tree, or nil if
-	// there is not one. This is the root expression of the ExpressionTree. Root is
-	// automatically managed by FilterExpressionParser.
+	// Root is the starting Expression for evaluation of the expression tree, or nil if there
+	// is not one. This is the root expression of the ExpressionTree. Root is automatically
+	// managed by FilterExpressionParser.
 	Root Expression
 }
 
 // NewExpressionTree creates a new expression tree.
-func NewExpressionTree(table *DataTable) *ExpressionTree {
+func NewExpressionTree() *ExpressionTree {
 	return &ExpressionTree{
-		table:    table,
 		TopLimit: -1,
 	}
 }
 
-// Table gets reference to the data table associated with the ExpressionTree.
-func (et *ExpressionTree) Table() *DataTable {
-	return et.table
-}
-
 // Select returns the rows matching the the ExpressionTree. The expression tree
 // result type is expected to be a Boolean for this filtering operation. This
-// works like the "WHERE" clause of a SQL expression.
-func (et *ExpressionTree) Select() ([]*DataRow, error) {
-	matchedRows := make([]*DataRow, 0)
+// works like the "WHERE" clause of a SQL expression. Error will be returned if
+// the table parameter is nil or expression does not yield a boolean value.
+func (et *ExpressionTree) Select(table *DataTable) ([]*DataRow, error) {
+	if table == nil {
+		return nil, errors.New("cannot execute select operation, table parameter is nil")
+	}
 
-	table := et.Table()
+	matchedRows := make([]*DataRow, 0)
 
 	// Find rows matching expression tree
 	for i := 0; i < table.RowCount(); i++ {
@@ -95,7 +94,7 @@ func (et *ExpressionTree) Select() ([]*DataRow, error) {
 
 		// Final expression should have a boolean data type (it's part of a WHERE clause)
 		if resultExpression.ValueType() != ExpressionValueType.Boolean {
-			return nil, errors.New("final expression tree evaluation did not result in a boolean value, result data type is \"" + resultExpression.ValueType().String() + "\"")
+			return nil, errors.New("cannot execute select operation, final expression tree evaluation did not result in a boolean value, result data type is \"" + resultExpression.ValueType().String() + "\"")
 		}
 
 		// If final result is Null, i.e., has no value due to Null propagation, treat result as False
@@ -141,7 +140,8 @@ func (et *ExpressionTree) Select() ([]*DataRow, error) {
 }
 
 // Evaluate executes the filter expression parser for the specified dataRow for the ExpressionTree.
-// Root expression should be assigned before calling Evaluate.
+// Root expression should be assigned before calling Evaluate. The dataRow parameter can be nil if
+// there are no columns references in expression tree.
 func (et *ExpressionTree) Evaluate(dataRow *DataRow) (*ValueExpression, error) {
 	et.currentRow = dataRow
 	return et.evaluate(et.Root)
@@ -224,12 +224,16 @@ func (et *ExpressionTree) evaluateUnary(expression Expression) (*ValueExpression
 
 //gocyclo:ignore
 func (et *ExpressionTree) evaluateColumn(expression Expression) (*ValueExpression, error) {
+	if et.currentRow == nil {
+		return nil, errors.New("failed while evaluating column expression, current data row is not defined")
+	}
+
 	columnExpression := expression.(*ColumnExpression)
 	var column *DataColumn
 	var err error
 
 	if column = columnExpression.DataColumn(); column == nil {
-		return nil, errors.New("encountered column expression with undefined data column reference")
+		return nil, errors.New("failed while evaluating column expression, data column reference is not defined")
 	}
 
 	columnIndex := column.Index()
