@@ -435,6 +435,10 @@ func (fep *FilterExpressionParser) ExitIdentifierStatement(context *parser.Ident
 		}
 	}
 
+	if fep.DataSet == nil {
+		return
+	}
+
 	primaryTable := fep.DataSet.Table(fep.PrimaryTableName)
 
 	if primaryTable == nil {
@@ -505,13 +509,18 @@ func (fep *FilterExpressionParser) EnterExpression(*parser.ExpressionContext) {
 	// Handle case of encountering a standalone expression, i.e., an expression not
 	// within a filter statement context
 	if fep.activeExpressionTree == nil {
-		table := fep.DataSet.Table(fep.PrimaryTableName)
+		if len(fep.PrimaryTableName) > 0 {
+			table := fep.DataSet.Table(fep.PrimaryTableName)
 
-		if table == nil {
-			panic("failed to find table \"" + fep.PrimaryTableName + "\"")
+			if table == nil {
+				panic("failed to find table \"" + fep.PrimaryTableName + "\"")
+			}
+
+			fep.activeExpressionTree = NewExpressionTree(table)
+		} else {
+			fep.activeExpressionTree = NewExpressionTree(new(DataTable))
 		}
 
-		fep.activeExpressionTree = NewExpressionTree(table)
 		fep.expressionTrees = append(fep.expressionTrees, fep.activeExpressionTree)
 	}
 }
@@ -1207,8 +1216,26 @@ func GenerateExpressionTree(dataTable *DataTable, filterExpression string, suppr
 	return nil, errors.New("no expression trees generated with filter expression \"" + filterExpression + "\" for table \"" + dataTable.Name() + "\"")
 }
 
-// Evaluates the provided filterExpression on the specified dataRow.
-func Evaluate(dataRow *DataRow, filterExpression string, suppressConsoleErrorOutput bool) (*ValueExpression, error) {
+// Evaluate returns the ValueExpression of the evaluated filterExpression.
+func Evaluate(filterExpression string, suppressConsoleErrorOutput bool) (*ValueExpression, error) {
+	parser := NewFilterExpressionParser(filterExpression, suppressConsoleErrorOutput)
+	parser.TrackFilteredRows = false
+
+	expressionTrees, err := parser.ExpressionTrees()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(expressionTrees) > 0 {
+		return expressionTrees[0].Evaluate(new(DataRow))
+	}
+
+	return nil, errors.New("no expression trees generated with filter expression \"" + filterExpression + "\"")
+}
+
+// EvaluateDataRow returns the ValueExpression of the evaluated filterExpression using the specified dataRow.
+func EvaluateDataRow(dataRow *DataRow, filterExpression string, suppressConsoleErrorOutput bool) (*ValueExpression, error) {
 	expressionTree, err := GenerateExpressionTree(dataRow.Parent(), filterExpression, suppressConsoleErrorOutput)
 
 	if err != nil {
