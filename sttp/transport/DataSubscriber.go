@@ -258,7 +258,7 @@ func (ds *DataSubscriber) Connect(hostName string, port uint16) error {
 
 func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting bool) error {
 	if ds.connected {
-		panic("Subscriber is already connected; disconnect first")
+		panic("subscriber is already connected; disconnect first")
 	}
 
 	// Let any pending connect or disconnect operation complete before new connect,

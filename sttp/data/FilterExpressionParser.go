@@ -377,8 +377,8 @@ func (fep *FilterExpressionParser) EnterFilterStatement(context *parser.FilterSt
 		orderingTerms := context.AllOrderingTerm()
 
 		for i := 0; i < len(orderingTerms); i++ {
-			orderingTerm := orderingTerms[i].(*parser.OrderingTermContext)
-			orderByColumnName := orderingTerm.OrderByColumnName().GetText()
+			orderingTermContext := orderingTerms[i].(*parser.OrderingTermContext)
+			orderByColumnName := orderingTermContext.OrderByColumnName().GetText()
 			orderByColumn := table.ColumnByName(orderByColumnName)
 
 			if orderByColumn == nil {
@@ -387,8 +387,8 @@ func (fep *FilterExpressionParser) EnterFilterStatement(context *parser.FilterSt
 
 			fep.activeExpressionTree.OrderByTerms = append(fep.activeExpressionTree.OrderByTerms, &OrderByTerm{
 				Column:     orderByColumn,
-				Ascending:  orderingTerm.K_DESC() == nil,
-				ExactMatch: orderingTerm.ExactMatchModifier() == nil,
+				Ascending:  orderingTermContext.K_DESC() == nil,
+				ExactMatch: orderingTermContext.ExactMatchModifier() == nil,
 			})
 		}
 	}
@@ -732,7 +732,7 @@ func (fep *FilterExpressionParser) ExitPredicateExpression(context *parser.Predi
 		case "!==":
 			operatorType = ExpressionOperatorType.NotEqualExactMatch
 		default:
-			panic("Unexpected comparison operator \"" + operatorSymbol + "\"")
+			panic("unexpected comparison operator \"" + operatorSymbol + "\"")
 		}
 
 		fep.addExpr(context, NewOperatorExpression(operatorType, leftValue, rightValue))
@@ -879,11 +879,11 @@ func (fep *FilterExpressionParser) ExitValueExpression(context *parser.ValueExpr
 	var operatorType ExpressionOperatorTypeEnum
 
 	if !fep.tryGetExpr(valueExpressions[0], &leftValue) {
-		panic("Failed to find left operator value expression \"" + valueExpressions[0].GetText() + "\"")
+		panic("failed to find left operator value expression \"" + valueExpressions[0].GetText() + "\"")
 	}
 
 	if !fep.tryGetExpr(valueExpressions[1], &rightValue) {
-		panic("Failed to find right operator value expression \"" + valueExpressions[1].GetText() + "\"")
+		panic("failed to find right operator value expression \"" + valueExpressions[1].GetText() + "\"")
 	}
 
 	// Check for math operator expressions

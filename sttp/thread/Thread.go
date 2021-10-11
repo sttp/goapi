@@ -43,11 +43,11 @@ func NewThread(exec func()) *Thread {
 // Start causes the thread function to be scheduled for execution via a new Go routine.
 func (thread *Thread) Start() {
 	if thread.exec == nil {
-		panic("Thread has no execution function defined")
+		panic("thread has no execution function defined")
 	}
 
 	if thread.IsRunning() {
-		panic("Thread is already running")
+		panic("thread is already running")
 	}
 
 	thread.mutex.Lock()
