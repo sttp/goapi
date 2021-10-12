@@ -20,6 +20,7 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
+
 package data
 
 // InListExpression represents an in-list expression.

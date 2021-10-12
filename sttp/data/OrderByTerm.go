@@ -20,6 +20,7 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
+
 package data
 
 // OrderByTerm represents the elements parsed from a column specified in the "ORDER BY" keyword.

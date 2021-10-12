@@ -20,6 +20,7 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
+
 package data
 
 // TableIDFields represents the primary identification field names for a metadata

@@ -20,6 +20,7 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
+
 package data
 
 import (
@@ -151,7 +152,7 @@ func (fep *FilterExpressionParser) FilteredRows() []*DataRow {
 	return fep.filteredRows
 }
 
-// FilteredRows gets the unique row set matching the parsed filter expression.
+// FilteredRowSet gets the unique row set matching the parsed filter expression.
 func (fep *FilterExpressionParser) FilteredRowSet() DataRowHashSet {
 	fep.initializeSetOperations()
 	return fep.filteredRowSet
@@ -163,7 +164,7 @@ func (fep *FilterExpressionParser) FilteredSignalIDs() []guid.Guid {
 	return fep.filteredSignalIDs
 }
 
-// FilteredSignalIDs gets the unique Guid-based signalID set matching the parsed filter expression.
+// FilteredSignalIDSet gets the unique Guid-based signalID set matching the parsed filter expression.
 func (fep *FilterExpressionParser) FilteredSignalIDSet() guid.HashSet {
 	fep.initializeSetOperations()
 	return fep.filteredSignalIDSet

@@ -20,6 +20,7 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
+
 package data
 
 // ColumnExpression represents a column expression.
