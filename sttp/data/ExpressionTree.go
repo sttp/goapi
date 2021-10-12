@@ -63,47 +63,61 @@ func NewExpressionTree() *ExpressionTree {
 	}
 }
 
-// Select returns the rows matching the the ExpressionTree. The expression tree
-// result type is expected to be a Boolean for this filtering operation. This
-// works like the "WHERE" clause of a SQL expression. Error will be returned if
-// the table parameter is nil or expression does not yield a boolean value.
+// Select returns the rows matching the the ExpressionTree. The expression tree result type is expected
+// to be a Boolean for this filtering operation. This works like the "WHERE" clause of a SQL expression.
+// Any "TOP" limit and "ORDER BY" sorting clauses found in filter expressions will be respected.
+// Error will be returned if  the table parameter is nil or expression does not yield a boolean value.
 func (et *ExpressionTree) Select(table *DataTable) ([]*DataRow, error) {
+	return et.SelectWhere(table, func(resultExpression *ValueExpression) (bool, error) {
+		// Final expression should have a boolean data type (operates as a WHERE clause)
+		if resultExpression.ValueType() != ExpressionValueType.Boolean {
+			return false, errors.New("cannot execute select operation, final expression tree evaluation did not result in a boolean value, result data type is \"" + resultExpression.ValueType().String() + "\"")
+		}
+
+		// If final result is Null, i.e., has no value due to Null propagation, treat result as False
+		return resultExpression.booleanValue(), nil
+	}, true, true)
+}
+
+// SelectWhere returns each table row evaluated from the ExpressionTree that matches the specified predicate expression.
+// The applyLimit and applySort flags determine if any encountered "TOP" limit and "ORDER BY" sorting clauses will be respected.
+// Error will be returned if the table parameter is nil.
+func (et *ExpressionTree) SelectWhere(table *DataTable, predicate func(*ValueExpression) (bool, error), applyLimit bool, applySort bool) ([]*DataRow, error) {
 	if table == nil {
 		return nil, errors.New("cannot execute select operation, table parameter is nil")
 	}
 
 	matchedRows := make([]*DataRow, 0)
+	var row *DataRow
+	var resultExpression *ValueExpression
+	var result bool
+	var err error
 
 	// Find rows matching expression tree
 	for i := 0; i < table.RowCount(); i++ {
-		if et.TopLimit > -1 && len(matchedRows) >= et.TopLimit {
+		if applyLimit && et.TopLimit > -1 && len(matchedRows) >= et.TopLimit {
 			break
 		}
 
-		row := table.Row(i)
-
-		if row == nil {
+		if row = table.Row(i); row == nil {
 			continue
 		}
 
-		resultExpression, err := et.Evaluate(row)
-
-		if err != nil {
+		if resultExpression, err = et.Evaluate(row); err != nil {
 			return nil, err
 		}
 
-		// Final expression should have a boolean data type (it's part of a WHERE clause)
-		if resultExpression.ValueType() != ExpressionValueType.Boolean {
-			return nil, errors.New("cannot execute select operation, final expression tree evaluation did not result in a boolean value, result data type is \"" + resultExpression.ValueType().String() + "\"")
+		// If value result matches predicate expression, add it to matching rows
+		if result, err = predicate(resultExpression); err != nil {
+			return nil, err
 		}
 
-		// If final result is Null, i.e., has no value due to Null propagation, treat result as False
-		if resultExpression.booleanValue() {
+		if result {
 			matchedRows = append(matchedRows, row)
 		}
 	}
 
-	if len(matchedRows) > 0 && len(et.OrderByTerms) > 0 {
+	if applySort && len(matchedRows) > 0 && len(et.OrderByTerms) > 0 {
 		sort.Slice(matchedRows, func(i, j int) bool {
 			leftMatchedRow := matchedRows[i]
 			rightMatchedRow := matchedRows[j]

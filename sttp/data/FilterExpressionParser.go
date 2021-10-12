@@ -145,7 +145,8 @@ func (fep *FilterExpressionParser) ExpressionTrees() ([]*ExpressionTree, error) 
 	return fep.expressionTrees, nil
 }
 
-// FilteredRows gets the rows matching the parsed filter expression.
+// FilteredRows gets the rows matching the parsed filter expression. Results can contain duplicates
+// when the filter expression contains multiple semi-colon separated statements.
 func (fep *FilterExpressionParser) FilteredRows() []*DataRow {
 	return fep.filteredRows
 }
@@ -156,7 +157,8 @@ func (fep *FilterExpressionParser) FilteredRowSet() DataRowHashSet {
 	return fep.filteredRowSet
 }
 
-// FilteredSignalIDs gets the Guid-based signalIDs matching the parsed filter expression.
+// FilteredSignalIDs gets the Guid-based signalIDs matching the parsed filter expression. Results can
+// contain duplicates when the filter expression contains multiple semi-colon separated statements.
 func (fep *FilterExpressionParser) FilteredSignalIDs() []guid.Guid {
 	return fep.filteredSignalIDs
 }
@@ -168,6 +170,7 @@ func (fep *FilterExpressionParser) FilteredSignalIDSet() guid.HashSet {
 }
 
 // Table gets the DataTable for the specified tableName from the FilterExpressionParser DataSet.
+// An error will be returned if no DataSet has been defined or the tableName cannot be found.
 func (fep *FilterExpressionParser) Table(tableName string) (*DataTable, error) {
 	if fep.DataSet == nil {
 		return nil, errors.New("no DataSet has been defined")
@@ -185,9 +188,10 @@ func (fep *FilterExpressionParser) Table(tableName string) (*DataTable, error) {
 // Evaluate parses each statement in the filter expression and tracks the results. Filter expressions can contain multiple statements,
 // separated by semi-colons, where each statement results in a unique expression tree; this function returns the combined results of each
 // encountered filter expression statement, yielding all filtered rows and/or signal IDs that match the target filter expression.
+// The applyLimit and applySort flags determine if any encountered "TOP" limit and "ORDER BY" sorting clauses will be respected.
 // Access matching results via FilteredRows and/or FilteredSignalIDs, or related set functions.
 //gocyclo: ignore
-func (fep *FilterExpressionParser) Evaluate() error {
+func (fep *FilterExpressionParser) Evaluate(applyLimit bool, applySort bool) error {
 	if fep.DataSet == nil {
 		return errors.New("cannot evaluate filter expression, no DataSet has been defined")
 	}
@@ -204,6 +208,7 @@ func (fep *FilterExpressionParser) Evaluate() error {
 	fep.expressionTrees = make([]*ExpressionTree, 0)
 	fep.expressions = make(map[antlr.ParserRuleContext]Expression)
 
+	// Visiting tree nodes will automatically add literals to the the filtered results
 	if err := fep.visitParseTreeNodes(); err != nil {
 		return errors.New("cannot evaluate filter expression, " + err.Error())
 	}
@@ -226,7 +231,17 @@ func (fep *FilterExpressionParser) Evaluate() error {
 			return errors.New("cannot evaluate filter expression, " + err.Error())
 		}
 
-		matchedRows, err := expressionTree.Select(table)
+		// Select all matching boolean results from expression tree evaluated for each table row
+		matchedRows, err := expressionTree.SelectWhere(table, func(resultExpression *ValueExpression) (bool, error) {
+			resultType := resultExpression.ValueType()
+
+			if resultType == ExpressionValueType.Boolean {
+				return resultExpression.booleanValue(), nil
+			}
+
+			// Filtered results will already have any matched literals
+			return false, nil
+		}, applyLimit, applySort)
 
 		if err != nil {
 			return err
@@ -315,7 +330,7 @@ func (fep *FilterExpressionParser) addMatchedRow(row *DataRow, signalIDColumnInd
 		if fep.TrackFilteredSignalIDs {
 			signalIDField, null, err := row.GuidValue(signalIDColumnIndex)
 
-			if !null && err != nil && !signalIDField.IsZero() && fep.filteredSignalIDSet.Add(signalIDField) {
+			if !null && err == nil && !signalIDField.IsZero() && fep.filteredSignalIDSet.Add(signalIDField) {
 				fep.filteredSignalIDs = append(fep.filteredSignalIDs, signalIDField)
 			}
 		}
@@ -328,7 +343,7 @@ func (fep *FilterExpressionParser) addMatchedRow(row *DataRow, signalIDColumnInd
 		if fep.TrackFilteredSignalIDs {
 			signalIDField, null, err := row.GuidValue(signalIDColumnIndex)
 
-			if !null && err != nil && !signalIDField.IsZero() {
+			if !null && err == nil && !signalIDField.IsZero() {
 				fep.filteredSignalIDs = append(fep.filteredSignalIDs, signalIDField)
 			}
 		}
@@ -1254,7 +1269,7 @@ func (fep *FilterExpressionParser) ExitFunctionExpression(context *parser.Functi
 // GenerateExpressionTrees produces a set of expression trees for the provided filterExpression and dataSet.
 // One expression tree will be produced per filter expression statement encountered in the specified filterExpression.
 // If primaryTable parameter is not defined, then filter expression should not contain directly defined signal IDs.
-// Error will be returned if dataSet parameter is nil or the filterExpression is empty.
+// An error will be returned if dataSet parameter is nil or the filterExpression is empty.
 func GenerateExpressionTrees(dataSet *DataSet, primaryTable string, filterExpression string, suppressConsoleErrorOutput bool) ([]*ExpressionTree, error) {
 	parser, err := NewFilterExpressionParserForDataSet(dataSet, filterExpression, primaryTable, nil, suppressConsoleErrorOutput)
 
@@ -1269,7 +1284,7 @@ func GenerateExpressionTrees(dataSet *DataSet, primaryTable string, filterExpres
 
 // GenerateExpressionTreesFromTable produces a set of expression trees for the provided filterExpression and dataTable.
 // One expression tree will be produced per filter expression statement encountered in the specified filterExpression.
-// Error will be returned if dataTable parameter is nil or the filterExpression is empty.
+// An error will be returned if dataTable parameter is nil or the filterExpression is empty.
 func GenerateExpressionTreesFromTable(dataTable *DataTable, filterExpression string, suppressConsoleErrorOutput bool) ([]*ExpressionTree, error) {
 	if dataTable == nil {
 		return nil, errors.New("cannot generate expression trees, dataTable parameter is nil")
@@ -1279,7 +1294,8 @@ func GenerateExpressionTreesFromTable(dataTable *DataTable, filterExpression str
 }
 
 // GenerateExpressionTree gets the first produced expression tree for the provided filterExpression and dataTable.
-// Error will be returned if dataTable parameter is nil or the filterExpression is empty.
+// If filterExpression contains multiple semi-colon separated statements, only the first expression is returned.
+// An error will be returned if dataTable parameter is nil or the filterExpression is empty.
 func GenerateExpressionTree(dataTable *DataTable, filterExpression string, suppressConsoleErrorOutput bool) (*ExpressionTree, error) {
 	expressionTrees, err := GenerateExpressionTreesFromTable(dataTable, filterExpression, suppressConsoleErrorOutput)
 
@@ -1294,10 +1310,10 @@ func GenerateExpressionTree(dataTable *DataTable, filterExpression string, suppr
 	return nil, errors.New("no expression trees generated with filter expression \"" + filterExpression + "\" for table \"" + dataTable.Name() + "\"")
 }
 
-// EvaluateExpression returns the result of the evaluated filterExpression. This expression
-// evaluation function is only for simple expressions that do not reference any DataSet columns.
-// Use EvaluateDataRowExpression for evaluating filter expressions that contain column references.
-// Error will be returned if the filterExpression is empty.
+// EvaluateExpression returns the result of the evaluated filterExpression. This expression evaluation function is only
+// for simple expressions that do not reference any DataSet columns. Use EvaluateDataRowExpression for evaluating filter
+// expressions that contain column references. If filterExpression contains multiple semi-colon separated statements,
+// only the first expression is evaluated. An error will be returned if the filterExpression is empty.
 func EvaluateExpression(filterExpression string, suppressConsoleErrorOutput bool) (*ValueExpression, error) {
 	if len(filterExpression) == 0 {
 		return nil, errors.New("cannot evaluate expression, filter expression is empty")
@@ -1320,7 +1336,8 @@ func EvaluateExpression(filterExpression string, suppressConsoleErrorOutput bool
 }
 
 // EvaluateDataRowExpression returns the result of the evaluated filterExpression using the specified dataRow.
-// Error will be returned if dataRow parameter is nil or the filterExpression is empty.
+// If filterExpression contains multiple semi-colon separated statements, only the first expression is evaluated.
+// An error will be returned if dataRow parameter is nil or the filterExpression is empty.
 func EvaluateDataRowExpression(dataRow *DataRow, filterExpression string, suppressConsoleErrorOutput bool) (*ValueExpression, error) {
 	if dataRow == nil {
 		return nil, errors.New("cannot evaluate data row expression, dataRow parameter is nil")
@@ -1339,66 +1356,70 @@ func EvaluateDataRowExpression(dataRow *DataRow, filterExpression string, suppre
 	return expressionTree.Evaluate(dataRow)
 }
 
-// Select returns all rows matching the provided filterExpression and dataSet. Filter expressions can contain multiple statements,
-// separated by semi-colons, where each statement results in a unique expression tree; this function returns the combined results of each
-// encountered filter expression statement. Returned DataRow slice will contain all matching rows and will be in natural order. Slice may
-// contain duplicates if multiple statements in filter expression yield the same matching results. Returned DataRowHashSet will contain only
-// unique rows, in arbitrary order. Error will be returned if dataSet parameter is nil or the filterExpression is empty.
-func Select(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) ([]*DataRow, DataRowHashSet, error) {
+// SelectDataRowSet returns all unique rows matching the provided filterExpression and dataSet. Filter expressions can contain multiple
+// statements, separated by semi-colons, where each statement results in a unique expression tree; this function returns the combined results
+// of each encountered filter expression statement. Returned DataRowHashSet will contain only unique rows, in arbitrary order. Any encountered
+// "TOP" limit clauses for individual filter expression statements will be respected, but "ORDER BY" clauses will be ignored. An error will
+// be returned if dataSet parameter is nil or the filterExpression is empty.
+func SelectDataRowSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (DataRowHashSet, error) {
 	parser, err := NewFilterExpressionParserForDataSet(dataSet, filterExpression, primaryTable, tableIDFields, suppressConsoleErrorOutput)
 
 	if err != nil {
-		return nil, nil, errors.New("cannot execute select operation, " + err.Error())
+		return nil, errors.New("cannot execute select operation, " + err.Error())
 	}
 
-	if err := parser.Evaluate(); err != nil {
-		return nil, nil, err
+	if err := parser.Evaluate(true, false); err != nil {
+		return nil, err
 	}
 
-	return parser.FilteredRows(), parser.FilteredRowSet(), nil
+	return parser.FilteredRowSet(), nil
 }
 
-// SelectFromTable returns the rows matching the provided filterExpression and dataTable. Filter expressions can contain multiple statements,
-// separated by semi-colons, where each statement results in a unique expression tree; this function returns the combined results of each
-// encountered filter expression statement. Returned DataRow slice will contain all matching rows and will be in natural order. Slice may
-// contain duplicates if multiple statements in filter expression yield the same matching results. Returned DataRowHashSet will contain only
-// unique rows, in arbitrary order. Error will be returned if dataTable parameter is nil or the filterExpression is empty.
-func SelectFromTable(dataTable *DataTable, filterExpression string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) ([]*DataRow, DataRowHashSet, error) {
+// SelectDataRowSetFromTable returns all unique rows matching the provided filterExpression and dataTable. Filter expressions can contain multiple
+// statements, separated by semi-colons, where each statement results in a unique expression tree; this function returns the combined results
+// of each encountered filter expression statement. Returned DataRowHashSet will contain only unique rows, in arbitrary order. Any encountered
+// "TOP" limit clauses for individual filter expression statements will be respected, but "ORDER BY" clauses will be ignored. An error will
+// be returned if dataTable parameter (or its parent DataSet) is nil or the filterExpression is empty.
+func SelectDataRowSetFromTable(dataTable *DataTable, filterExpression string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (DataRowHashSet, error) {
 	if dataTable == nil {
-		return nil, nil, errors.New("cannot execute select operation, dataTable parameter is nil")
+		return nil, errors.New("cannot execute select operation, dataTable parameter is nil")
 	}
 
-	return Select(dataTable.Parent(), filterExpression, dataTable.Name(), tableIDFields, suppressConsoleErrorOutput)
+	return SelectDataRowSet(dataTable.Parent(), filterExpression, dataTable.Name(), tableIDFields, suppressConsoleErrorOutput)
 }
 
-// FilterSignalIDs returns all unique Guid signal IDs matching the provided filterExpression and dataSet. Filter expressions can
-// contain multiple statements, separated by semi-colons, where each statement results in a unique expression tree; this function returns the
-// combined results of each encountered filter expression statement. Returned guid.HashSet will contain only unique signal IDs, in arbitrary
-// order. Error will be returned if dataSet parameter is nil or the filterExpression is empty.
-func FilterSignalIDs(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (guid.HashSet, error) {
+// SelectSignalIDSet returns all unique Guid signal IDs matching the provided filterExpression and dataSet. Filter expressions can contain multiple
+// statements, separated by semi-colons, where each statement results in a unique expression tree; this function returns the combined results of
+// each encountered filter expression statement. Returned guid.HashSet will contain only unique signal IDs, in arbitrary order. Any encountered
+// "TOP" limit clauses for individual filter expression statements will be respected, but "ORDER BY" clauses will be ignored. An error will
+// be returned if dataSet parameter is nil or the filterExpression is empty.
+func SelectSignalIDSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (guid.HashSet, error) {
 	parser, err := NewFilterExpressionParserForDataSet(dataSet, filterExpression, primaryTable, tableIDFields, suppressConsoleErrorOutput)
+	parser.TrackFilteredRows = false
+	parser.TrackFilteredSignalIDs = true
 
 	if err != nil {
 		return nil, errors.New("cannot execute filter operation, " + err.Error())
 	}
 
-	if err := parser.Evaluate(); err != nil {
+	if err := parser.Evaluate(true, false); err != nil {
 		return nil, err
 	}
 
 	return parser.FilteredSignalIDSet(), nil
 }
 
-// FilterSignalIDsFromDataSet returns all unique Guid signal IDs matching the provided filterExpression and dataTable. Filter expressions can
-// contain multiple statements, separated by semi-colons, where each statement results in a unique expression tree; this function returns the
-// combined results of each encountered filter expression statement. Returned guid.HashSet will contain only unique signal IDs, in arbitrary
-// order. Error will be returned if dataTable parameter is nil or the filterExpression is empty.
-func FilterSignalIDsFromTable(dataTable *DataTable, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (guid.HashSet, error) {
+// SelectSignalIDSetFromTable returns all unique Guid signal IDs matching the provided filterExpression and dataTable. Filter expressions can contain
+// multiple statements, separated by semi-colons, where each statement results in a unique expression tree; this function returns the combined results
+// of each encountered filter expression statement. Returned guid.HashSet will contain only unique signal IDs, in arbitrary order. Any encountered
+// "TOP" limit clauses for individual filter expression statements will be respected, but "ORDER BY" clauses will be ignored. An error will
+// be returned if dataTable parameter (or its parent DataSet) is nil or the filterExpression is empty.
+func SelectSignalIDSetFromTable(dataTable *DataTable, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (guid.HashSet, error) {
 	if dataTable == nil {
 		return nil, errors.New("cannot execute filter operation, dataTable parameter is nil")
 	}
 
-	return FilterSignalIDs(dataTable.Parent(), filterExpression, dataTable.Name(), tableIDFields, suppressConsoleErrorOutput)
+	return SelectSignalIDSet(dataTable.Parent(), filterExpression, dataTable.Name(), tableIDFields, suppressConsoleErrorOutput)
 }
 
 func parseStringLiteral(stringLiteral string) string {

@@ -145,6 +145,32 @@ func (dt *DataTable) Row(rowIndex int) *DataRow {
 	return dt.rows[rowIndex]
 }
 
+// RowsWhere returns the rows matching the predicate expression. Set limit parameter
+// to -1 for all matching rows.
+func (dt *DataTable) RowsWhere(predicate func(*DataRow) bool, limit int) []*DataRow {
+	matchingRows := make([]*DataRow, 0)
+	count := 0
+
+	for i := 0; i < len(dt.rows); i++ {
+		dataRow := dt.rows[i]
+
+		if dataRow == nil {
+			continue
+		}
+
+		if predicate(dataRow) {
+			matchingRows = append(matchingRows, dataRow)
+			count++
+
+			if limit > -1 && count >= limit {
+				break
+			}
+		}
+	}
+
+	return matchingRows
+}
+
 // CreateRow creates a new DataRow associated with the DataTable.
 // Use AddRow to add the new row to the DataTable.
 func (dt *DataTable) CreateRow() *DataRow {
