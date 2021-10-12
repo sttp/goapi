@@ -82,6 +82,7 @@ func (et *ExpressionTree) Select(table *DataTable) ([]*DataRow, error) {
 // SelectWhere returns each table row evaluated from the ExpressionTree that matches the specified predicate expression.
 // The applyLimit and applySort flags determine if any encountered "TOP" limit and "ORDER BY" sorting clauses will be respected.
 // Error will be returned if the table parameter is nil.
+//gocyclo: ignore
 func (et *ExpressionTree) SelectWhere(table *DataTable, predicate func(*ValueExpression) (bool, error), applyLimit bool, applySort bool) ([]*DataRow, error) {
 	if table == nil {
 		return nil, errors.New("cannot execute select operation, table parameter is nil")

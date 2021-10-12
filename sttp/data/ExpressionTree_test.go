@@ -275,6 +275,7 @@ func testDateTime(t *testing.T, dt time.Time, sr string) {
 	}
 }
 
+//gocyclo: ignore
 func TestFilterSignalIDs(t *testing.T) {
 	dataSet, _, _, statID, freqID := createDataSet()
 
