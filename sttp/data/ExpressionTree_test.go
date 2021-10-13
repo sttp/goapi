@@ -27,99 +27,101 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/araddon/dateparse"
 	"github.com/shopspring/decimal"
 	"github.com/sttp/goapi/sttp/guid"
+	"github.com/sttp/goapi/sttp/xml"
 )
 
-func TestEvaluateBooleanExpression(t *testing.T) {
+func TestEvaluateBooleanLiteralExpression(t *testing.T) {
 	b := true
 
 	result, err := EvaluateExpression(strconv.FormatBool(b), false)
 
 	if err != nil {
-		t.Fatal("TestEvaluateBooleanExpression: error parsing expression: " + err.Error())
+		t.Fatal("TestEvaluateBooleanLiteralExpression: error parsing expression: " + err.Error())
 	}
 
 	if result == nil {
-		t.Fatal("TestEvaluateBooleanExpression: received no result")
+		t.Fatal("TestEvaluateBooleanLiteralExpression: received no result")
 	}
 
 	if result.ValueType() != ExpressionValueType.Boolean {
-		t.Fatal("TestEvaluateBooleanExpression: received unexpected type: " + result.ValueType().String())
+		t.Fatal("TestEvaluateBooleanLiteralExpression: received unexpected type: " + result.ValueType().String())
 	}
 
 	ve, err := result.BooleanValue()
 
 	if err != nil {
-		t.Fatal("TestEvaluateBooleanExpression: failed to retrieve value: " + err.Error())
+		t.Fatal("TestEvaluateBooleanLiteralExpression: failed to retrieve value: " + err.Error())
 	}
 
 	if ve != b {
-		t.Fatal("TestEvaluateBooleanExpression: retrieved value does not match source")
+		t.Fatal("TestEvaluateBooleanLiteralExpression: retrieved value does not match source")
 	}
 }
 
-func TestEvaluateInt32Expression(t *testing.T) {
+func TestEvaluateInt32LiteralExpression(t *testing.T) {
 	var i32 int32 = math.MaxInt32
 
 	result, err := EvaluateExpression(strconv.FormatInt(int64(i32), 10), false)
 
 	if err != nil {
-		t.Fatal("TestEvaluateInt32Expression: error parsing expression: " + err.Error())
+		t.Fatal("TestEvaluateInt32LiteralExpression: error parsing expression: " + err.Error())
 	}
 
 	if result == nil {
-		t.Fatal("TestEvaluateInt32Expression: received no result")
+		t.Fatal("TestEvaluateInt32LiteralExpression: received no result")
 	}
 
 	if result.ValueType() != ExpressionValueType.Int32 {
-		t.Fatal("TestEvaluateInt32Expression: received unexpected type: " + result.ValueType().String())
+		t.Fatal("TestEvaluateInt32LiteralExpression: received unexpected type: " + result.ValueType().String())
 	}
 
 	ve, err := result.Int32Value()
 
 	if err != nil {
-		t.Fatal("TestEvaluateInt32Expression: failed to retrieve value: " + err.Error())
+		t.Fatal("TestEvaluateInt32LiteralExpression: failed to retrieve value: " + err.Error())
 	}
 
 	if ve != i32 {
-		t.Fatal("TestEvaluateInt32Expression: retrieved value does not match source")
+		t.Fatal("TestEvaluateInt32LiteralExpression: retrieved value does not match source")
 	}
 }
 
-func TestEvaluateInt64Expression(t *testing.T) {
+func TestEvaluateInt64LiteralExpression(t *testing.T) {
 	var i64 int64 = math.MaxInt64
 
 	result, err := EvaluateExpression(strconv.FormatInt(i64, 10), false)
 
 	if err != nil {
-		t.Fatal("TestEvaluateInt64Expression: error parsing expression: " + err.Error())
+		t.Fatal("TestEvaluateInt64LiteralExpression: error parsing expression: " + err.Error())
 	}
 
 	if result == nil {
-		t.Fatal("TestEvaluateInt64Expression: received no result")
+		t.Fatal("TestEvaluateInt64LiteralExpression: received no result")
 	}
 
 	if result.ValueType() != ExpressionValueType.Int64 {
-		t.Fatal("TestEvaluateInt64Expression: received unexpected type: " + result.ValueType().String())
+		t.Fatal("TestEvaluateInt64LiteralExpression: received unexpected type: " + result.ValueType().String())
 	}
 
 	ve, err := result.Int64Value()
 
 	if err != nil {
-		t.Fatal("TestEvaluateInt64Expression: failed to retrieve value: " + err.Error())
+		t.Fatal("TestEvaluateInt64LiteralExpression: failed to retrieve value: " + err.Error())
 	}
 
 	if ve != i64 {
-		t.Fatal("TestEvaluateInt64Expression: retrieved value does not match source")
+		t.Fatal("TestEvaluateInt64LiteralExpression: retrieved value does not match source")
 	}
 }
 
-func TestEvaluateDecimalExpression(t *testing.T) {
+func TestEvaluateDecimalLiteralExpression(t *testing.T) {
 	const dec string = "-9223372036854775809.87686876"
 	var d decimal.Decimal
 	d, _ = decimal.NewFromString(dec)
@@ -127,113 +129,113 @@ func TestEvaluateDecimalExpression(t *testing.T) {
 	result, err := EvaluateExpression(dec, false)
 
 	if err != nil {
-		t.Fatal("TestEvaluateDecimalExpression: error parsing expression: " + err.Error())
+		t.Fatal("TestEvaluateDecimalLiteralExpression: error parsing expression: " + err.Error())
 	}
 
 	if result == nil {
-		t.Fatal("TestEvaluateDecimalExpression: received no result")
+		t.Fatal("TestEvaluateDecimalLiteralExpression: received no result")
 	}
 
 	if result.ValueType() != ExpressionValueType.Decimal {
-		t.Fatal("TestEvaluateDecimalExpression: received unexpected type: " + result.ValueType().String())
+		t.Fatal("TestEvaluateDecimalLiteralExpression: received unexpected type: " + result.ValueType().String())
 	}
 
 	ve, err := result.DecimalValue()
 
 	if err != nil {
-		t.Fatal("TestEvaluateDecimalExpression: failed to retrieve value: " + err.Error())
+		t.Fatal("TestEvaluateDecimalLiteralExpression: failed to retrieve value: " + err.Error())
 	}
 
 	if !ve.Equal(d) {
-		t.Fatal("TestEvaluateDecimalExpression: retrieved value does not match source")
+		t.Fatal("TestEvaluateDecimalLiteralExpression: retrieved value does not match source")
 	}
 }
 
-func TestEvaluateDoubleExpression(t *testing.T) {
+func TestEvaluateDoubleLiteralExpression(t *testing.T) {
 	var d float64 = 123.456e-6
 
 	result, err := EvaluateExpression("123.456E-6", false)
 
 	if err != nil {
-		t.Fatal("TestEvaluateDoubleExpression: error parsing expression: " + err.Error())
+		t.Fatal("TestEvaluateDoubleLiteralExpression: error parsing expression: " + err.Error())
 	}
 
 	if result == nil {
-		t.Fatal("TestEvaluateDoubleExpression: received no result")
+		t.Fatal("TestEvaluateDoubleLiteralExpression: received no result")
 	}
 
 	if result.ValueType() != ExpressionValueType.Double {
-		t.Fatal("TestEvaluateDoubleExpression: received unexpected type: " + result.ValueType().String())
+		t.Fatal("TestEvaluateDoubleLiteralExpression: received unexpected type: " + result.ValueType().String())
 	}
 
 	ve, err := result.DoubleValue()
 
 	if err != nil {
-		t.Fatal("TestEvaluateDoubleExpression: failed to retrieve value: " + err.Error())
+		t.Fatal("TestEvaluateDoubleLiteralExpression: failed to retrieve value: " + err.Error())
 	}
 
 	if ve != d {
-		t.Fatal("TestEvaluateDoubleExpression: retrieved value does not match source")
+		t.Fatal("TestEvaluateDoubleLiteralExpression: retrieved value does not match source")
 	}
 }
 
-func TestEvaluateStringExpression(t *testing.T) {
+func TestEvaluateStringLiteralExpression(t *testing.T) {
 	s := "'Hello, literal string expression'"
 
 	result, err := EvaluateExpression(s, false)
 
 	if err != nil {
-		t.Fatal("TestEvaluateStringExpression: error parsing expression: " + err.Error())
+		t.Fatal("TestEvaluateStringLiteralExpression: error parsing expression: " + err.Error())
 	}
 
 	if result == nil {
-		t.Fatal("TestEvaluateStringExpression: received no result")
+		t.Fatal("TestEvaluateStringLiteralExpression: received no result")
 	}
 
 	if result.ValueType() != ExpressionValueType.String {
-		t.Fatal("TestEvaluateStringExpression: received unexpected type: " + result.ValueType().String())
+		t.Fatal("TestEvaluateStringLiteralExpression: received unexpected type: " + result.ValueType().String())
 	}
 
 	ve, err := result.StringValue()
 
 	if err != nil {
-		t.Fatal("TestEvaluateStringExpression: failed to retrieve value: " + err.Error())
+		t.Fatal("TestEvaluateStringLiteralExpression: failed to retrieve value: " + err.Error())
 	}
 
 	if ve != s[1:len(s)-1] {
-		t.Fatal("TestEvaluateStringExpression: retrieved value does not match source")
+		t.Fatal("TestEvaluateStringLiteralExpression: retrieved value does not match source")
 	}
 }
 
-func TestEvaluateGuidExpression(t *testing.T) {
+func TestEvaluateGuidLiteralExpression(t *testing.T) {
 	g := guid.New()
 
 	result, err := EvaluateExpression(g.String(), false)
 
 	if err != nil {
-		t.Fatal("TestEvaluateGuidExpression: error parsing expression: " + err.Error())
+		t.Fatal("TestEvaluateGuidLiteralExpression: error parsing expression: " + err.Error())
 	}
 
 	if result == nil {
-		t.Fatal("TestEvaluateGuidExpression: received no result")
+		t.Fatal("TestEvaluateGuidLiteralExpression: received no result")
 	}
 
 	if result.ValueType() != ExpressionValueType.Guid {
-		t.Fatal("TestEvaluateGuidExpression: received unexpected type: " + result.ValueType().String())
+		t.Fatal("TestEvaluateGuidLiteralExpression: received unexpected type: " + result.ValueType().String())
 	}
 
 	ve, err := result.GuidValue()
 
 	if err != nil {
-		t.Fatal("TestEvaluateGuidExpression: failed to retrieve value: " + err.Error())
+		t.Fatal("TestEvaluateGuidLiteralExpression: failed to retrieve value: " + err.Error())
 	}
 
 	if !ve.Equal(g) {
-		t.Fatal("TestEvaluateGuidExpression: retrieved value does not match source")
+		t.Fatal("TestEvaluateGuidLiteralExpression: retrieved value does not match source")
 	}
 }
 
-func TestEvaluateDateTimeExpression(t *testing.T) {
+func TestEvaluateDateTimeLiteralExpression(t *testing.T) {
 	sr := "2006-01-01 00:00:00"
 	dt, _ := dateparse.ParseAny(sr)
 	testDateTime(t, dt, sr)
@@ -253,117 +255,1824 @@ func testDateTime(t *testing.T, dt time.Time, sr string) {
 	result, err := EvaluateExpression("#"+sr+"#", false)
 
 	if err != nil {
-		t.Fatal("TestEvaluateDateTimeExpression: error parsing expression: " + err.Error())
+		t.Fatal("TestEvaluateDateTimeLiteralExpression: error parsing expression: " + err.Error())
 	}
 
 	if result == nil {
-		t.Fatal("TestEvaluateDateTimeExpression: received no result")
+		t.Fatal("TestEvaluateDateTimeLiteralExpression: received no result")
 	}
 
 	if result.ValueType() != ExpressionValueType.DateTime {
-		t.Fatal("TestEvaluateDateTimeExpression: received unexpected type: " + result.ValueType().String())
+		t.Fatal("TestEvaluateDateTimeLiteralExpression: received unexpected type: " + result.ValueType().String())
 	}
 
 	ve, err := result.DateTimeValue()
 
 	if err != nil {
-		t.Fatal("TestEvaluateDateTimeExpression: failed to retrieve value: " + err.Error())
+		t.Fatal("TestEvaluateDateTimeLiteralExpression: failed to retrieve value: " + err.Error())
 	}
 
 	if !ve.Equal(dt) {
-		t.Fatal("TestEvaluateDateTimeExpression: retrieved value does not match source")
+		t.Fatal("TestEvaluateDateTimeLiteralExpression: retrieved value does not match source")
 	}
 }
 
 //gocyclo: ignore
-func TestFilterSignalIDs(t *testing.T) {
+func TestSignalIDSetExpressions(t *testing.T) {
 	dataSet, _, _, statID, freqID := createDataSet()
 
 	idSet, err := SelectSignalIDSet(dataSet, "FILTER ActiveMeasurements WHERE SignalType = 'FREQ'", "ActiveMeasurements", nil, false)
 
 	if err != nil {
-		t.Fatal("TestFilterSignalIDs: error executing SelectSignalIDSet: " + err.Error())
+		t.Fatal("TestSignalIDSetExpressions: error executing SelectSignalIDSet: " + err.Error())
 	}
 
 	if len(idSet) != 1 {
-		t.Fatal("TestFilterSignalIDs: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		t.Fatal("TestSignalIDSetExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
 	}
 
 	if idSet.Keys()[0] != freqID {
-		t.Fatal("TestFilterSignalIDs: retrieve Guid value does not match source")
+		t.Fatal("TestSignalIDSetExpressions: retrieve Guid value does not match source")
 	}
 
 	idSet, err = SelectSignalIDSet(dataSet, "FILTER ActiveMeasurements WHERE SignalType = 'STAT'", "ActiveMeasurements", nil, false)
 
 	if err != nil {
-		t.Fatal("TestFilterSignalIDs: error executing SelectSignalIDSet: " + err.Error())
+		t.Fatal("TestSignalIDSetExpressions: error executing SelectSignalIDSet: " + err.Error())
 	}
 
 	if len(idSet) != 1 {
-		t.Fatal("TestFilterSignalIDs: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		t.Fatal("TestSignalIDSetExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
 	}
 
 	if idSet.Keys()[0] != statID {
-		t.Fatal("TestFilterSignalIDs: retrieve Guid value does not match source")
+		t.Fatal("TestSignalIDSetExpressions: retrieve Guid value does not match source")
 	}
 
 	idSet, err = SelectSignalIDSet(dataSet, statID.String(), "ActiveMeasurements", nil, false)
 
 	if err != nil {
-		t.Fatal("TestFilterSignalIDs: error executing SelectSignalIDSet: " + err.Error())
+		t.Fatal("TestSignalIDSetExpressions: error executing SelectSignalIDSet: " + err.Error())
 	}
 
 	if len(idSet) != 1 {
-		t.Fatal("TestFilterSignalIDs: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		t.Fatal("TestSignalIDSetExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
 	}
 
 	if idSet.Keys()[0] != statID {
-		t.Fatal("TestFilterSignalIDs: retrieve Guid value does not match source")
+		t.Fatal("TestSignalIDSetExpressions: retrieve Guid value does not match source")
 	}
 
 	idSet, err = SelectSignalIDSet(dataSet, ";;"+statID.String()+";;;", "ActiveMeasurements", nil, false)
 
 	if err != nil {
-		t.Fatal("TestFilterSignalIDs: error executing SelectSignalIDSet: " + err.Error())
+		t.Fatal("TestSignalIDSetExpressions: error executing SelectSignalIDSet: " + err.Error())
 	}
 
 	if len(idSet) != 1 {
-		t.Fatal("TestFilterSignalIDs: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		t.Fatal("TestSignalIDSetExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
 	}
 
 	if idSet.Keys()[0] != statID {
-		t.Fatal("TestFilterSignalIDs: retrieve Guid value does not match source")
+		t.Fatal("TestSignalIDSetExpressions: retrieve Guid value does not match source")
 	}
 
 	freqUUID := freqID.String()
 	idSet, err = SelectSignalIDSet(dataSet, "'"+freqUUID[1:len(freqUUID)-1]+"'", "ActiveMeasurements", nil, false)
 
 	if err != nil {
-		t.Fatal("TestFilterSignalIDs: error executing SelectSignalIDSet: " + err.Error())
+		t.Fatal("TestSignalIDSetExpressions: error executing SelectSignalIDSet: " + err.Error())
 	}
 
 	if len(idSet) != 1 {
-		t.Fatal("TestFilterSignalIDs: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		t.Fatal("TestSignalIDSetExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
 	}
 
 	if idSet.Keys()[0] != freqID {
-		t.Fatal("TestFilterSignalIDs: retrieve Guid value does not match source")
+		t.Fatal("TestSignalIDSetExpressions: retrieve Guid value does not match source")
 	}
 
 	idSet, err = SelectSignalIDSet(dataSet, fmt.Sprintf("%s;%s;%s", statID.String(), freqID.String(), statID.String()), "ActiveMeasurements", nil, false)
 
 	if err != nil {
-		t.Fatal("TestFilterSignalIDs: error executing SelectSignalIDSet: " + err.Error())
+		t.Fatal("TestSignalIDSetExpressions: error executing SelectSignalIDSet: " + err.Error())
 	}
 
 	if len(idSet) != 2 {
-		t.Fatal("TestFilterSignalIDs: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		t.Fatal("TestSignalIDSetExpressions: expected 2 results, received: " + strconv.Itoa(len(idSet)))
 	}
 
 	if !idSet.Contains(statID) || !idSet.Contains(freqID) {
-		t.Fatal("TestFilterSignalIDs: retrieve Guid value does not match source")
+		t.Fatal("TestSignalIDSetExpressions: retrieve Guid value does not match source")
+	}
+
+	idSet, err = SelectSignalIDSet(dataSet, fmt.Sprintf("%s;%s;%s;FILTER ActiveMeasurements WHERE True", statID.String(), freqID.String(), statID.String()), "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSignalIDSetExpressions: error executing SelectSignalIDSet: " + err.Error())
+	}
+
+	if len(idSet) != 2 {
+		t.Fatal("TestSignalIDSetExpressions: expected 2 results, received: " + strconv.Itoa(len(idSet)))
+	}
+
+	if !idSet.Contains(statID) || !idSet.Contains(freqID) {
+		t.Fatal("TestSignalIDSetExpressions: retrieve Guid value does not match source")
+	}
+
+	idSet, err = SelectSignalIDSet(dataSet, "FILTER ActiveMeasurements WHERE SignalID = '"+freqUUID[1:len(freqUUID)-1]+"'", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSignalIDSetExpressions: error executing SelectSignalIDSet: " + err.Error())
+	}
+
+	if len(idSet) != 1 {
+		t.Fatal("TestSignalIDSetExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+	}
+
+	if idSet.Keys()[0] != freqID {
+		t.Fatal("TestSignalIDSetExpressions: retrieve Guid value does not match source")
+	}
+
+	idSet, err = SelectSignalIDSet(dataSet, "FILTER ActiveMeasurements WHERE SignalID = '"+freqUUID[1:len(freqUUID)-1]+"' OR SignalID = "+statID.String(), "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSignalIDSetExpressions: error executing SelectSignalIDSet: " + err.Error())
+	}
+
+	if len(idSet) != 2 {
+		t.Fatal("TestSignalIDSetExpressions: expected 2 results, received: " + strconv.Itoa(len(idSet)))
+	}
+
+	if !idSet.Contains(statID) || !idSet.Contains(freqID) {
+		t.Fatal("TestSignalIDSetExpressions: retrieve Guid value does not match source")
+	}
+
+	_, err = SelectSignalIDSet(dataSet, "", "", nil, false)
+
+	if err == nil {
+		t.Fatal("TestSignalIDSetExpressions: error expected, received none")
+	}
+
+	_, err = SelectSignalIDSet(dataSet, "bad expression", "ActiveMeasurements", nil, false)
+
+	if err == nil {
+		t.Fatal("TestSignalIDSetExpressions: error expected, received none")
 	}
 }
 
-//func TestFilterSignalIDs(t *testing.T) {
-//}
+//gocyclo: ignore
+func TestSelectDataRowsExpressions(t *testing.T) {
+	dataSet, signalIDField, signalTypeField, statID, freqID := createDataSet()
+
+	rows, err := SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType = 'FREQ'; FILTER ActiveMeasurements WHERE SignalType = 'STAT' ORDER BY SignalID", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	// FREQ should be before STAT because of multiple statement evaluation order
+	if !getRowGuid(t, rows[0], signalIDField).Equal(freqID) || !getRowGuid(t, rows[1], signalIDField).Equal(statID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType = 'FREQ' OR SignalType = 'STAT'", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	// Row with stat comes before row with freq (single expression statement)
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType = 'FREQ' OR SignalType = 'STAT' ORDER BY BINARY SignalType", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	// FREQ should sort before STAT with order by
+	if !getRowGuid(t, rows[0], signalIDField).Equal(freqID) || !getRowGuid(t, rows[1], signalIDField).Equal(statID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType = 'STAT' OR SignalType = 'FREQ' ORDER BY SignalType DESC", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	// Now descending
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	freqUUID := freqID.String()
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalID = "+statID.String()+" OR SignalID = '"+freqUUID[1:len(freqUUID)-1]+"' ORDER BY SignalType", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	// FREQ should sort before STAT with order by
+	if !getRowGuid(t, rows[0], signalIDField).Equal(freqID) || !getRowGuid(t, rows[1], signalIDField).Equal(statID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalID = "+statID.String()+" OR SignalID = '"+freqUUID[1:len(freqUUID)-1]+"' ORDER BY SignalType;"+statID.String(), "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	// Because expression includes Guid statID as a literal (at the end), it will parse first
+	// regardless of order by in filter statement
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE True", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE IsNull(NULL, False) OR Coalesce(Null, true)", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE IIf(IsNull(NULL, False) OR Coalesce(Null, true), Len(SignalType) == 4, false)", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType IS !NULL", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE Len(SubStr(Coalesce(Trim(SignalType), 'OTHER'), 0, 0X2)) = 2", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE LEN(SignalTYPE) > 3.5", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE Len(SignalType) & 0x4 == 4", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE RegExVal('ST.+', SignalType) == 'STAT'", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 1 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 1 result, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE RegExMatch('FR.+', SignalType)", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 1 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 1 result, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType IN ('FREQ', 'STAT') ORDER BY SignalType", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(freqID) || !getRowGuid(t, rows[1], signalIDField).Equal(statID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalID IN ("+statID.String()+", "+freqID.String()+")", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType LIKE 'ST%'", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 1 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 1 result, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType LIKE '*EQ'", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 1 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 1 result, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType LIKE '*TA%'", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 1 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 1 result, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE -Len(SignalType) <= 0", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	// number converted to string and compared
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType == 0", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 0 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 0 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	// number converted to string and compared
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE SignalType > 99", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	rows, err = SelectDataRows(dataSet, "FILTER ActiveMeasurements WHERE Len(SignalType) / 0x2 = 2", "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: error executing SelectDataRows: " + err.Error())
+	}
+
+	if len(rows) != 2 {
+		t.Fatal("TestSelectDataRowsExpressions: expected 2 results, received: " + strconv.Itoa(len(rows)))
+	}
+
+	if !getRowGuid(t, rows[0], signalIDField).Equal(statID) || !getRowGuid(t, rows[1], signalIDField).Equal(freqID) {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve Guid value or order does not match source")
+	}
+
+	if getRowString(t, rows[0], signalTypeField) != "STAT" || getRowString(t, rows[1], signalTypeField) != "FREQ" {
+		t.Fatal("TestSelectDataRowsExpressions: retrieve string value or order does not match source")
+	}
+}
+
+func getRowGuid(t *testing.T, row *DataRow, columnIndex int) guid.Guid {
+	id, null, err := row.GuidValue(columnIndex)
+
+	if null || err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: failed to retrieve Guid value")
+	}
+
+	return id
+}
+
+func getRowString(t *testing.T, row *DataRow, columnIndex int) string {
+	value, null, err := row.StringValue(columnIndex)
+
+	if null || err != nil {
+		t.Fatal("TestSelectDataRowsExpressions: failed to retrieve string value")
+	}
+
+	return value
+}
+
+//gocyclo: ignore
+func TestMetadataExpressions(t *testing.T) {
+	// Two sample metadata files exist, test both
+	for i := 0; i < 2; i++ {
+		fileName := fmt.Sprintf("../../test/MetadataSample%d.xml", i+1)
+
+		var doc xml.XmlDocument
+		err := doc.LoadXmlFromFile(fileName)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error loading XML document: " + err.Error())
+		}
+
+		dataSet := NewDataSet()
+		err = dataSet.ParseXmlDocument(&doc)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error loading DataSet from XML document: " + err.Error())
+		}
+
+		if dataSet.TableCount() != 4 {
+			t.Fatal("TestMetadataExpressions: expected 4 results, received: " + strconv.Itoa(dataSet.TableCount()))
+		}
+
+		table := dataSet.Table("MeasurementDetail")
+
+		if table == nil {
+			t.Fatal("TestMetadataExpressions: table not found in DataSet")
+		}
+
+		if table.ColumnCount() != 11 {
+			t.Fatal("TestMetadataExpressions: expected table column count: " + strconv.Itoa(table.ColumnCount()))
+		}
+
+		if table.ColumnByName("ID") == nil {
+			t.Fatal("TestMetadataExpressions: missing expected table column")
+		}
+
+		if table.ColumnByName("id").Type() != DataType.String {
+			t.Fatal("TestMetadataExpressions: unexpected table column type")
+		}
+
+		if table.ColumnByName("SignalID") == nil {
+			t.Fatal("TestMetadataExpressions: missing expected table column")
+		}
+
+		if table.ColumnByName("signalID").Type() != DataType.Guid {
+			t.Fatal("TestMetadataExpressions: unexpected table column type")
+		}
+
+		if table.RowCount() == 0 {
+			t.Fatal("TestMetadataExpressions: unexpected empty table")
+		}
+
+		table = dataSet.Table("DeviceDetail")
+
+		if table == nil {
+			t.Fatal("TestMetadataExpressions: table not found in DataSet")
+		}
+
+		if table.ColumnCount() != 19+i { // Second test adds a computed column
+			t.Fatal("TestMetadataExpressions: expected table column count: " + strconv.Itoa(table.ColumnCount()))
+		}
+
+		if table.ColumnByName("ACRONYM") == nil {
+			t.Fatal("TestMetadataExpressions: missing expected table column")
+		}
+
+		if table.ColumnByName("Acronym").Type() != DataType.String {
+			t.Fatal("TestMetadataExpressions: unexpected table column type")
+		}
+
+		if table.ColumnByName("Name") == nil {
+			t.Fatal("TestMetadataExpressions: missing expected table column")
+		}
+
+		if table.ColumnByName("name").Type() != DataType.String {
+			t.Fatal("TestMetadataExpressions: unexpected table column type")
+		}
+
+		if table.RowCount() != 1 {
+			t.Fatal("TestMetadataExpressions: expected table row count: " + strconv.Itoa(table.RowCount()))
+		}
+
+		dataRow := table.Row(0)
+
+		acronym, null, err := dataRow.StringValueByName("Acronym")
+
+		if null || err != nil {
+			t.Fatal("TestMetadataExpressions: unexpected NULL column value in row")
+		}
+
+		name, null, err := dataRow.StringValueByName("Name")
+
+		if null || err != nil {
+			t.Fatal("TestMetadataExpressions: unexpected NULL column value in row")
+		}
+
+		if !strings.EqualFold(acronym, name) {
+			t.Fatal("TestMetadataExpressions: unexpected column values in row")
+		}
+
+		// In test data set, DeviceDetail.OriginalSource is null
+		if _, null, _ = dataRow.StringValueByName("OriginalSource"); !null {
+			t.Fatal("TestMetadataExpressions: unexpected column value in row")
+		}
+
+		// In test data set, DeviceDetail.ParentAcronym is not null, but is an empty string
+		if parentAcronym, null, _ := dataRow.StringValueByName("ParentAcronym"); len(parentAcronym) > 0 || null {
+			t.Fatal("TestMetadataExpressions: unexpected column value in row")
+		}
+
+		idSet, err := SelectSignalIDSet(dataSet, "FILTER MeasurementDetail WHERE SignalAcronym = 'FREQ'", "MeasurementDetail", nil, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER TOP 8 MeasurementDetail WHERE SignalAcronym = 'STAT'", "MeasurementDetail", nil, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 8 {
+			t.Fatal("TestMetadataExpressions: expected 8 results, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER TOP 0 MeasurementDetail WHERE SignalAcronym = 'STAT'", "MeasurementDetail", nil, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 0 {
+			t.Fatal("TestMetadataExpressions: expected 0 results, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER TOP -1 MeasurementDetail WHERE SignalAcronym = 'STAT'", "MeasurementDetail", nil, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) == 0 {
+			t.Fatal("TestMetadataExpressions: expected non-zero result set, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		deviceDetailIDFields := new(TableIDFields)
+		deviceDetailIDFields.SignalIDFieldName = "UniqueID"
+		deviceDetailIDFields.MeasurementKeyFieldName = "Name"
+		deviceDetailIDFields.PointTagFieldName = "Acronym"
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER DeviceDetail WHERE Convert(Longitude, 'System.Int32') = -89", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER DeviceDetail WHERE Convert(latitude, 'int16') = 35", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER DeviceDetail WHERE Convert(latitude, 'Int32') = 35", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER DeviceDetail WHERE Convert(Convert(Latitude, 'Int32'), 'String') = 35", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER DeviceDetail WHERE Convert(Latitude, 'Single') > 35", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		// test decimal comparison
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER DeviceDetail WHERE Longitude < 0.0", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER DeviceDetail WHERE Acronym IN ('Test', 'Shelby')", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER DeviceDetail WHERE Acronym not IN ('Test', 'Apple')", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER DeviceDetail WHERE NOT (Acronym IN ('Test', 'Apple'))", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		idSet, err = SelectSignalIDSet(dataSet, "FILTER DeviceDetail WHERE NOT Acronym !IN ('Shelby', 'Apple')", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectSignalIDSet: " + err.Error())
+		}
+
+		if len(idSet) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(idSet)))
+		}
+
+		rows, err := SelectDataRows(dataSet, "Acronym LIKE 'Shel%'", "DeviceDetail", deviceDetailIDFields, false)
+
+		if err != nil {
+			t.Fatal("TestMetadataExpressions: error executing SelectDataRows: " + err.Error())
+		}
+
+		if len(rows) != 1 {
+			t.Fatal("TestMetadataExpressions: expected 1 result, received: " + strconv.Itoa(len(rows)))
+		}
+	}
+}
+
+//gocyclo: ignore
+func TestBasicExpressions(t *testing.T) {
+	var doc xml.XmlDocument
+	err := doc.LoadXmlFromFile("../../test/MetadataSample2.xml")
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error loading XML document: " + err.Error())
+	}
+
+	dataSet := NewDataSet()
+	err = dataSet.ParseXmlDocument(&doc)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error loading DataSet from XML document: " + err.Error())
+	}
+
+	dataRows, err := dataSet.Table("MeasurementDetail").Select("SignalAcronym = 'STAT'", "", -1)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during table Select: " + err.Error())
+	}
+
+	if len(dataRows) != 116 {
+		t.Fatal("TestBasicExpressions: expected 116 results, received: " + strconv.Itoa(len(dataRows)))
+	}
+
+	dataRows, err = dataSet.Table("PhasorDetail").Select("Type = 'V'", "", -1)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during table Select: " + err.Error())
+	}
+
+	if len(dataRows) != 2 {
+		t.Fatal("TestBasicExpressions: expected 2 results, received: " + strconv.Itoa(len(dataRows)))
+	}
+
+	valueExpression, err := EvaluateDataRowExpression(dataSet.Table("SchemaVersion").Row(0), "VersionNumber > 0", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err := valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	dataRow := dataSet.Table("DeviceDetail").Row(0)
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "AccessID % 2 = 0 AND FramesPerSecond % 4 <> 2 OR AccessID % 1 = 0", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "AccessID % 2 = 0 AND (FramesPerSecond % 4 <> 2 OR -AccessID % 1 = 0)", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "AccessID % 2 = 0 AND (FramesPerSecond % 4 <> 2 AND AccessID % 1 = 0)", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "AccessID % 2 >= 0 || (FramesPerSecond % 4 <> 2 AND AccessID % 1 = 0)", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "AccessID % 2 = 0 OR FramesPerSecond % 4 != 2 && AccessID % 1 == 0", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "!AccessID % 2 = 0 || FramesPerSecond % 4 = 0x2 && AccessID % 1 == 0", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "NOT AccessID % 2 = 0 OR FramesPerSecond % 4 >> 0x1 = 1 && AccessID % 1 == 0x0", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "!AccessID % 2 = 0 OR FramesPerSecond % 4 >> 1 = 1 && AccessID % 3 << 1 & 4 >= 4", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "OriginalSource IS NULL", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "ParentAcronym IS NOT NULL", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "NOT ParentAcronym IS NULL && Len(parentAcronym) == 0", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "-FramesPerSecond", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	value, err := valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if value != -30 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "~FramesPerSecond", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	value, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if value != -31 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "~FramesPerSecond * -1 - 1 << -2", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	value, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if value != -2147483648 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "NOT True", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "!True", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "~True", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "Len(IsNull(OriginalSource, 'A')) = 1", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "RegExMatch('SH', Acronym)", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "RegExMatch('SH', Name)", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "RegExMatch('S[hH]', Name) && RegExMatch('S[hH]', Acronym)", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "RegExVal('Sh\\w+', Name)", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.String {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	s, err := valueExpression.StringValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if s != "Shelby" {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "SubStr(RegExVal('Sh\\w+', Name), 2) == 'ElbY'", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "SubStr(RegExVal('Sh\\w+', Name), 3, 2) == 'lB'", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "RegExVal('Sh\\w+', Name) IN ('NT', Acronym, 'NT')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "RegExVal('Sh\\w+', Name) IN ===('NT', Acronym, 'NT')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "RegExVal('Sh\\w+', Name) IN BINARY ('NT', Acronym, 3.05)", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "Name IN===(0x9F, Acronym, 'Shelby')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "Acronym LIKE === 'Sh*'", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "name LiKe binaRY 'SH%'", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "Name === 'Shelby' && Name== 'SHelBy' && Name !=='SHelBy'", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "Now()", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err := valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	now := time.Now()
+
+	if dt != now && !dt.Before(now) {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "UtcNow()", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err = valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	now = time.Now().UTC()
+
+	if dt != now && !dt.Before(now) {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "#2019-02-04T03:00:52.73-05:00#", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err = valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if dt.Month() != 2 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "#2019-02-04T03:00:52.73-05:00#", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err = valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if dt.Day() != 4 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#2019-02-04T03:00:52.73-05:00#, 'Year')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err := valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 2019 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#2019/02/04 03:00:52.73-05:00#, 'Month')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 2 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#2019-02-04 03:00:52.73-05:00#, 'Day')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 4 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#2019-02-04 03:00#, 'Hour')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 3 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#2019-02-04 03:00:52.73-05:00#, 'Hour')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 8 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#2/4/2019 3:21:55#, 'Minute')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 21 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#02/04/2019 03:21:55.33#, 'Second')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 55 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#02/04/2019 03:21:5.033#, 'Millisecond')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 33 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(DateAdd('2019-02-04 03:00:52.73-05:00', 1, 'Year'), 'year')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 2020 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateAdd('2019-02-04', 2, 'Month')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err = valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if dt.Equal(time.Date(2019, 4, 5, 0, 0, 0, 0, time.UTC)) {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	// valueExpression, err = EvaluateDataRowExpression(dataRow, "DateAdd(#1/31/2019#, 1, 'Day')", false)
+
+	// if err != nil {
+	// 	t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	// }
+
+	// if valueExpression.ValueType() != ExpressionValueType.DateTime {
+	// 	t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	// }
+
+	// dt, err = valueExpression.DateTimeValue()
+
+	// if err != nil {
+	// 	t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	// }
+
+	// if dt.Equal(time.Date(2019, 2, 1, 0, 0, 0, 0, time.UTC)) {
+	// 	t.Fatal("TestBasicExpressions: unexpected value expression result")
+	// }
+}
+
+func TestFilterExpressionStatementCount(t *testing.T) {
+	dataSet, _, _, statID, freqID := createDataSet()
+
+	//                                                          Statements:  1  2  3  4
+	parser, err := NewFilterExpressionParserForDataSet(dataSet, fmt.Sprintf("%s;%s;%s;FILTER ActiveMeasurements WHERE True", statID.String(), freqID.String(), statID.String()), "ActiveMeasurements", nil, false)
+
+	if err != nil {
+		t.Fatal("TestFilterExpressionStatementCount: unexpected NewFilterExpressionParserForDataSet error: " + err.Error())
+	}
+
+	parser.TrackFilteredRows = false
+	parser.TrackFilteredSignalIDs = true
+
+	if err := parser.Evaluate(true, false); err != nil {
+		t.Fatal("TestFilterExpressionStatementCount: unexpected Evaluate error: " + err.Error())
+	}
+
+	idSet := parser.FilteredSignalIDSet()
+
+	if len(idSet) != 2 {
+		t.Fatal("TestFilterExpressionStatementCount: expected 2 results, received: " + strconv.Itoa(len(idSet)))
+	}
+
+	if !idSet.Contains(statID) || !idSet.Contains(freqID) {
+		t.Fatal("TestFilterExpressionStatementCount: retrieve Guid value does not match source")
+	}
+
+	if parser.FilterExpressionStatementCount() != 4 {
+		t.Fatal("TestFilterExpressionStatementCount: expected 4 results, received: " + strconv.Itoa(parser.FilterExpressionStatementCount()))
+	}
+}

@@ -31,12 +31,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/araddon/dateparse"
 	"github.com/sttp/goapi/sttp/guid"
 )
 
 var whitespace string = " \t\n\v\f\r\x85\xA0"
+var intSize = int(unsafe.Sizeof(uint(0)) * 8)
 
 // ExpressionTree represents a tree of expressions for evaluation.
 type ExpressionTree struct {
@@ -52,7 +54,7 @@ type ExpressionTree struct {
 	OrderByTerms []*OrderByTerm
 
 	// Root is the starting Expression for evaluation of the expression tree, or nil if there
-	// is not one. This is the root expression of the ExpressionTree. Root is automatically
+	// is not one. This is the root expression of the ExpressionTree. Value is automatically
 	// managed by FilterExpressionParser.
 	Root Expression
 }
@@ -66,8 +68,9 @@ func NewExpressionTree() *ExpressionTree {
 
 // Select returns the rows matching the the ExpressionTree. The expression tree result type is expected
 // to be a Boolean for this filtering operation. This works like the "WHERE" clause of a SQL expression.
-// Any "TOP" limit and "ORDER BY" sorting clauses found in filter expressions will be respected.
-// Error will be returned if  the table parameter is nil or expression does not yield a boolean value.
+// Any "TOP" limit and "ORDER BY" sorting clauses found in filter expressions will be respected. An
+// error will be returned if the table parameter is nil, the expression tree does not yield a boolean
+// value or any row expresssion evaluation fails.
 func (et *ExpressionTree) Select(table *DataTable) ([]*DataRow, error) {
 	return et.SelectWhere(table, func(resultExpression *ValueExpression) (bool, error) {
 		// Final expression should have a boolean data type (operates as a WHERE clause)
@@ -82,7 +85,7 @@ func (et *ExpressionTree) Select(table *DataTable) ([]*DataRow, error) {
 
 // SelectWhere returns each table row evaluated from the ExpressionTree that matches the specified predicate expression.
 // The applyLimit and applySort flags determine if any encountered "TOP" limit and "ORDER BY" sorting clauses will be respected.
-// Error will be returned if the table parameter is nil.
+// An error will be returned if the table parameter is nil or any row expresssion evaluation fails.
 //gocyclo: ignore
 func (et *ExpressionTree) SelectWhere(table *DataTable, predicate func(*ValueExpression) (bool, error), applyLimit bool, applySort bool) ([]*DataRow, error) {
 	if table == nil {
@@ -109,7 +112,7 @@ func (et *ExpressionTree) SelectWhere(table *DataTable, predicate func(*ValueExp
 			return nil, err
 		}
 
-		// If value result matches predicate expression, add it to matching rows
+		// If value result for row matches predicate expression, add it to matching rows
 		if result, err = predicate(resultExpression); err != nil {
 			return nil, err
 		}
@@ -155,9 +158,10 @@ func (et *ExpressionTree) SelectWhere(table *DataTable, predicate func(*ValueExp
 	return matchedRows, nil
 }
 
-// Evaluate executes the filter expression parser for the specified dataRow for the ExpressionTree.
+// Evaluate traverses the the ExpressionTree for the provided dataRow to produce a ValueExpression.
 // Root expression should be assigned before calling Evaluate. The dataRow parameter can be nil if
-// there are no columns references in expression tree.
+// there are no columns references in expression tree. An error will be returned if the expresssion
+// evaluation fails.
 func (et *ExpressionTree) Evaluate(dataRow *DataRow) (*ValueExpression, error) {
 	et.currentRow = dataRow
 	return et.evaluate(et.Root)
@@ -1351,6 +1355,27 @@ func (et *ExpressionTree) evaluateOperator(expression Expression) (*ValueExpress
 
 // Filter Expression Function Implementations
 
+func abs32(value int32) int32 {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
+func abs64(value int64) int64 {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
+func abs(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
 func (et *ExpressionTree) abs(sourceValue *ValueExpression) (*ValueExpression, error) {
 	if !sourceValue.ValueType().IsNumericType() {
 		return nil, errors.New("\"Abs\" function source value, first argument, must be numeric")
@@ -1365,23 +1390,9 @@ func (et *ExpressionTree) abs(sourceValue *ValueExpression) (*ValueExpression, e
 	case ExpressionValueType.Boolean:
 		return newValueExpression(ExpressionValueType.Boolean, sourceValue.booleanValue()), nil
 	case ExpressionValueType.Int32:
-		abs := func(value int32) int32 {
-			if value < 0 {
-				return -value
-			}
-			return value
-		}
-
-		return newValueExpression(ExpressionValueType.Int32, abs(sourceValue.int32Value())), nil
+		return newValueExpression(ExpressionValueType.Int32, abs32(sourceValue.int32Value())), nil
 	case ExpressionValueType.Int64:
-		abs := func(value int64) int64 {
-			if value < 0 {
-				return -value
-			}
-			return value
-		}
-
-		return newValueExpression(ExpressionValueType.Int64, abs(sourceValue.int64Value())), nil
+		return newValueExpression(ExpressionValueType.Int64, abs64(sourceValue.int64Value())), nil
 	case ExpressionValueType.Decimal:
 		return newValueExpression(ExpressionValueType.Decimal, sourceValue.decimalValue().Abs()), nil
 	case ExpressionValueType.Double:
@@ -2768,13 +2779,24 @@ func (et *ExpressionTree) bitShiftLeftOp(leftValue, rightValue *ValueExpression)
 		return nil, errors.New("BitShift operation shift value is null")
 	}
 
+	shiftAmount := rightValue.integerValue(0)
+
 	switch leftValue.ValueType() {
 	case ExpressionValueType.Boolean:
-		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt()<<rightValue.integerValue(0) != 0), nil
+		if shiftAmount < 0 {
+			shiftAmount = intSize - (abs(shiftAmount) % intSize)
+		}
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt()<<shiftAmount != 0), nil
 	case ExpressionValueType.Int32:
-		return newValueExpression(ExpressionValueType.Int32, int32(leftValue.int32Value()<<rightValue.integerValue(0))), nil
+		if shiftAmount < 0 {
+			shiftAmount = 32 - (abs(shiftAmount) % 32)
+		}
+		return newValueExpression(ExpressionValueType.Int32, int32(int64(leftValue.int32Value())<<shiftAmount)), nil
 	case ExpressionValueType.Int64:
-		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()<<rightValue.integerValue(0))), nil
+		if shiftAmount < 0 {
+			shiftAmount = 64 - (abs(shiftAmount) % 64)
+		}
+		return newValueExpression(ExpressionValueType.Int64, int64(uint64(leftValue.int64Value())<<shiftAmount)), nil
 	case ExpressionValueType.Decimal:
 		fallthrough
 	case ExpressionValueType.Double:
@@ -2806,13 +2828,24 @@ func (et *ExpressionTree) bitShiftRightOp(leftValue, rightValue *ValueExpression
 		return nil, errors.New("BitShift operation shift value is null")
 	}
 
+	shiftAmount := rightValue.integerValue(0)
+
 	switch leftValue.ValueType() {
 	case ExpressionValueType.Boolean:
-		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt()>>rightValue.integerValue(0) != 0), nil
+		if shiftAmount < 0 {
+			shiftAmount = intSize - (abs(shiftAmount) % intSize)
+		}
+		return newValueExpression(ExpressionValueType.Boolean, leftValue.booleanValueAsInt()>>shiftAmount != 0), nil
 	case ExpressionValueType.Int32:
-		return newValueExpression(ExpressionValueType.Int32, int32(leftValue.int32Value()>>rightValue.integerValue(0))), nil
+		if shiftAmount < 0 {
+			shiftAmount = 32 - (abs(shiftAmount) % 32)
+		}
+		return newValueExpression(ExpressionValueType.Int32, int32(int64(leftValue.int32Value())>>shiftAmount)), nil
 	case ExpressionValueType.Int64:
-		return newValueExpression(ExpressionValueType.Int64, int64(leftValue.int64Value()>>rightValue.integerValue(0))), nil
+		if shiftAmount < 0 {
+			shiftAmount = 64 - (abs(shiftAmount) % 64)
+		}
+		return newValueExpression(ExpressionValueType.Int64, int64(uint64(leftValue.int64Value())>>shiftAmount)), nil
 	case ExpressionValueType.Decimal:
 		fallthrough
 	case ExpressionValueType.Double:

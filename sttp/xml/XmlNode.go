@@ -33,31 +33,31 @@ type XmlNode struct {
 	// XMLName gets the Go encoding xml.Name of this node.
 	XMLName xml.Name // This is a specially named required field in Go XML parsing
 	// Name is the name of this node.
-	Name string
+	Name string `xml:"-"`
 	// NameSpace is the namespace URI of this node, if any.
-	Namespace string
+	Namespace string `xml:"-"`
 	// InnerXml is the XML content of the child nodes of this node.
 	InnerXml []byte `xml:",innerxml"`
 	// ChildNodes is a the collection of child nodes of this node.
 	ChildNodes []XmlNode `xml:",any"`
 	// Parent is the parent of this node. Value will be nil if node has no parent, e.g., XmlDocument.Root.
-	Parent *XmlNode
+	Parent *XmlNode `xml:"-"`
 	// Next gets the sibling-level node immediately following this node, or nil if there is none.
-	Next *XmlNode
+	Next *XmlNode `xml:"-"`
 	// Previous gets the sibling-level node immediately preceding this node, or nil if there is none.
-	Previous *XmlNode
+	Previous *XmlNode `xml:"-"`
 	// Attributes is used to access the attributes of this node.
-	Attributes map[string]string
+	Attributes map[string]string `xml:"-"`
 	// AttributeNamespaces is used to access the attribute namespaces of this node.
-	AttributeNamespaces map[string]string
+	AttributeNamespaces map[string]string `xml:"-"`
 	// Item is used to access the first child node of this node with the specified name.
-	Item map[string]*XmlNode
+	Item map[string]*XmlNode `xml:"-"`
 	// Items is used to access the collection of child nodes of this node with the specified name.
-	Items map[string][]*XmlNode
+	Items map[string][]*XmlNode `xml:"-"`
 	// Level is the current node depth.
-	Level int
+	Level int `xml:"-"`
 	// Owner is the XmlDocument to which this current node belongs.
-	Owner *XmlDocument
+	Owner *XmlDocument `xml:"-"`
 }
 
 // Path gets the full path of this node within its XmlDocument tree.

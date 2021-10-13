@@ -354,7 +354,8 @@ func convertFromString(value string, targetType DataTypeEnum) (interface{}, erro
 	case DataType.Boolean:
 		return strconv.ParseBool(value)
 	case DataType.DateTime:
-		return dateparse.ParseAny(value)
+		dt, err := dateparse.ParseAny(value)
+		return dt.UTC(), err
 	case DataType.Single:
 		f64, err := strconv.ParseFloat(value, 64)
 		return float32(f64), err
@@ -365,28 +366,28 @@ func convertFromString(value string, targetType DataTypeEnum) (interface{}, erro
 	case DataType.Guid:
 		return guid.Parse(value)
 	case DataType.Int8:
-		i, err := strconv.ParseInt(value, 10, 8)
+		i, err := strconv.ParseInt(value, 0, 8)
 		return int8(i), err
 	case DataType.Int16:
-		i, err := strconv.ParseInt(value, 10, 16)
+		i, err := strconv.ParseInt(value, 0, 16)
 		return int16(i), err
 	case DataType.Int32:
-		i, err := strconv.ParseInt(value, 10, 32)
+		i, err := strconv.ParseInt(value, 0, 32)
 		return int32(i), err
 	case DataType.Int64:
-		i, err := strconv.ParseInt(value, 10, 64)
+		i, err := strconv.ParseInt(value, 0, 64)
 		return i, err
 	case DataType.UInt8:
-		ui, err := strconv.ParseUint(value, 10, 8)
+		ui, err := strconv.ParseUint(value, 0, 8)
 		return uint8(ui), err
 	case DataType.UInt16:
-		ui, err := strconv.ParseUint(value, 10, 16)
+		ui, err := strconv.ParseUint(value, 0, 16)
 		return uint16(ui), err
 	case DataType.UInt32:
-		ui, err := strconv.ParseUint(value, 10, 32)
+		ui, err := strconv.ParseUint(value, 0, 32)
 		return uint32(ui), err
 	case DataType.UInt64:
-		ui, err := strconv.ParseUint(value, 10, 64)
+		ui, err := strconv.ParseUint(value, 0, 64)
 		return ui, err
 	default:
 		return nil, errors.New("unexpected column data type encountered")

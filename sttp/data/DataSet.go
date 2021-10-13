@@ -310,28 +310,28 @@ func (ds *DataSet) loadRecords(root *xml.XmlNode) {
 					g, _ := guid.Parse(value)
 					dataRow.SetValue(columnIndex, g)
 				case DataType.Int8:
-					i8, _ := strconv.ParseInt(value, 10, 8)
+					i8, _ := strconv.ParseInt(value, 0, 8)
 					dataRow.SetValue(columnIndex, int8(i8))
 				case DataType.Int16:
-					i16, _ := strconv.ParseInt(value, 10, 16)
+					i16, _ := strconv.ParseInt(value, 0, 16)
 					dataRow.SetValue(columnIndex, int16(i16))
 				case DataType.Int32:
-					i32, _ := strconv.ParseInt(value, 10, 32)
+					i32, _ := strconv.ParseInt(value, 0, 32)
 					dataRow.SetValue(columnIndex, int32(i32))
 				case DataType.Int64:
-					i64, _ := strconv.ParseInt(value, 10, 64)
+					i64, _ := strconv.ParseInt(value, 0, 64)
 					dataRow.SetValue(columnIndex, i64)
 				case DataType.UInt8:
-					ui8, _ := strconv.ParseUint(value, 10, 8)
+					ui8, _ := strconv.ParseUint(value, 0, 8)
 					dataRow.SetValue(columnIndex, uint8(ui8))
 				case DataType.UInt16:
-					ui16, _ := strconv.ParseUint(value, 10, 16)
+					ui16, _ := strconv.ParseUint(value, 0, 16)
 					dataRow.SetValue(columnIndex, uint16(ui16))
 				case DataType.UInt32:
-					ui32, _ := strconv.ParseUint(value, 10, 32)
+					ui32, _ := strconv.ParseUint(value, 0, 32)
 					dataRow.SetValue(columnIndex, uint32(ui32))
 				case DataType.UInt64:
-					ui64, _ := strconv.ParseUint(value, 10, 64)
+					ui64, _ := strconv.ParseUint(value, 0, 64)
 					dataRow.SetValue(columnIndex, ui64)
 				}
 			}

@@ -537,10 +537,10 @@ func (ve *ValueExpression) convertFromString(targetValueType ExpressionValueType
 		targetValue, _ := strconv.ParseBool(value)
 		return newValueExpression(targetValueType, targetValue), nil
 	case ExpressionValueType.Int32:
-		targetValue, _ := strconv.ParseInt(value, 10, 32)
+		targetValue, _ := strconv.ParseInt(value, 0, 32)
 		return newValueExpression(targetValueType, int32(targetValue)), nil
 	case ExpressionValueType.Int64:
-		targetValue, _ := strconv.ParseInt(value, 10, 64)
+		targetValue, _ := strconv.ParseInt(value, 0, 64)
 		return newValueExpression(targetValueType, targetValue), nil
 	case ExpressionValueType.Decimal:
 		targetValue, _ := decimal.NewFromString(value)
@@ -555,6 +555,7 @@ func (ve *ValueExpression) convertFromString(targetValueType ExpressionValueType
 		return newValueExpression(targetValueType, targetValue), nil
 	case ExpressionValueType.DateTime:
 		targetValue, _ := dateparse.ParseAny(value)
+		targetValue = targetValue.UTC()
 		return newValueExpression(targetValueType, targetValue), nil
 	default:
 		return nil, errors.New("unexpected expression value type encountered")
