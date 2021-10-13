@@ -250,7 +250,7 @@ func (ds *DataSet) loadSchema(schema *xml.XmlNode) {
 			}
 
 			// Check for computed expression
-			expression, found := tableNode.Attributes["Expression"]
+			expression, found := fieldNode.Attributes["Expression"]
 
 			if found && len(expression) > 0 {
 				// Ignore Expression attributes that do not target desired namespace
