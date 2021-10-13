@@ -2020,29 +2020,469 @@ func TestBasicExpressions(t *testing.T) {
 		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
 	}
 
-	if dt.Equal(time.Date(2019, 4, 5, 0, 0, 0, 0, time.UTC)) {
+	if !dt.Equal(time.Date(2019, 4, 4, 0, 0, 0, 0, time.UTC)) {
 		t.Fatal("TestBasicExpressions: unexpected value expression result")
 	}
 
-	// valueExpression, err = EvaluateDataRowExpression(dataRow, "DateAdd(#1/31/2019#, 1, 'Day')", false)
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateAdd(#1/31/2019#, 1, 'Day')", false)
 
-	// if err != nil {
-	// 	t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
-	// }
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
 
-	// if valueExpression.ValueType() != ExpressionValueType.DateTime {
-	// 	t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
-	// }
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
 
-	// dt, err = valueExpression.DateTimeValue()
+	dt, err = valueExpression.DateTimeValue()
 
-	// if err != nil {
-	// 	t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
-	// }
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
 
-	// if dt.Equal(time.Date(2019, 2, 1, 0, 0, 0, 0, time.UTC)) {
-	// 	t.Fatal("TestBasicExpressions: unexpected value expression result")
-	// }
+	if !dt.Equal(time.Date(2019, 2, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateAdd(#2019-01-31#, 2, 'Week')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err = valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !dt.Equal(time.Date(2019, 2, 14, 0, 0, 0, 0, time.UTC)) {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateAdd(#2019-01-31#, 25, 'Hour')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err = valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !dt.Equal(time.Date(2019, 2, 1, 1, 0, 0, 0, time.UTC)) {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateAdd(#2018-12-31 23:58#, 3, 'Minute')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err = valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !dt.Equal(time.Date(2019, 1, 1, 0, 1, 0, 0, time.UTC)) {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateAdd('2019-01-1 00:59', 61, 'Second')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err = valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !dt.Equal(time.Date(2019, 1, 1, 1, 0, 1, 0, time.UTC)) {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateAdd('2019-01-1 00:00:59.999', 2, 'Millisecond')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err = valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !dt.Equal(time.Date(2019, 1, 1, 0, 1, 0, 1000000, time.UTC)) {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateAdd(#1/1/2019 0:0:1.029#, -FramesPerSecond, 'Millisecond')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.DateTime {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	dt, err = valueExpression.DateTimeValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !dt.Equal(time.Date(2019, 1, 1, 0, 0, 0, 999000000, time.UTC)) {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateDiff(#2006-01-01 00:00:00#, #2008-12-31 00:00:00#, 'Year')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 2 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateDiff(#2006-01-01 00:00:00#, #2008-12-31 00:00:00#, 'month')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 35 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateDiff(#2006-01-01 00:00:00#, #2008-12-31 00:00:00#, 'DAY')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 1095 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateDiff(#2006-01-01 00:00:00#, #2008-12-31 00:00:00#, 'Week')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 156 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateDiff(#2006-01-01 00:00:00#, #2008-12-31 00:00:00#, 'WeekDay')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 1095 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateDiff(#2006-01-01 00:00:00#, #2008-12-31 00:00:00#, 'Hour')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 26280 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateDiff(#2006-01-01 00:00:00#, #2008-12-31 00:00:00#, 'Minute')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 1576800 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateDiff(#2006-01-01 00:00:00#, #2008-12-31 00:00:00#, 'Second')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 94608000 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DateDiff(#2008-12-30 00:02:50.546#, '2008-12-31', 'Millisecond')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 86229454 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#2019-02-04 03:00:52.73-05:00#, 'DayOfyear')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 35 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#2019-02-04 03:00:52.73-05:00#, 'Week')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 6 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "DatePart(#2019-02-04 03:00:52.73-05:00#, 'WeekDay')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 2 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "IsDate(#2019-02-04 03:00:52.73-05:00#) AND IsDate('2/4/2019') ANd isdate(updatedon) && !ISDATE(2.5) && !IsDate('ImNotADate')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "IsInteger(32768) AND IsInteger('1024') and ISinTegeR(FaLsE) And isinteger(accessID) && !ISINTEGER(2.5) && !IsInteger('ImNotAnInteger')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "IsGuid({9448a8b5-35c1-4dc7-8c42-8712153ac08a}) AND IsGuid('9448a8b5-35c1-4dc7-8c42-8712153ac08a') anD isGuid(9448a8b5-35c1-4dc7-8c42-8712153ac08a) AND IsGuid(Convert(9448a8b5-35c1-4dc7-8c42-8712153ac08a, 'string')) aND isguid(nodeID) && !ISGUID(2.5) && !IsGuid('ImNotAGuid')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "IsNumeric(32768) && isNumeric(123.456e-67) AND IsNumeric(3.14159265) and ISnumeric(true) AND IsNumeric('1024' ) and IsNumeric(2.5) aNd isnumeric(longitude) && !ISNUMERIC(9448a8b5-35c1-4dc7-8c42-8712153ac08a) && !IsNumeric('ImNotNumeric')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Boolean {
+		t.Fatal("TestBasicExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	result, err = valueExpression.BooleanValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if !result {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
 }
 
 func TestFilterExpressionStatementCount(t *testing.T) {
