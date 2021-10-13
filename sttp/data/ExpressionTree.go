@@ -2765,6 +2765,7 @@ func (et *ExpressionTree) subtractOp(leftValue, rightValue *ValueExpression, val
 	}
 }
 
+//gocyclo: ignore
 func (et *ExpressionTree) bitShiftLeftOp(leftValue, rightValue *ValueExpression) (*ValueExpression, error) {
 	// If left is Null, result is Null
 	if leftValue.IsNull() {
@@ -2814,6 +2815,7 @@ func (et *ExpressionTree) bitShiftLeftOp(leftValue, rightValue *ValueExpression)
 	}
 }
 
+//gocyclo: ignore
 func (et *ExpressionTree) bitShiftRightOp(leftValue, rightValue *ValueExpression) (*ValueExpression, error) {
 	// If left is Null, result is Null
 	if leftValue.IsNull() {

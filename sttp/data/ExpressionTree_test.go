@@ -2485,6 +2485,102 @@ func TestBasicExpressions(t *testing.T) {
 	}
 }
 
+func TestNegativeExpressions(t *testing.T) {
+	_, err := EvaluateExpression("Convert(123, 'unknown')", false)
+
+	if err == nil {
+		t.Fatal("TestNegativeExpressions: expected error during EvaluateDataRowExpression")
+	}
+
+	_, err = EvaluateExpression("I am a bad expression", false)
+
+	if err == nil {
+		t.Fatal("TestNegativeExpressions: expected error during EvaluateDataRowExpression")
+	}
+}
+
+//gocyclo: ignore
+func TestMiscExpressions(t *testing.T) {
+	var doc xml.XmlDocument
+	err := doc.LoadXmlFromFile("../../test/MetadataSample2.xml")
+
+	if err != nil {
+		t.Fatal("TestMiscExpressions: error loading XML document: " + err.Error())
+	}
+
+	dataSet := NewDataSet()
+	err = dataSet.ParseXmlDocument(&doc)
+
+	if err != nil {
+		t.Fatal("TestMiscExpressions: error loading DataSet from XML document: " + err.Error())
+	}
+
+	dataRow := dataSet.Table("DeviceDetail").Row(0)
+
+	valueExpression, err := EvaluateDataRowExpression(dataRow, "AccessID ^ 2 + FramesPerSecond XOR 4", false)
+
+	if err != nil {
+		t.Fatal("TestMiscExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestMiscExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err := valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestMiscExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 38 {
+		t.Fatal("TestMiscExpressions: unexpected value expression result")
+	}
+
+	// test computed column with expression defined in schema
+	g := guid.New()
+	valueExpression, err = EvaluateDataRowExpression(dataRow, g.String(), false)
+
+	if err != nil {
+		t.Fatal("TestMiscExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Guid {
+		t.Fatal("TestMiscExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	ge, err := valueExpression.GuidValue()
+
+	if err != nil {
+		t.Fatal("TestMiscExpressions: error getting value: " + err.Error())
+	}
+
+	if !g.Equal(ge) {
+		t.Fatal("TestMiscExpressions: unexpected value expression result")
+	}
+
+	// test edge case of evaluating standalone Guid not used as a row identifier
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "ComputedCol", false)
+
+	if err != nil {
+		t.Fatal("TestMiscExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	if valueExpression.ValueType() != ExpressionValueType.Int32 {
+		t.Fatal("TestMiscExpressions: unexpected value expression type: " + valueExpression.Type().String())
+	}
+
+	i32, err = valueExpression.Int32Value()
+
+	if err != nil {
+		t.Fatal("TestMiscExpressions: error getting value: " + err.Error())
+	}
+
+	if i32 != 32 {
+		t.Fatal("TestMiscExpressions: unexpected value expression result")
+	}
+}
+
 func TestFilterExpressionStatementCount(t *testing.T) {
 	dataSet, _, _, statID, freqID := createDataSet()
 
