@@ -34,6 +34,7 @@ import (
 	"unsafe"
 
 	"github.com/araddon/dateparse"
+	"github.com/shopspring/decimal"
 	"github.com/sttp/goapi/sttp/guid"
 )
 
@@ -1890,7 +1891,7 @@ func (et *ExpressionTree) isInteger(testValue *ValueExpression) *ValueExpression
 	}
 
 	if testValue.ValueType() == ExpressionValueType.String {
-		if _, err := strconv.Atoi(testValue.stringValue()); err == nil {
+		if _, err := strconv.ParseInt(testValue.stringValue(), 0, 64); err == nil {
 			return True
 		}
 	}
@@ -1939,6 +1940,11 @@ func (et *ExpressionTree) isNumeric(testValue *ValueExpression) *ValueExpression
 
 	if testValue.ValueType() == ExpressionValueType.String {
 		if _, err := strconv.ParseFloat(testValue.stringValue(), 64); err == nil {
+			return True
+		}
+
+		// Fallback on testing decimal parse, also a valid numeric value
+		if _, err := decimal.NewFromString(testValue.stringValue()); err == nil {
 			return True
 		}
 	}
