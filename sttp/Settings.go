@@ -27,10 +27,11 @@ package sttp
 type Settings struct {
 	// Throttled determines if data will be published using down-sampling.
 	Throttled bool
-	// PublishInterval defines the down-sampling publish interval to use when Throttled is true.
+	// PublishInterval defines the down-sampling publish interval, in seconds, to use when Throttled is true.
 	PublishInterval float64
 
-	// UdpPort defines the desired UDP port to use for publication. Zero value
+	// UdpPort defines the desired UDP port to use for publication. Zero value means do not receive data on UDP, i.e.,
+	// data will be delivered to the STTP client via TCP.
 	UdpPort uint16
 
 	// IncludeTime determines if time should be included in non-compressed, compact measurements.
