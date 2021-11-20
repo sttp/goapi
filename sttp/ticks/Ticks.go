@@ -96,6 +96,11 @@ func SetLeapSecond(ticks Ticks) Ticks {
 	return ticks | LeapSecondFlag
 }
 
+// Now gets the current local time as a Ticks value.
+func Now() Ticks {
+	return FromTime(time.Now())
+}
+
 // UtcNow gets the current time in UTC as a Ticks value.
 func UtcNow() Ticks {
 	return FromTime(time.Now().UTC())
