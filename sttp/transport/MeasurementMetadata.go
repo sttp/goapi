@@ -52,7 +52,7 @@ type MeasurementMetadata struct {
 	// SignalType defines a signal type acronym for the measurement, e.g., FREQ.
 	SignalType string
 
-	//SignalReference defines reference info about a signal based on measurement original source.
+	// SignalReference defines reference info about a signal based on measurement original source.
 	SignalReference string
 
 	// Description defines a general description for the measurement.

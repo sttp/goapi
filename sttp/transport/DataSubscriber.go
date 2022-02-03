@@ -116,7 +116,7 @@ type DataSubscriber struct {
 	// CompressMetadata determines whether the metadata transfer is compressed, defaults to GZip.
 	CompressMetadata bool
 
-	// CompressSignalIndexCache determines whether the signal index cache is compressed, defaults to  GZip.
+	// CompressSignalIndexCache determines whether the signal index cache is compressed, defaults to GZip.
 	CompressSignalIndexCache bool
 
 	// Version defines the STTP protocol version used by this library
@@ -621,6 +621,7 @@ func (ds *DataSubscriber) runDataChannelResponseThread() {
 }
 
 func (ds *DataSubscriber) processServerResponse(buffer []byte) {
+	// Note: internal payload size at buffer[2:6] ignored - future versions of STTP will likely exclude this
 	data := buffer[responseHeaderSize:]
 	responseCode := ServerResponseEnum(buffer[0])
 	commandCode := ServerCommandEnum(buffer[1])
