@@ -51,8 +51,8 @@ func (mr *MeasurementReader) NextMeasurement() *transport.Measurement {
 }
 
 func (mr *MeasurementReader) receivedNewMeasurements(measurements []transport.Measurement) {
-	for _, measurement := range measurements {
-		mr.current <- &measurement
+	for i := range measurements {
+		mr.current <- &measurements[i]
 	}
 }
 
