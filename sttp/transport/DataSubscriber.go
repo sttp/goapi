@@ -805,7 +805,7 @@ func (ds *DataSubscriber) handleUpdateBaseTimes(data []byte) {
 	var baseTimeOffsets [2]int64
 
 	baseTimeOffsets[0] = int64(binary.BigEndian.Uint64(data[4:]))
-	baseTimeOffsets[1] = int64(binary.BigEndian.Uint64(data[8:]))
+	baseTimeOffsets[1] = int64(binary.BigEndian.Uint64(data[12:]))
 
 	ds.baseTimeOffsets = baseTimeOffsets
 
