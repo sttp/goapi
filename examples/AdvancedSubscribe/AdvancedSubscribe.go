@@ -62,11 +62,12 @@ func main() {
 	address := parseCmdLineArgs()
 	subscriber := NewAdvancedSubscriber()
 
+	subscriber.Config.CompressPayloadData = false
 	subscriber.Settings.UdpPort = 9600
 	subscriber.Settings.UseMillisecondResolution = true
 
-	subscriber.Subscribe("FILTER TOP 20 ActiveMeasurements WHERE True", nil)
-	subscriber.Dial(address, nil)
+	subscriber.Subscribe("FILTER TOP 20 ActiveMeasurements WHERE True", subscriber.Settings)
+	subscriber.Dial(address, subscriber.Config)
 	defer subscriber.Close()
 
 	readKey()
