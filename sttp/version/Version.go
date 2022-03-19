@@ -28,8 +28,8 @@ const (
 	STTPSource = "STTP Go Library"
 
 	// STTPVersion defines the STTP library API version used for data subscriber identification.
-	STTPVersion = "0.5.0"
+	STTPVersion = "0.6.0"
 
 	// STTPUpdatedOn defines when the STTP library API was last updated used for data subscriber identification.
-	STTPUpdatedOn = "2021-10-12"
+	STTPUpdatedOn = "2022-03-19"
 )
