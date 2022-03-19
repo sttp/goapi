@@ -57,7 +57,7 @@ package <#=Package#>
 
 import (
 	"testing"
-	. "github.com/sttp/goapi/sttp/collection"
+	. "github.com/sttp/goapi/sttp/hashset"
 )
 
 func random() <#=DataType#> {

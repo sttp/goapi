@@ -33,9 +33,9 @@ import (
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/araddon/dateparse"
 	"github.com/shopspring/decimal"
-	. "github.com/sttp/goapi/sttp/collection"
 	"github.com/sttp/goapi/sttp/data/parser"
 	"github.com/sttp/goapi/sttp/guid"
+	"github.com/sttp/goapi/sttp/hashset"
 )
 
 // FilterExpressionParser represents a parser for STTP filter expressions.
@@ -49,10 +49,10 @@ type FilterExpressionParser struct {
 	errorListener *CallbackErrorListener
 
 	filteredRows   []*DataRow
-	filteredRowSet HashSet[*DataRow]
+	filteredRowSet hashset.HashSet[*DataRow]
 
 	filteredSignalIDs   []guid.Guid
-	filteredSignalIDSet HashSet[guid.Guid]
+	filteredSignalIDSet hashset.HashSet[guid.Guid]
 
 	filterExpressionStatementCount int
 
@@ -154,7 +154,7 @@ func (fep *FilterExpressionParser) FilteredRows() []*DataRow {
 }
 
 // FilteredRowSet gets the unique row set matching the parsed filter expression.
-func (fep *FilterExpressionParser) FilteredRowSet() HashSet[*DataRow] {
+func (fep *FilterExpressionParser) FilteredRowSet() hashset.HashSet[*DataRow] {
 	fep.initializeSetOperations()
 	return fep.filteredRowSet
 }
@@ -166,7 +166,7 @@ func (fep *FilterExpressionParser) FilteredSignalIDs() []guid.Guid {
 }
 
 // FilteredSignalIDSet gets the unique Guid-based signalID set matching the parsed filter expression.
-func (fep *FilterExpressionParser) FilteredSignalIDSet() HashSet[guid.Guid] {
+func (fep *FilterExpressionParser) FilteredSignalIDSet() hashset.HashSet[guid.Guid] {
 	fep.initializeSetOperations()
 	return fep.filteredSignalIDSet
 }
@@ -309,7 +309,7 @@ func (fep *FilterExpressionParser) initializeSetOperations() {
 	// HastSet is not an option because results can be sorted with the "ORDER BY" clause.
 	if fep.TrackFilteredRows && fep.filteredRowSet == nil {
 		count := len(fep.filteredRows)
-		fep.filteredRowSet = make(HashSet[*DataRow], count)
+		fep.filteredRowSet = make(hashset.HashSet[*DataRow], count)
 
 		for i := 0; i < count; i++ {
 			fep.filteredRowSet.Add(fep.filteredRows[i])
@@ -318,7 +318,7 @@ func (fep *FilterExpressionParser) initializeSetOperations() {
 
 	if fep.TrackFilteredSignalIDs && fep.filteredSignalIDSet == nil {
 		count := len(fep.filteredSignalIDs)
-		fep.filteredSignalIDSet = make(HashSet[guid.Guid], count)
+		fep.filteredSignalIDSet = make(hashset.HashSet[guid.Guid], count)
 
 		for i := 0; i < count; i++ {
 			fep.filteredSignalIDSet.Add(fep.filteredSignalIDs[i])
@@ -1408,7 +1408,7 @@ func SelectDataRowsFromTable(dataTable *DataTable, filterExpression string, prim
 // "TOP" limit clauses for individual filter expression statements will be respected, but "ORDER BY" clauses
 // will be ignored. An error will be returned if dataSet parameter is nil, the filterExpression is empty,
 // expression fails to parse or any row expresssion evaluation fails.
-func SelectDataRowSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (HashSet[*DataRow], error) {
+func SelectDataRowSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (hashset.HashSet[*DataRow], error) {
 	parser, err := NewFilterExpressionParserForDataSet(dataSet, filterExpression, primaryTable, tableIDFields, suppressConsoleErrorOutput)
 
 	if err != nil {
@@ -1429,7 +1429,7 @@ func SelectDataRowSet(dataSet *DataSet, filterExpression string, primaryTable st
 // encountered "TOP" limit clauses for individual filter expression statements will be respected, but
 // "ORDER BY" clauses will be ignored. An error will be returned if dataTable parameter (or its parent DataSet)
 // is nil, the filterExpression is empty, expression fails to parse or any row expresssion evaluation fails.
-func SelectDataRowSetFromTable(dataTable *DataTable, filterExpression string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (HashSet[*DataRow], error) {
+func SelectDataRowSetFromTable(dataTable *DataTable, filterExpression string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (hashset.HashSet[*DataRow], error) {
 	if dataTable == nil {
 		return nil, errors.New("dataTable parameter is nil")
 	}
@@ -1444,7 +1444,7 @@ func SelectDataRowSetFromTable(dataTable *DataTable, filterExpression string, ta
 // "TOP" limit clauses for individual filter expression statements will be respected, but "ORDER BY" clauses
 // will be ignored. An error will be returned if dataSet parameter is nil, the filterExpression is empty,
 // expression fails to parse or any row expresssion evaluation fails.
-func SelectSignalIDSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (HashSet[guid.Guid], error) {
+func SelectSignalIDSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (hashset.HashSet[guid.Guid], error) {
 	parser, err := NewFilterExpressionParserForDataSet(dataSet, filterExpression, primaryTable, tableIDFields, suppressConsoleErrorOutput)
 
 	if err != nil {
@@ -1468,7 +1468,7 @@ func SelectSignalIDSet(dataSet *DataSet, filterExpression string, primaryTable s
 // encountered "TOP" limit clauses for individual filter expression statements will be respected, but "ORDER BY"
 // clauses will be ignored. An error will be returned if dataTable parameter (or its parent DataSet) is nil, the
 // filterExpression is empty, expression fails to parse or any row expresssion evaluation fails.
-func SelectSignalIDSetFromTable(dataTable *DataTable, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (HashSet[guid.Guid], error) {
+func SelectSignalIDSetFromTable(dataTable *DataTable, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (hashset.HashSet[guid.Guid], error) {
 	if dataTable == nil {
 		return nil, errors.New("dataTable parameter is nil")
 	}

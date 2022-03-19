@@ -37,7 +37,7 @@ package guid
 
 import (
 	"testing"
-	. "github.com/sttp/goapi/sttp/collection"
+	. "github.com/sttp/goapi/sttp/hashset"
 )
 
 func random() Guid {

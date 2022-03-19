@@ -28,8 +28,8 @@ import (
 	"errors"
 	"math"
 
-	. "github.com/sttp/goapi/sttp/collection"
 	"github.com/sttp/goapi/sttp/guid"
+	"github.com/sttp/goapi/sttp/hashset"
 	"github.com/sttp/goapi/sttp/transport/tssc"
 )
 
@@ -106,8 +106,8 @@ func (sic *SignalIndexCache) SignalID(signalIndex int32) guid.Guid {
 }
 
 // SignalIDs returns a HashSet for all the Guid values found in the SignalIndexCache.
-func (sic *SignalIndexCache) SignalIDs() HashSet[guid.Guid] {
-	return NewHashSet(sic.signalIDList)
+func (sic *SignalIndexCache) SignalIDs() hashset.HashSet[guid.Guid] {
+	return hashset.NewHashSet(sic.signalIDList)
 }
 
 // Source returns the Measurement source string for the specified signalIndex in the SignalIndexCache.

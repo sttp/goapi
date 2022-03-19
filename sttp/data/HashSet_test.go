@@ -41,7 +41,7 @@ import (
 	"testing"
 
 	"github.com/sttp/goapi/sttp/guid"
-	. "github.com/sttp/goapi/sttp/collection"
+	. "github.com/sttp/goapi/sttp/hashset"
 )
 
 func random() *DataRow {
