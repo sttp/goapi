@@ -245,6 +245,8 @@ func (sb *Subscriber) connect(hostname string, port uint16) error {
 		}
 	case transport.ConnectStatus.Failed:
 		err = errors.New("All connection attempts failed")
+	case transport.ConnectStatus.Canceled:
+		err = errors.New("Connection canceled")
 	}
 
 	return err
