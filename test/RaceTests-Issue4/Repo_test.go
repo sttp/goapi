@@ -5,8 +5,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/sttp/goapi/sttp"
+	"github.com/sttp/goapi/sttp/transport"
 )
 
 func run(dst string, query string, count int, instance int) {
@@ -21,17 +23,26 @@ func run(dst string, query string, count int, instance int) {
 		log.Println("Instance", instance, "error:", msg)
 	})
 
-	conf.AutoRequestMetadata = false
 	sub.Subscribe(query, nil)
 
+	conf.AutoRequestMetadata = false
+	conf.MaxRetries = 3
+
 	if err := sub.Dial(dst, conf); err != nil {
-		log.Fatal("Instance", instance, err)
+		log.Println("Instance", instance, err, "-- canceling instance")
+		return
 	}
 
 	reader := sub.ReadMeasurements()
+	var measurement transport.Measurement
+	const timeout = 5 * time.Second
 
 	for sub.IsConnected() {
-		_ = reader.NextMeasurement()
+		if !reader.TryReadNextMeasurement(&measurement, timeout) {
+			log.Println("Instance", instance, "measurement read timed out after", timeout, "seconds -- canceling instance")
+			break
+		}
+
 		count--
 
 		if count <= 0 {
@@ -39,7 +50,7 @@ func run(dst string, query string, count int, instance int) {
 		}
 
 		if count%200 == 0 {
-			log.Println(sub.TotalMeasurementsReceived(), "measurements processed so far...")
+			log.Println("Instance", instance, "received", count, "measurements so far...")
 		}
 	}
 
