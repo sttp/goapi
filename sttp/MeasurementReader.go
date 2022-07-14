@@ -29,18 +29,19 @@ import (
 
 // MeasurementReader defines an STTP measurement reader.
 type MeasurementReader struct {
-	current    chan *transport.Measurement
-	originalCT func()
+	current chan *transport.Measurement
 }
 
 func newMeasurementReader(parent *Subscriber) *MeasurementReader {
 	reader := &MeasurementReader{
-		current:    make(chan *transport.Measurement),
-		originalCT: parent.connectionTerminatedReceiver,
+		current: make(chan *transport.Measurement),
 	}
 
-	parent.SetNewMeasurementsReceiver(reader.receivedNewMeasurements)
-	parent.SetConnectionTerminatedReceiver(reader.connectionTerminated)
+	parent.SetNewMeasurementsReceiver(func(measurements []transport.Measurement) {
+		for i := range measurements {
+			reader.current <- &measurements[i]
+		}
+	})
 
 	return reader
 }
@@ -50,16 +51,7 @@ func (mr *MeasurementReader) NextMeasurement() *transport.Measurement {
 	return <-mr.current
 }
 
-func (mr *MeasurementReader) receivedNewMeasurements(measurements []transport.Measurement) {
-	for i := range measurements {
-		mr.current <- &measurements[i]
-	}
-}
-
-func (mr *MeasurementReader) connectionTerminated() {
+// Close closes the measurement reader channel.
+func (mr *MeasurementReader) Close() {
 	close(mr.current)
-
-	if mr.originalCT != nil {
-		mr.originalCT()
-	}
 }

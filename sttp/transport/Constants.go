@@ -570,8 +570,8 @@ var OperationalModes = struct {
 	CompressPayloadData OperationalModesEnum
 	// CompressSignalIndexCache defines a bit flag used to determine whether the signal index cache is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
 	CompressSignalIndexCache OperationalModesEnum
-	// CommpressMetadata defines a bit flag used to determine whether metadata is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
-	CommpressMetadata OperationalModesEnum
+	// CompressMetadata defines a bit flag used to determine whether metadata is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
+	CompressMetadata OperationalModesEnum
 	// NoFlags defines state where there are no flags set.
 	NoFlags OperationalModesEnum
 }{
@@ -582,7 +582,7 @@ var OperationalModes = struct {
 	ReceiveInternalMetadata:  0x04000000,
 	CompressPayloadData:      0x20000000,
 	CompressSignalIndexCache: 0x40000000,
-	CommpressMetadata:        0x80000000,
+	CompressMetadata:         0x80000000,
 	NoFlags:                  0x00000000,
 }
 
