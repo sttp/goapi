@@ -49,7 +49,7 @@ func newMeasurementReader(parent *Subscriber) *MeasurementReader {
 }
 
 // NextMeasurement blocks current thread until a new measurement arrives or provided context is completed.
-// Results a tuple of measurement and completed state. Completed state flag will be false if a measurement
+// Returns tuple of measurement and completed state. Completed state flag will be false if a measurement
 // was received; otherwise, state flag will be true along with a nil measurement when context is done.
 func (mr *MeasurementReader) NextMeasurement(ctx context.Context) (*transport.Measurement, bool) {
 	select {
