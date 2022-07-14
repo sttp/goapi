@@ -13,6 +13,7 @@ package main
 
 import (
     "bufio"
+    "context"
     "os"
     "strconv"
     "strings"
@@ -32,7 +33,7 @@ func main() {
             var lastMessage time.Time
 
             for subscriber.IsConnected() {
-                measurement := reader.NextMeasurement()
+                measurement, _ := reader.NextMeasurement(context.Background())
 
                 if time.Since(lastMessage).Seconds() < 5.0 {
                     continue

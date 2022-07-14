@@ -1,6 +1,7 @@
 package repro
 
 import (
+	"context"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -8,7 +9,6 @@ import (
 	"time"
 
 	"github.com/sttp/goapi/sttp"
-	"github.com/sttp/goapi/sttp/transport"
 )
 
 func run(dst string, query string, count int, instance int) {
@@ -34,11 +34,12 @@ func run(dst string, query string, count int, instance int) {
 	}
 
 	reader := sub.ReadMeasurements()
-	var measurement transport.Measurement
-	const timeout = 5 * time.Second
+	const timeout = 5 // seconds
+	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
+	defer cancel()
 
 	for sub.IsConnected() {
-		if !reader.TryReadNextMeasurement(&measurement, timeout) {
+		if _, timeoutExpired := reader.NextMeasurement(ctx); timeoutExpired {
 			log.Println("Instance", instance, "measurement read timed out after", timeout, "seconds -- canceling instance")
 			break
 		}
