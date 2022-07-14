@@ -24,6 +24,8 @@
 package sttp
 
 import (
+	"time"
+
 	"github.com/sttp/goapi/sttp/transport"
 )
 
@@ -49,6 +51,17 @@ func newMeasurementReader(parent *Subscriber) *MeasurementReader {
 // NextMeasurement blocks current thread until a new measurement arrives.
 func (mr *MeasurementReader) NextMeasurement() *transport.Measurement {
 	return <-mr.current
+}
+
+// TryReadNextMeasurement attempts to read the next measurement, timing out if no measurement is received.
+// Returns true if a measurement was received; otherwise, false if the timeout was reached.
+func (mr *MeasurementReader) TryReadNextMeasurement(measurement *transport.Measurement, timeout time.Duration) bool {
+	select {
+	case measurement = <-mr.current:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
 
 // Close closes the measurement reader channel.
