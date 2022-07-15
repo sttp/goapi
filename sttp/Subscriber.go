@@ -25,6 +25,7 @@ package sttp
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -57,10 +58,11 @@ type Subscriber struct {
 	configurationChangedReceiver   func()
 	historicalReadCompleteReceiver func()
 	connectionEstablishedReceiver  func()
-	connectionTerminatedReceiver   func()
 
 	// Lock used to synchronize console writes
 	consoleLock sync.Mutex
+
+	assigningHandlerMutex sync.RWMutex
 }
 
 // NewSubscriber creates a new Subscriber.
@@ -72,7 +74,7 @@ func NewSubscriber() *Subscriber {
 	sb.statusMessageLogger = sb.DefaultStatusMessageLogger
 	sb.errorMessageLogger = sb.DefaultErrorMessageLogger
 	sb.connectionEstablishedReceiver = sb.DefaultConnectionEstablishedReceiver
-	sb.connectionTerminatedReceiver = sb.DefaultConnectionTerminatedReceiver
+	sb.ds.ConnectionTerminatedCallback = sb.DefaultConnectionTerminatedReceiver
 	return &sb
 }
 
@@ -174,11 +176,10 @@ func (sb *Subscriber) Dial(address string, config *Config) error {
 		sb.config = config
 	}
 
-	sb.connect(hostname, uint16(port))
-	return nil
+	return sb.connect(hostname, uint16(port))
 }
 
-func (sb *Subscriber) connect(hostname string, port uint16) {
+func (sb *Subscriber) connect(hostname string, port uint16) error {
 	if sb.config == nil {
 		panic("Internal Config instance has not been initialized. Make sure to use NewSubscriber.")
 	}
@@ -201,11 +202,14 @@ func (sb *Subscriber) connect(hostname string, port uint16) {
 	ds.Version = sb.config.Version
 	ds.SwapGuidEndianness = !sb.config.RfcGuidEncoding
 
+	con.BeginCallbackAssignment()
+	ds.BeginCallbackAssignment()
+	sb.beginCallbackSync()
+
 	// Register direct Subscriber callbacks
 	con.ErrorMessageCallback = sb.errorMessageLogger
 	ds.StatusMessageCallback = sb.statusMessageLogger
 	ds.ErrorMessageCallback = sb.errorMessageLogger
-	ds.ConnectionTerminatedCallback = sb.connectionTerminatedReceiver
 
 	// Register callbacks with intermediate handlers
 	con.ReconnectCallback = sb.handleReconnect
@@ -214,13 +218,22 @@ func (sb *Subscriber) connect(hostname string, port uint16) {
 	ds.ConfigurationChangedCallback = sb.handleConfigurationChanged
 	ds.ProcessingCompleteCallback = sb.handleProcessingComplete
 
-	var status transport.ConnectStatusEnum
+	sb.endCallbackSync()
+	con.EndCallbackAssignment()
+	ds.EndCallbackAssignment()
+
+	var err error
 
 	// Connect and subscribe to publisher
-	if status = con.Connect(ds); status == transport.ConnectStatus.Success {
+	switch con.Connect(ds) {
+	case transport.ConnectStatus.Success:
+		sb.beginCallbackSync()
+
 		if sb.connectionEstablishedReceiver != nil {
 			sb.connectionEstablishedReceiver()
 		}
+
+		sb.endCallbackSync()
 
 		// If automatically parsing metadata, request metadata upon successful connection,
 		// after metadata is received the SubscriberInstance will then initiate subscribe;
@@ -230,9 +243,13 @@ func (sb *Subscriber) connect(hostname string, port uint16) {
 		} else if sb.config.AutoSubscribe {
 			ds.Subscribe()
 		}
-	} else if status == transport.ConnectStatus.Failed {
-		sb.ErrorMessage("All connection attempts failed")
+	case transport.ConnectStatus.Failed:
+		err = errors.New("All connection attempts failed")
+	case transport.ConnectStatus.Canceled:
+		err = errors.New("Connection canceled")
 	}
+
+	return err
 }
 
 // Disconnect disconnects from an STTP publisher.
@@ -324,33 +341,61 @@ func (sb *Subscriber) ReadMeasurements() *MeasurementReader {
 	return newMeasurementReader(sb)
 }
 
+// beginCallbackAssignment informs Subscriber that a callback change has been initiated.
+func (sb *Subscriber) beginCallbackAssignment() {
+	sb.assigningHandlerMutex.Lock()
+}
+
+// beginCallbackSync begins a callback synchronization operation.
+func (sb *Subscriber) beginCallbackSync() {
+	sb.assigningHandlerMutex.RLock()
+}
+
+// endCallbackSync ends a callback synchronization operation.
+func (sb *Subscriber) endCallbackSync() {
+	sb.assigningHandlerMutex.RUnlock()
+}
+
+// endCallbackAssignment informs Subscriber that a callback change has been completed.
+func (sb *Subscriber) endCallbackAssignment() {
+	sb.assigningHandlerMutex.Unlock()
+}
+
 // Local callback handlers:
 
 // StatusMessage executes the defined status message logger callback.
 func (sb *Subscriber) StatusMessage(message string) {
-	if sb.statusMessageLogger == nil {
-		return
+	sb.beginCallbackSync()
+
+	if sb.statusMessageLogger != nil {
+		sb.statusMessageLogger(message)
 	}
 
-	sb.statusMessageLogger(message)
+	sb.endCallbackSync()
 }
 
 // ErrorMessage executes the defined error message logger callback.
 func (sb *Subscriber) ErrorMessage(message string) {
-	if sb.errorMessageLogger == nil {
-		return
+	sb.beginCallbackSync()
+
+	if sb.errorMessageLogger != nil {
+		sb.errorMessageLogger(message)
 	}
 
-	sb.errorMessageLogger(message)
+	sb.endCallbackSync()
 }
 
 // Intermediate callback handlers:
 
 func (sb *Subscriber) handleReconnect(ds *transport.DataSubscriber) {
 	if ds.IsConnected() {
+		sb.beginCallbackSync()
+
 		if sb.connectionEstablishedReceiver != nil {
 			sb.connectionEstablishedReceiver()
 		}
+
+		sb.endCallbackSync()
 
 		// If automatically parsing metadata, request metadata upon successful connection,
 		// after metadata is received the SubscriberInstance will then initiate subscribe;
@@ -379,9 +424,13 @@ func (sb *Subscriber) handleMetadataReceived(metadata []byte) {
 
 	sb.showMetadataSummary(dataSet, parseStarted)
 
+	sb.beginCallbackSync()
+
 	if sb.metadataReceiver != nil {
 		sb.metadataReceiver(dataSet)
 	}
+
+	sb.endCallbackSync()
 
 	if sb.config.AutoRequestMetadata && sb.config.AutoSubscribe {
 		sb.dataSubscriber().Subscribe()
@@ -500,17 +549,23 @@ func (sb *Subscriber) showMetadataSummary(dataSet *data.DataSet, parseStarted ti
 }
 
 func (sb *Subscriber) handleDataStartTime(startTime ticks.Ticks) {
-	if sb.dataStartTimeReceiver == nil {
-		return
+	sb.beginCallbackSync()
+
+	if sb.dataStartTimeReceiver != nil {
+		sb.dataStartTimeReceiver(ticks.ToTime(startTime))
 	}
 
-	sb.dataStartTimeReceiver(ticks.ToTime(startTime))
+	sb.endCallbackSync()
 }
 
 func (sb *Subscriber) handleConfigurationChanged() {
+	sb.beginCallbackSync()
+
 	if sb.configurationChangedReceiver != nil {
 		sb.configurationChangedReceiver()
 	}
+
+	sb.endCallbackSync()
 
 	if sb.config.AutoRequestMetadata {
 		sb.RequestMetadata()
@@ -520,9 +575,13 @@ func (sb *Subscriber) handleConfigurationChanged() {
 func (sb *Subscriber) handleProcessingComplete(message string) {
 	sb.StatusMessage(message)
 
+	sb.beginCallbackSync()
+
 	if sb.historicalReadCompleteReceiver != nil {
 		sb.historicalReadCompleteReceiver()
 	}
+
+	sb.endCallbackSync()
 }
 
 // DefaultStatusMessageLogger implements the default handler for the statusMessage callback.
@@ -556,66 +615,118 @@ func (sb *Subscriber) DefaultConnectionTerminatedReceiver() {
 }
 
 // SetStatusMessageLogger defines the callback that handles informational message logging.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetStatusMessageLogger(callback func(message string)) {
+	sb.beginCallbackAssignment()
+	defer sb.endCallbackAssignment()
+
 	sb.statusMessageLogger = callback
 }
 
 // SetErrorMessageLogger defines the callback that handles error message logging.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetErrorMessageLogger(callback func(message string)) {
+	sb.beginCallbackAssignment()
+	defer sb.endCallbackAssignment()
+
 	sb.errorMessageLogger = callback
 }
 
 // SetMetadataReceiver defines the callback that handles reception of the metadata response.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetMetadataReceiver(callback func(dataSet *data.DataSet)) {
+	sb.beginCallbackAssignment()
+	defer sb.endCallbackAssignment()
+
 	sb.metadataReceiver = callback
 }
 
 // SetSubscriptionUpdatedReceiver defines the callback that handles notifications that a new
 // SignalIndexCache has been received.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetSubscriptionUpdatedReceiver(callback func(signalIndexCache *transport.SignalIndexCache)) {
+	sb.beginCallbackAssignment()
+	defer sb.endCallbackAssignment()
+
 	sb.dataSubscriber().SubscriptionUpdatedCallback = callback
 }
 
 // SetDataStartTimeReceiver defines the callback that handles notification of first received measurement.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetDataStartTimeReceiver(callback func(startTime time.Time)) {
+	sb.beginCallbackAssignment()
+	defer sb.endCallbackAssignment()
+
 	sb.dataStartTimeReceiver = callback
 }
 
 // SetConfigurationChangedReceiver defines the callback that handles notifications that the data publisher
 // configuration has changed.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetConfigurationChangedReceiver(callback func()) {
+	sb.beginCallbackAssignment()
+	defer sb.endCallbackAssignment()
+
 	sb.configurationChangedReceiver = callback
 }
 
 // SetNewMeasurementsReceiver defines the callback that handles reception of new measurements.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetNewMeasurementsReceiver(callback func(measurements []transport.Measurement)) {
-	sb.dataSubscriber().NewMeasurementsCallback = callback
+	ds := sb.dataSubscriber()
+	ds.BeginCallbackAssignment()
+	defer ds.EndCallbackAssignment()
+
+	ds.NewMeasurementsCallback = callback
 }
 
 // SetNewBufferBlocksReceiver defines the callback that handles reception of new buffer blocks.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetNewBufferBlocksReceiver(callback func(bufferBlocks []transport.BufferBlock)) {
-	sb.dataSubscriber().NewBufferBlocksCallback = callback
+	ds := sb.dataSubscriber()
+	ds.BeginCallbackAssignment()
+	defer ds.EndCallbackAssignment()
+
+	ds.NewBufferBlocksCallback = callback
 }
 
 // SetNotificationReceiver defines the callback that handles reception of a notification.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetNotificationReceiver(callback func(notification string)) {
-	sb.dataSubscriber().NotificationReceivedCallback = callback
+	ds := sb.dataSubscriber()
+	ds.BeginCallbackAssignment()
+	defer ds.EndCallbackAssignment()
+
+	ds.NotificationReceivedCallback = callback
 }
 
 // SetHistoricalReadCompleteReceiver defines the callback that handles notification that temporal processing
 // has completed, i.e., the end of a historical playback data stream has been reached.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetHistoricalReadCompleteReceiver(callback func()) {
+	sb.beginCallbackAssignment()
+	defer sb.endCallbackAssignment()
+
 	sb.historicalReadCompleteReceiver = callback
 }
 
 // SetConnectionEstablishedReceiver defines the callback that handles notification that a connection has been established.
 // Default implementation simply writes connection feedback to StatusMessage handler.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetConnectionEstablishedReceiver(callback func()) {
+	sb.beginCallbackAssignment()
+	defer sb.endCallbackAssignment()
+
 	sb.connectionEstablishedReceiver = callback
 }
 
 // SetConnectionTerminatedReceiver defines the callback that handles notification that a connection has been terminated.
 // Default implementation simply writes connection terminated feedback to ErrorMessage handler.
+// Assignment will take effect immediately, even while subscription is active.
 func (sb *Subscriber) SetConnectionTerminatedReceiver(callback func()) {
-	sb.connectionTerminatedReceiver = callback
+	ds := sb.dataSubscriber()
+	ds.BeginCallbackAssignment()
+	defer ds.EndCallbackAssignment()
+
+	ds.ConnectionTerminatedCallback = callback
 }

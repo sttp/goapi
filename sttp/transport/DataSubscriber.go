@@ -33,6 +33,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sttp/goapi/sttp/format"
@@ -41,6 +42,7 @@ import (
 	"github.com/sttp/goapi/sttp/ticks"
 	"github.com/sttp/goapi/sttp/transport/tssc"
 	"github.com/sttp/goapi/sttp/version"
+	"github.com/tevino/abool/v2"
 )
 
 // DataSubscriber represents a client subscription for an STTP connection.
@@ -48,9 +50,9 @@ type DataSubscriber struct {
 	subscription SubscriptionInfo
 	subscriberID guid.Guid
 	encoding     OperationalEncodingEnum
-	connector    SubscriberConnector
-	connected    bool
-	subscribed   bool
+	connector    *SubscriberConnector
+	connected    abool.AtomicBool
+	subscribed   abool.AtomicBool
 
 	commandChannelSocket         net.Conn
 	commandChannelResponseThread *thread.Thread
@@ -60,13 +62,16 @@ type DataSubscriber struct {
 	dataChannelSocket            net.Conn
 	dataChannelResponseThread    *thread.Thread
 
+	assigningHandlerMutex sync.RWMutex
+
 	connectActionMutex          sync.Mutex
 	connectionTerminationThread *thread.Thread
 
-	disconnectThread *thread.Thread
-	disconnecting    bool
-	disconnected     bool
-	disposing        bool
+	disconnectThread      *thread.Thread
+	disconnectThreadMutex sync.Mutex
+	disconnecting         abool.AtomicBool
+	disconnected          abool.AtomicBool
+	disposing             abool.AtomicBool
 
 	// Statistics counters
 	totalCommandChannelBytesReceived uint64
@@ -145,8 +150,9 @@ type DataSubscriber struct {
 	baseTimeOffsets         [2]int64
 	keyIVs                  [][][]byte
 	lastMissingCacheWarning ticks.Ticks
-	tsscResetRequested      bool
+	tsscResetRequested      abool.AtomicBool
 	tsscLastOOSReport       time.Time
+	tsscLastOOSReportMutex  sync.Mutex
 
 	bufferBlockExpectedSequenceNumber uint32
 	bufferBlockCache                  []BufferBlock
@@ -154,10 +160,10 @@ type DataSubscriber struct {
 
 // NewDataSubscriber creates a new DataSubscriber.
 func NewDataSubscriber() *DataSubscriber {
-	return &DataSubscriber{
+	ds := &DataSubscriber{
 		subscription:             SubscriptionInfo{IncludeTime: true},
 		encoding:                 OperationalEncoding.UTF8,
-		connector:                SubscriberConnector{},
+		connector:                &SubscriberConnector{},
 		readBuffer:               make([]byte, maxPacketSize),
 		writeBuffer:              make([]byte, maxPacketSize),
 		CompressPayloadData:      true, // Defaults to TSSC
@@ -171,12 +177,18 @@ func NewDataSubscriber() *DataSubscriber {
 		measurementRegistry:      make(map[guid.Guid]*MeasurementMetadata),
 		signalIndexCache:         [2]*SignalIndexCache{NewSignalIndexCache(), NewSignalIndexCache()},
 	}
+
+	ds.connectionTerminationThread = thread.NewThread(func() {
+		ds.disconnect(false, true)
+	})
+
+	return ds
 }
 
 // Dispose cleanly shuts down a DataSubscriber that is no longer being used, e.g.,
 // during a normal application exit.
 func (ds *DataSubscriber) Dispose() {
-	ds.disposing = true
+	ds.disposing.Set()
 	ds.connector.Cancel()
 	ds.disconnect(true, false)
 
@@ -185,14 +197,34 @@ func (ds *DataSubscriber) Dispose() {
 	<-waitTimer.C
 }
 
+// BeginCallbackAssignment informs DataSubscriber that a callback change has been initiated.
+func (ds *DataSubscriber) BeginCallbackAssignment() {
+	ds.assigningHandlerMutex.Lock()
+}
+
+// BeginCallbackSync begins a callback synchronization operation.
+func (ds *DataSubscriber) BeginCallbackSync() {
+	ds.assigningHandlerMutex.RLock()
+}
+
+// EndCallbackSync ends a callback synchronization operation.
+func (ds *DataSubscriber) EndCallbackSync() {
+	ds.assigningHandlerMutex.RUnlock()
+}
+
+// EndCallbackAssignment informs DataSubscriber that a callback change has been completed.
+func (ds *DataSubscriber) EndCallbackAssignment() {
+	ds.assigningHandlerMutex.Unlock()
+}
+
 // IsConnected determines if a DataSubscriber is currently connected to a DataPublisher.
 func (ds *DataSubscriber) IsConnected() bool {
-	return ds.connected
+	return ds.connected.IsSet()
 }
 
 // IsSubscribed determines if a DataSubscriber is currently subscribed to a data stream.
 func (ds *DataSubscriber) IsSubscribed() bool {
-	return ds.subscribed
+	return ds.subscribed.IsSet()
 }
 
 // EncodeString encodes an STTP string according to the defined operational modes.
@@ -257,8 +289,17 @@ func (ds *DataSubscriber) Connect(hostName string, port uint16) error {
 }
 
 func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting bool) error {
-	if ds.connected {
+	if ds.connected.IsSet() {
 		panic("subscriber is already connected; disconnect first")
+	}
+
+	// Make sure any pending disconnect has completed to make sure socket is closed
+	ds.disconnectThreadMutex.Lock()
+	disconnectThread := ds.disconnectThread
+	ds.disconnectThreadMutex.Unlock()
+
+	if disconnectThread != nil {
+		disconnectThread.Join()
 	}
 
 	// Let any pending connect or disconnect operation complete before new connect,
@@ -268,11 +309,13 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 
 	var err error
 
-	ds.disconnected = false
-	ds.subscribed = false
-	ds.totalCommandChannelBytesReceived = 0
-	ds.totalDataChannelBytesReceived = 0
-	ds.totalMeasurementsReceived = 0
+	ds.disconnected.UnSet()
+	ds.subscribed.UnSet()
+
+	atomic.StoreUint64(&ds.totalCommandChannelBytesReceived, 0)
+	atomic.StoreUint64(&ds.totalDataChannelBytesReceived, 0)
+	atomic.StoreUint64(&ds.totalMeasurementsReceived, 0)
+
 	ds.keyIVs = nil
 	ds.bufferBlockExpectedSequenceNumber = 0
 	ds.measurementRegistry = make(map[guid.Guid]*MeasurementMetadata)
@@ -281,7 +324,7 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 		ds.connector.ResetConnection()
 	}
 
-	ds.connector.connectionRefused = false
+	ds.connector.connectionRefused.UnSet()
 
 	// TODO: Add TLS implementation options
 	// TODO: Add reverse (server-based) connection options, see:
@@ -293,7 +336,7 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 		ds.commandChannelResponseThread = thread.NewThread(ds.runCommandChannelResponseThread)
 		ds.commandChannelResponseThread.Start()
 
-		ds.connected = true
+		ds.connected.Set()
 		ds.lastMissingCacheWarning = 0
 		ds.sendOperationalModes()
 	}
@@ -303,17 +346,17 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 
 // Subscribe notifies the DataPublisher that a DataSubscriber would like to start receiving streaming data.
 func (ds *DataSubscriber) Subscribe() error {
-	if !ds.connected {
+	if ds.connected.IsNotSet() {
 		return errors.New("subscriber is not connected; cannot subscribe")
 	}
 
 	// Make sure to unsubscribe before attempting another
 	// subscription so we don't leave UDP sockets open
-	if ds.subscribed {
+	if ds.subscribed.IsSet() {
 		ds.Unsubscribe()
 	}
 
-	ds.totalMeasurementsReceived = 0
+	atomic.StoreUint64(&ds.totalMeasurementsReceived, 0)
 
 	var connectionBuilder strings.Builder
 
@@ -396,19 +439,21 @@ func (ds *DataSubscriber) Subscribe() error {
 	ds.SendServerCommandWithPayload(ServerCommand.Subscribe, buffer)
 
 	// Reset TSSC decompressor on successful (re)subscription
-	ds.tsscResetRequested = true
+	ds.tsscLastOOSReportMutex.Lock()
 	ds.tsscLastOOSReport = time.Time{}
+	ds.tsscLastOOSReportMutex.Unlock()
+	ds.tsscResetRequested.Set()
 
 	return nil
 }
 
 // Unsubscribe notifies the DataPublisher that a DataSubscriber would like to stop receiving streaming data.
 func (ds *DataSubscriber) Unsubscribe() {
-	if ds.connected {
+	if ds.connected.IsSet() {
 		return
 	}
 
-	ds.disconnecting = true
+	ds.disconnecting.Set()
 
 	if ds.dataChannelSocket != nil {
 		if err := ds.dataChannelSocket.Close(); err != nil {
@@ -420,14 +465,14 @@ func (ds *DataSubscriber) Unsubscribe() {
 		ds.dataChannelResponseThread.Join()
 	}
 
-	ds.disconnecting = false
+	ds.disconnecting.UnSet()
 
 	ds.SendServerCommand(ServerCommand.Unsubscribe)
 }
 
 // Disconnect initiates a DataSubscriber disconnect sequence.
 func (ds *DataSubscriber) Disconnect() {
-	if ds.disconnecting {
+	if ds.disconnecting.IsSet() {
 		return
 	}
 
@@ -439,31 +484,39 @@ func (ds *DataSubscriber) Disconnect() {
 
 func (ds *DataSubscriber) disconnect(joinThread bool, autoReconnecting bool) {
 	// Check if disconnect thread is running or subscriber has already disconnected
-	if ds.disconnecting {
-		if !autoReconnecting && ds.disconnecting && !ds.disconnected {
+	if ds.disconnecting.IsSet() {
+		if !autoReconnecting && ds.disconnecting.IsSet() && ds.disconnected.IsNotSet() {
 			ds.connector.Cancel()
 		}
 
-		if joinThread && !ds.disconnected && ds.disconnectThread != nil {
-			ds.disconnectThread.Join()
+		ds.disconnectThreadMutex.Lock()
+		disconnectThread := ds.disconnectThread
+		ds.disconnectThreadMutex.Unlock()
+
+		if joinThread && ds.disconnected.IsNotSet() && disconnectThread != nil {
+			disconnectThread.Join()
 		}
 
 		return
 	}
 
 	// Notify running threads that the subscriber is disconnecting, i.e., disconnect thread is active
-	ds.disconnecting = true
-	ds.connected = false
-	ds.subscribed = false
+	ds.disconnecting.Set()
+	ds.connected.UnSet()
+	ds.subscribed.UnSet()
 
-	ds.disconnectThread = thread.NewThread(func() {
+	disconnectThread := thread.NewThread(func() {
 		ds.runDisconnectThread(autoReconnecting)
 	})
 
-	ds.disconnectThread.Start()
+	ds.disconnectThreadMutex.Lock()
+	ds.disconnectThread = disconnectThread
+	ds.disconnectThreadMutex.Unlock()
+
+	disconnectThread.Start()
 
 	if joinThread {
-		ds.disconnectThread.Join()
+		disconnectThread.Join()
 	}
 }
 
@@ -471,11 +524,7 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 	// Let any pending connect operation complete before disconnect - prevents destruction disconnect before connection is completed
 	if !autoReconnecting {
 		ds.connector.Cancel()
-
-		if ds.connectionTerminationThread != nil {
-			ds.connectionTerminationThread.Join()
-		}
-
+		ds.connectionTerminationThread.Join()
 		ds.connectActionMutex.Lock()
 	}
 
@@ -502,21 +551,30 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 	}
 
 	// Notify consumers of disconnect
+	ds.BeginCallbackSync()
+
 	if ds.ConnectionTerminatedCallback != nil {
 		ds.ConnectionTerminatedCallback()
 	}
 
+	ds.EndCallbackSync()
+
 	// Disconnect complete
-	ds.disconnected = true
-	ds.disconnecting = false
+	ds.disconnected.Set()
+	ds.disconnecting.UnSet()
 
 	if autoReconnecting {
 		// Handling auto-connect callback separately from connection terminated callback
 		// since they serve two different use cases and current implementation does not
 		// support multiple callback registrations
-		if ds.AutoReconnectCallback != nil && !ds.disposing {
+		ds.BeginCallbackSync()
+
+		if ds.AutoReconnectCallback != nil && ds.disposing.IsNotSet() {
 			ds.AutoReconnectCallback()
 		}
+
+		ds.EndCallbackSync()
+
 	} else {
 		ds.connectActionMutex.Unlock()
 	}
@@ -527,35 +585,39 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 // by the peer. Additionally, this allows the user to automatically reconnect in their
 // callback function without having to spawn their own separate thread.
 func (ds *DataSubscriber) dispatchConnectionTerminated() {
-	ds.connectionTerminationThread = thread.NewThread(func() {
-		ds.disconnect(false, true)
-	})
-
-	ds.connectionTerminationThread.Start()
+	ds.connectionTerminationThread.TryStart()
 }
 
 func (ds *DataSubscriber) dispatchStatusMessage(message string) {
+	ds.BeginCallbackSync()
+
 	if ds.StatusMessageCallback != nil {
 		go ds.StatusMessageCallback(message)
 	}
+
+	ds.EndCallbackSync()
 }
 
 func (ds *DataSubscriber) dispatchErrorMessage(message string) {
+	ds.BeginCallbackSync()
+
 	if ds.ErrorMessageCallback != nil {
 		go ds.ErrorMessageCallback(message)
 	}
+
+	ds.EndCallbackSync()
 }
 
 func (ds *DataSubscriber) runCommandChannelResponseThread() {
 	ds.reader = bufio.NewReader(ds.commandChannelSocket)
 
-	for ds.connected {
+	for ds.connected.IsSet() {
 		ds.readPayloadHeader(io.ReadFull(ds.reader, ds.readBuffer[:payloadHeaderSize]))
 	}
 }
 
 func (ds *DataSubscriber) readPayloadHeader(bytesTransferred int, err error) {
-	if ds.disconnecting {
+	if ds.disconnecting.IsSet() {
 		return
 	}
 
@@ -566,7 +628,7 @@ func (ds *DataSubscriber) readPayloadHeader(bytesTransferred int, err error) {
 	}
 
 	// Gather statistics
-	ds.totalCommandChannelBytesReceived += uint64(bytesTransferred)
+	atomic.AddUint64(&ds.totalCommandChannelBytesReceived, uint64(bytesTransferred))
 
 	packetSize := binary.BigEndian.Uint32(ds.readBuffer)
 
@@ -581,7 +643,7 @@ func (ds *DataSubscriber) readPayloadHeader(bytesTransferred int, err error) {
 }
 
 func (ds *DataSubscriber) readPacket(bytesTransferred int, err error) {
-	if ds.disconnecting {
+	if ds.disconnecting.IsSet() {
 		return
 	}
 
@@ -592,7 +654,7 @@ func (ds *DataSubscriber) readPacket(bytesTransferred int, err error) {
 	}
 
 	// Gather statistics
-	ds.totalCommandChannelBytesReceived += uint64(bytesTransferred)
+	atomic.AddUint64(&ds.totalCommandChannelBytesReceived, uint64(bytesTransferred))
 
 	// Process response
 	ds.processServerResponse(ds.readBuffer[:bytesTransferred])
@@ -604,7 +666,7 @@ func (ds *DataSubscriber) runDataChannelResponseThread() {
 	reader := bufio.NewReader(ds.dataChannelSocket)
 	buffer := make([]byte, maxPacketSize)
 
-	for ds.connected {
+	for ds.connected.IsSet() {
 		length, err := reader.Read(buffer)
 
 		if err != nil {
@@ -613,7 +675,7 @@ func (ds *DataSubscriber) runDataChannelResponseThread() {
 		}
 
 		// Gather statistics
-		ds.totalDataChannelBytesReceived += uint64(length)
+		atomic.AddUint64(&ds.totalDataChannelBytesReceived, uint64(length))
 
 		// Process response
 		ds.processServerResponse(buffer[:length])
@@ -661,7 +723,12 @@ func (ds *DataSubscriber) handleSucceeded(commandCode ServerCommandEnum, data []
 	case ServerCommand.MetadataRefresh:
 		ds.handleMetadataRefresh(data)
 	case ServerCommand.Subscribe, ServerCommand.Unsubscribe:
-		ds.subscribed = commandCode == ServerCommand.Subscribe
+		if commandCode == ServerCommand.Subscribe {
+			ds.subscribed.Set()
+		} else {
+			ds.subscribed.UnSet()
+		}
+
 		// Fallthrough on these messages because there is
 		// still an associated message to be processed.
 		fallthrough
@@ -694,7 +761,7 @@ func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byt
 	var message strings.Builder
 
 	if commandCode == ServerCommand.Connect {
-		ds.connector.connectionRefused = true
+		ds.connector.connectionRefused.Set()
 	} else {
 		message.WriteString("Received failure code in response to server command: ")
 		message.WriteString(commandCode.String())
@@ -712,6 +779,8 @@ func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byt
 }
 
 func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
+	ds.BeginCallbackSync()
+
 	if ds.MetadataReceivedCallback != nil {
 		if ds.CompressMetadata {
 			ds.dispatchStatusMessage(fmt.Sprintf("Received %s bytes of metadata in %s seconds. Decompressing...", format.Int(len(data)), format.Float(time.Since(ds.metadataRequested).Seconds(), 3)))
@@ -731,20 +800,30 @@ func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
 
 		go ds.MetadataReceivedCallback(data)
 	}
+
+	ds.EndCallbackSync()
 }
 
 func (ds *DataSubscriber) handleDataStartTime(data []byte) {
+	ds.BeginCallbackSync()
+
 	if ds.DataStartTimeCallback != nil {
 		// Do not use Go routine here, processing sequence may be important.
 		// Execute callback directly from socket processing thread:
 		ds.DataStartTimeCallback(ticks.Ticks(binary.BigEndian.Uint64(data)))
 	}
+
+	ds.EndCallbackSync()
 }
 
 func (ds *DataSubscriber) handleProcessingComplete(data []byte) {
+	ds.BeginCallbackSync()
+
 	if ds.ProcessingCompleteCallback != nil {
 		go ds.ProcessingCompleteCallback(ds.DecodeString(data))
 	}
+
+	ds.EndCallbackSync()
 }
 
 func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
@@ -790,9 +869,13 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 		ds.SendServerCommand(ServerCommand.ConfirmSignalIndexCache)
 	}
 
+	ds.BeginCallbackSync()
+
 	if ds.SubscriptionUpdatedCallback != nil {
 		go ds.SubscriptionUpdatedCallback(signalIndexCache)
 	}
+
+	ds.EndCallbackSync()
 }
 
 func (ds *DataSubscriber) handleUpdateBaseTimes(data []byte) {
@@ -867,9 +950,13 @@ func (ds *DataSubscriber) handleUpdateCipherKeys(data []byte) {
 func (ds *DataSubscriber) handleConfigurationChanged() {
 	ds.dispatchStatusMessage("Received notification from publisher that configuration has changed.")
 
+	ds.BeginCallbackSync()
+
 	if ds.ConfigurationChangedCallback != nil {
 		go ds.ConfigurationChangedCallback()
 	}
+
+	ds.EndCallbackSync()
 }
 
 func (ds *DataSubscriber) handleDataPacket(data []byte) {
@@ -922,13 +1009,17 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 		ds.parseCompactMeasurements(signalIndexCache, dataPacketFlags, data[4:], measurements)
 	}
 
+	ds.BeginCallbackSync()
+
 	if ds.NewMeasurementsCallback != nil {
 		// Do not use Go routine here, processing sequence may be important.
 		// Execute callback directly from socket processing thread:
 		ds.NewMeasurementsCallback(measurements)
 	}
 
-	ds.totalMeasurementsReceived += uint64(count)
+	ds.EndCallbackSync()
+
+	atomic.AddUint64(&ds.totalMeasurementsReceived, uint64(count))
 }
 
 func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCache, data []byte, measurements []Measurement) {
@@ -962,14 +1053,22 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCac
 			decoder.SequenceNumber = 0
 		}
 
-		ds.tsscResetRequested = false
+		ds.tsscResetRequested.UnSet()
+		ds.tsscLastOOSReportMutex.Lock()
 		ds.tsscLastOOSReport = time.Time{}
+		ds.tsscLastOOSReportMutex.Unlock()
 	}
 
 	if decoder.SequenceNumber != sequenceNumber {
-		if !ds.tsscResetRequested && time.Since(ds.tsscLastOOSReport).Seconds() > 2.0 {
-			ds.dispatchErrorMessage("TSSC is out of sequence. Expecting: " + strconv.Itoa(int(decoder.SequenceNumber)) + ", received: " + strconv.Itoa(int(sequenceNumber)))
-			ds.tsscLastOOSReport = time.Now()
+		if ds.tsscResetRequested.IsNotSet() {
+			ds.tsscLastOOSReportMutex.Lock()
+
+			if time.Since(ds.tsscLastOOSReport).Seconds() > 2.0 {
+				ds.dispatchErrorMessage("TSSC is out of sequence. Expecting: " + strconv.Itoa(int(decoder.SequenceNumber)) + ", received: " + strconv.Itoa(int(sequenceNumber)))
+				ds.tsscLastOOSReport = time.Now()
+			}
+
+			ds.tsscLastOOSReportMutex.Unlock()
 		}
 
 		// Ignore packets until the reset has occurred
@@ -1094,17 +1193,21 @@ func (ds *DataSubscriber) handleBufferBlock(data []byte) {
 				ds.bufferBlockExpectedSequenceNumber++
 			}
 
-			// Remove published measurements from the buffer block queue
+			// Remove published buffer block measurements from the buffer block queue
 			if len(ds.bufferBlockCache) > 0 {
 				ds.bufferBlockCache = ds.bufferBlockCache[i:]
 			}
 
-			// Publish measurements
+			// Publish buffer block measurements
+			ds.BeginCallbackSync()
+
 			if ds.NewBufferBlocksCallback != nil {
 				// Do not use Go routine here, processing sequence may be important.
 				// Execute callback directly from socket processing thread:
 				ds.NewBufferBlocksCallback(bufferBlockMeasurements)
 			}
+
+			ds.EndCallbackSync()
 		} else {
 			// Ensure that the list has at least as many elements as it needs to cache this measurement.
 			// This edge case handles possible dropouts and/or out of order packet deliver when data
@@ -1125,9 +1228,13 @@ func (ds *DataSubscriber) handleNotification(data []byte) {
 
 	ds.dispatchStatusMessage("NOTIFICATION: " + message)
 
+	ds.BeginCallbackSync()
+
 	if ds.NotificationReceivedCallback != nil {
 		go ds.NotificationReceivedCallback(message)
 	}
+
+	ds.EndCallbackSync()
 
 	// Send confirmation of receipt of the notification with 4-byte hash
 	ds.SendServerCommandWithPayload(ServerCommand.ConfirmNotification, data[:4])
@@ -1145,7 +1252,7 @@ func (ds *DataSubscriber) SendServerCommandWithMessage(commandCode ServerCommand
 
 // SendServerCommandWithPayload sends a server command code to the DataPublisher along with the specified data payload.
 func (ds *DataSubscriber) SendServerCommandWithPayload(commandCode ServerCommandEnum, data []byte) {
-	if !ds.connected {
+	if ds.connected.IsNotSet() {
 		return
 	}
 
@@ -1191,7 +1298,7 @@ func (ds *DataSubscriber) sendOperationalModes() {
 	}
 
 	if ds.CompressMetadata {
-		operationalModes |= OperationalModes.CommpressMetadata
+		operationalModes |= OperationalModes.CompressMetadata
 	}
 
 	if ds.CompressSignalIndexCache {
@@ -1211,7 +1318,7 @@ func (ds *DataSubscriber) Subscription() *SubscriptionInfo {
 
 // Connector gets the SubscriberConnector associated with this DataSubscriber.
 func (ds *DataSubscriber) Connector() *SubscriberConnector {
-	return &ds.connector
+	return ds.connector
 }
 
 // ActiveSignalIndexCache gets the active signal index cache.
@@ -1230,19 +1337,19 @@ func (ds *DataSubscriber) SubscriberID() guid.Guid {
 
 // TotalCommandChannelBytesReceived gets the total number of bytes received via the command channel since last connection.
 func (ds *DataSubscriber) TotalCommandChannelBytesReceived() uint64 {
-	return ds.totalCommandChannelBytesReceived
+	return atomic.LoadUint64(&ds.totalCommandChannelBytesReceived)
 }
 
 // TotalDataChannelBytesReceived gets the total number of bytes received via the data channel since last connection.
 func (ds *DataSubscriber) TotalDataChannelBytesReceived() uint64 {
 	if ds.subscription.UdpDataChannel {
-		return ds.totalDataChannelBytesReceived
+		return atomic.LoadUint64(&ds.totalDataChannelBytesReceived)
 	}
 
-	return ds.totalCommandChannelBytesReceived
+	return atomic.LoadUint64(&ds.totalCommandChannelBytesReceived)
 }
 
 // TotalMeasurementsReceived gets the total number of measurements received since last subscription.
 func (ds *DataSubscriber) TotalMeasurementsReceived() uint64 {
-	return ds.totalMeasurementsReceived
+	return atomic.LoadUint64(&ds.totalMeasurementsReceived)
 }

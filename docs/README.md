@@ -13,6 +13,7 @@ package main
 
 import (
     "bufio"
+    "context"
     "os"
     "strconv"
     "strings"
@@ -23,35 +24,39 @@ import (
 
 func main() {
     subscriber := sttp.NewSubscriber()
-    subscriber.Subscribe("FILTER TOP 20 ActiveMeasurements WHERE True", nil)
-    subscriber.Dial("localhost:7175", nil)
     defer subscriber.Close()
 
-    go func() {
-        reader := subscriber.ReadMeasurements()
-        var lastMessage time.Time
+    // Start data read at each connection
+    subscriber.SetConnectionEstablishedReceiver(func() {
+        go func() {
+            reader := subscriber.ReadMeasurements()
+            var lastMessage time.Time
 
-        for subscriber.IsConnected() {
-            measurement := reader.NextMeasurement()
+            for subscriber.IsConnected() {
+                measurement, _ := reader.NextMeasurement(context.Background())
 
-            if time.Since(lastMessage).Seconds() < 5.0 {
-                continue
-            } else if lastMessage.IsZero() {
-                subscriber.StatusMessage("Receiving measurements...")
+                if time.Since(lastMessage).Seconds() < 5.0 {
+                    continue
+                } else if lastMessage.IsZero() {
+                    subscriber.StatusMessage("Receiving measurements...")
+                    lastMessage = time.Now()
+                    continue
+                }
+
+                var message strings.Builder
+
+                message.WriteString(strconv.FormatUint(subscriber.TotalMeasurementsReceived(), 10))
+                message.WriteString(" measurements received so far. Current measurement:\n    ")
+                message.WriteString(measurement.String())
+
+                subscriber.StatusMessage(message.String())
                 lastMessage = time.Now()
-                continue
             }
+        }()
+    })
 
-            var message strings.Builder
-
-            message.WriteString(strconv.FormatUint(subscriber.TotalMeasurementsReceived(), 10))
-            message.WriteString(" measurements received so far. Current measurement:\n    ")
-            message.WriteString(measurement.String())
-
-            subscriber.StatusMessage(message.String())
-            lastMessage = time.Now()
-        }
-    }()
+    subscriber.Subscribe("FILTER TOP 20 ActiveMeasurements WHERE True", nil)
+    subscriber.Dial("localhost:7175", nil)
 
     bufio.NewReader(os.Stdin).ReadRune()
 }

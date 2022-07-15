@@ -66,7 +66,7 @@ func main() {
 	subscriber.Settings.UdpPort = 9600
 	subscriber.Settings.UseMillisecondResolution = true
 
-	subscriber.Subscribe("FILTER TOP 10 ActiveMeasurements WHERE True", subscriber.Settings)
+	subscriber.Subscribe("FILTER TOP 20 ActiveMeasurements WHERE True", subscriber.Settings)
 	subscriber.Dial(address, subscriber.Config)
 	defer subscriber.Close()
 

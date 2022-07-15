@@ -24,42 +24,43 @@
 package sttp
 
 import (
+	"context"
+
 	"github.com/sttp/goapi/sttp/transport"
 )
 
 // MeasurementReader defines an STTP measurement reader.
 type MeasurementReader struct {
-	current    chan *transport.Measurement
-	originalCT func()
+	current chan *transport.Measurement
 }
 
 func newMeasurementReader(parent *Subscriber) *MeasurementReader {
 	reader := &MeasurementReader{
-		current:    make(chan *transport.Measurement),
-		originalCT: parent.connectionTerminatedReceiver,
+		current: make(chan *transport.Measurement),
 	}
 
-	parent.SetNewMeasurementsReceiver(reader.receivedNewMeasurements)
-	parent.SetConnectionTerminatedReceiver(reader.connectionTerminated)
+	parent.SetNewMeasurementsReceiver(func(measurements []transport.Measurement) {
+		for i := range measurements {
+			reader.current <- &measurements[i]
+		}
+	})
 
 	return reader
 }
 
-// NextMeasurement blocks current thread until a new measurement arrives.
-func (mr *MeasurementReader) NextMeasurement() *transport.Measurement {
-	return <-mr.current
-}
-
-func (mr *MeasurementReader) receivedNewMeasurements(measurements []transport.Measurement) {
-	for i := range measurements {
-		mr.current <- &measurements[i]
+// NextMeasurement blocks current thread until a new measurement arrives or provided context is completed.
+// Returns tuple of measurement and completed state. Completed state flag will be false if a measurement
+// was received; otherwise, state flag will be true along with a nil measurement when context is done.
+func (mr *MeasurementReader) NextMeasurement(ctx context.Context) (*transport.Measurement, bool) {
+	select {
+	case <-ctx.Done():
+		return nil, true
+	case measurement := <-mr.current:
+		return measurement, false
 	}
 }
 
-func (mr *MeasurementReader) connectionTerminated() {
+// Close closes the measurement reader channel.
+func (mr *MeasurementReader) Close() {
 	close(mr.current)
-
-	if mr.originalCT != nil {
-		mr.originalCT()
-	}
 }

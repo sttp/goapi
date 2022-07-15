@@ -28,9 +28,11 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sttp/goapi/sttp/thread"
+	"github.com/tevino/abool/v2"
 )
 
 // SubscriberConnector represents a connector that will establish or automatically
@@ -63,28 +65,36 @@ type SubscriberConnector struct {
 	// automatically reattempted.
 	AutoReconnect bool
 
-	connectAttempt    int32
-	connectionRefused bool
-	cancel            bool
-	reconnectThread   *thread.Thread
-	waitTimer         *time.Timer
+	connectAttempt       int32
+	connectionRefused    abool.AtomicBool
+	cancel               abool.AtomicBool
+	reconnectThread      *thread.Thread
+	reconnectThreadMutex sync.Mutex
+	waitTimer            *time.Timer
+	waitTimerMutex       sync.Mutex
+
+	assigningHandlerMutex sync.RWMutex
 }
 
 func (ds *DataSubscriber) autoReconnect() {
 	sc := ds.connector
 
-	if sc.cancel || ds.disposing {
+	if sc.cancel.IsSet() || ds.disposing.IsSet() {
 		return
 	}
 
 	// Make sure to wait on any running reconnect to complete...
-	if sc.reconnectThread != nil {
-		sc.reconnectThread.Join()
+	sc.reconnectThreadMutex.Lock()
+	reconnectThread := sc.reconnectThread
+	sc.reconnectThreadMutex.Unlock()
+
+	if reconnectThread != nil {
+		reconnectThread.Join()
 	}
 
-	sc.reconnectThread = thread.NewThread(func() {
+	reconnectThread = thread.NewThread(func() {
 		// Reset connection attempt counter if last attempt was not refused
-		if !sc.connectionRefused {
+		if sc.connectionRefused.IsNotSet() {
 			sc.ResetConnection()
 		}
 
@@ -95,7 +105,7 @@ func (ds *DataSubscriber) autoReconnect() {
 
 		sc.waitForRetry(ds)
 
-		if sc.cancel || ds.disposing {
+		if sc.cancel.IsSet() || ds.disposing.IsSet() {
 			return
 		}
 
@@ -104,12 +114,20 @@ func (ds *DataSubscriber) autoReconnect() {
 		}
 
 		// Notify the user that reconnect attempt was completed.
-		if !sc.cancel && sc.ReconnectCallback != nil {
+		sc.BeginCallbackSync()
+
+		if sc.cancel.IsNotSet() && sc.ReconnectCallback != nil {
 			sc.ReconnectCallback(ds)
 		}
+
+		sc.EndCallbackSync()
 	})
 
-	sc.reconnectThread.Start()
+	sc.reconnectThreadMutex.Lock()
+	sc.reconnectThread = reconnectThread
+	sc.reconnectThreadMutex.Unlock()
+
+	reconnectThread.Start()
 }
 
 func (sc *SubscriberConnector) waitForRetry(subscriber *DataSubscriber) {
@@ -158,13 +176,18 @@ func (sc *SubscriberConnector) waitForRetry(subscriber *DataSubscriber) {
 
 	sc.dispatchErrorMessage(message.String())
 
-	sc.waitTimer = time.NewTimer(time.Duration(retryInterval) * time.Millisecond)
-	<-sc.waitTimer.C
+	waitTimer := time.NewTimer(time.Duration(retryInterval) * time.Millisecond)
+
+	sc.waitTimerMutex.Lock()
+	sc.waitTimer = waitTimer
+	sc.waitTimerMutex.Unlock()
+
+	<-waitTimer.C
 }
 
 // Connect initiates a connection sequence for a DataSubscriber
 func (sc *SubscriberConnector) Connect(ds *DataSubscriber) ConnectStatusEnum {
-	if sc.cancel {
+	if sc.cancel.IsSet() {
 		return ConnectStatus.Canceled
 	}
 
@@ -176,9 +199,9 @@ func (sc *SubscriberConnector) connect(ds *DataSubscriber, autoReconnecting bool
 		ds.AutoReconnectCallback = ds.autoReconnect
 	}
 
-	sc.cancel = false
+	sc.cancel.UnSet()
 
-	for !ds.disposing {
+	for ds.disposing.IsNotSet() {
 		if sc.MaxRetries != -1 && sc.connectAttempt >= sc.MaxRetries {
 			sc.dispatchErrorMessage("Maximum connection retries attempted. Auto-reconnect canceled.")
 			break
@@ -186,7 +209,7 @@ func (sc *SubscriberConnector) connect(ds *DataSubscriber, autoReconnecting bool
 
 		sc.connectAttempt++
 
-		if ds.disposing {
+		if ds.disposing.IsSet() {
 			return ConnectStatus.Canceled
 		}
 
@@ -196,17 +219,17 @@ func (sc *SubscriberConnector) connect(ds *DataSubscriber, autoReconnecting bool
 			break
 		}
 
-		if !ds.disposing && sc.RetryInterval > 0 {
+		if ds.disposing.IsNotSet() && sc.RetryInterval > 0 {
 			autoReconnecting = true
 			sc.waitForRetry(ds)
 
-			if sc.cancel {
+			if sc.cancel.IsSet() {
 				return ConnectStatus.Canceled
 			}
 		}
 	}
 
-	if ds.disposing {
+	if ds.disposing.IsSet() {
 		return ConnectStatus.Canceled
 	}
 
@@ -219,25 +242,57 @@ func (sc *SubscriberConnector) connect(ds *DataSubscriber, autoReconnecting bool
 
 // Cancel stops all current and future connection sequences.
 func (sc *SubscriberConnector) Cancel() {
-	sc.cancel = true
+	sc.cancel.Set()
 
-	if sc.waitTimer != nil {
-		sc.waitTimer.Stop()
+	sc.waitTimerMutex.Lock()
+	waitTimer := sc.waitTimer
+	sc.waitTimerMutex.Unlock()
+
+	if waitTimer != nil {
+		waitTimer.Stop()
 	}
 
-	if sc.reconnectThread != nil {
-		sc.reconnectThread.Join()
+	sc.reconnectThreadMutex.Lock()
+	reconnectThread := sc.reconnectThread
+	sc.reconnectThreadMutex.Unlock()
+
+	if reconnectThread != nil {
+		reconnectThread.Join()
 	}
 }
 
 // ResetConnection resets SubscriberConnector for a new connection.
 func (sc *SubscriberConnector) ResetConnection() {
 	sc.connectAttempt = 0
-	sc.cancel = false
+	sc.cancel.UnSet()
 }
 
 func (sc *SubscriberConnector) dispatchErrorMessage(message string) {
+	sc.BeginCallbackSync()
+
 	if sc.ErrorMessageCallback != nil {
 		go sc.ErrorMessageCallback(message)
 	}
+
+	sc.EndCallbackSync()
+}
+
+// BeginCallbackAssignment informs SubscriberConnector that a callback change has been initiated.
+func (sc *SubscriberConnector) BeginCallbackAssignment() {
+	sc.assigningHandlerMutex.Lock()
+}
+
+// BeginCallbackSync begins a callback synchronization operation.
+func (sc *SubscriberConnector) BeginCallbackSync() {
+	sc.assigningHandlerMutex.RLock()
+}
+
+// EndCallbackSync ends a callback synchronization operation.
+func (sc *SubscriberConnector) EndCallbackSync() {
+	sc.assigningHandlerMutex.RUnlock()
+}
+
+// EndCallbackAssignment informs SubscriberConnector that a callback change has been completed.
+func (sc *SubscriberConnector) EndCallbackAssignment() {
+	sc.assigningHandlerMutex.Unlock()
 }

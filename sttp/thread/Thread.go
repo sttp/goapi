@@ -25,14 +25,15 @@ package thread
 
 import (
 	"sync"
-	"sync/atomic"
+
+	"github.com/tevino/abool/v2"
 )
 
 // Thread represents a thread-like wrapper for a Go routine.
 type Thread struct {
 	exec    func()
 	mutex   sync.Mutex
-	running int32
+	running abool.AtomicBool
 }
 
 // NewThread creates a new Thread.
@@ -46,7 +47,7 @@ func (thread *Thread) Start() {
 		panic("thread has no execution function defined")
 	}
 
-	if thread.IsRunning() {
+	if thread.running.IsSet() {
 		panic("thread is already running")
 	}
 
@@ -54,9 +55,25 @@ func (thread *Thread) Start() {
 	go thread.run()
 }
 
+// TryStart attempts to cause the thread function to be scheduled for execution via a new Go routine.
+// Returns true if the thread function was successfully scheduled for execution; otherwise, false.
+func (thread *Thread) TryStart() bool {
+	defer func() {
+		// Ignore possible thread Start race panics, function will return false
+		recover()
+	}()
+
+	if thread.exec != nil && thread.running.IsNotSet() {
+		thread.Start()
+		return true
+	}
+
+	return false
+}
+
 // Join blocks the calling thread until this Thread terminates.
 func (thread *Thread) Join() {
-	if thread.exec == nil || !thread.IsRunning() {
+	if thread.exec == nil || thread.running.IsNotSet() {
 		return
 	}
 
@@ -67,23 +84,13 @@ func (thread *Thread) Join() {
 
 // IsRunning safely determines if the thread function is currently executing.
 func (thread *Thread) IsRunning() bool {
-	return atomic.LoadInt32(&(thread.running)) != 0
-}
-
-func (thread *Thread) setIsRunning(value bool) {
-	var i int32 = 0
-
-	if value {
-		i = 1
-	}
-
-	atomic.StoreInt32(&(thread.running), i)
+	return thread.running.IsSet()
 }
 
 func (thread *Thread) run() {
-	defer thread.setIsRunning(false)
+	defer thread.running.UnSet()
 	defer thread.mutex.Unlock()
 
-	thread.setIsRunning(true)
+	thread.running.Set()
 	thread.exec()
 }
