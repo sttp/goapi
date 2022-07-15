@@ -11,17 +11,28 @@ import (
 	"github.com/sttp/goapi/sttp"
 )
 
+const (
+	query  = "FILTER TOP 20 ActiveMeasurements WHERE SignalType <> 'STAT'"
+	target = "127.0.0.1:7165" // 7165 default for openPDC, 7175 default for openHistorian
+)
+
 func run(dst string, query string, count int, instance int) {
 	sub := sttp.NewSubscriber()
 	conf := sttp.NewConfig()
 
-	sub.SetStatusMessageLogger(func(msg string) {
-		log.Println("Instance", instance, msg)
-	})
+	if instance < 0 {
+		// Disable screen feedback for benchmarking
+		sub.SetStatusMessageLogger(nil)
+		sub.SetErrorMessageLogger(nil)
+	} else {
+		sub.SetStatusMessageLogger(func(msg string) {
+			log.Println("Instance", instance, msg)
+		})
 
-	sub.SetErrorMessageLogger(func(msg string) {
-		log.Println("Instance", instance, "error:", msg)
-	})
+		sub.SetErrorMessageLogger(func(msg string) {
+			log.Println("Instance", instance, "error:", msg)
+		})
+	}
 
 	sub.Subscribe(query, nil)
 
@@ -50,7 +61,7 @@ func run(dst string, query string, count int, instance int) {
 			break
 		}
 
-		if count%200 == 0 {
+		if count%200 == 0 && instance > -1 {
 			log.Println("Instance", instance, "received", count, "measurements so far...")
 		}
 	}
@@ -60,8 +71,6 @@ func run(dst string, query string, count int, instance int) {
 
 func TestRepro(t *testing.T) {
 	const (
-		query        = "FILTER TOP 20 ActiveMeasurements WHERE SignalType <> 'STAT'"
-		target       = "127.0.0.1:7165" // 7165 default for openPDC, 7175 default for openHistorian
 		instances    = 100
 		measurements = 1000
 	)
@@ -80,4 +89,9 @@ func TestRepro(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+// Execute this bench test only: go test -bench ProcessMeasurements -run=^$ -count 5
+func BenchmarkProcessMeasurements(b *testing.B) {
+	run(target, query, 1000, -1)
 }
