@@ -1408,7 +1408,7 @@ func SelectDataRowsFromTable(dataTable *DataTable, filterExpression string, prim
 // "TOP" limit clauses for individual filter expression statements will be respected, but "ORDER BY" clauses
 // will be ignored. An error will be returned if dataSet parameter is nil, the filterExpression is empty,
 // expression fails to parse or any row expression evaluation fails.
-func SelectDataRowSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (DataRowHashSet, error) {
+func SelectDataRowSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (hashset.HashSet[*DataRow], error) {
 	parser, err := NewFilterExpressionParserForDataSet(dataSet, filterExpression, primaryTable, tableIDFields, suppressConsoleErrorOutput)
 
 	if err != nil {
@@ -1429,7 +1429,7 @@ func SelectDataRowSet(dataSet *DataSet, filterExpression string, primaryTable st
 // encountered "TOP" limit clauses for individual filter expression statements will be respected, but
 // "ORDER BY" clauses will be ignored. An error will be returned if dataTable parameter (or its parent DataSet)
 // is nil, the filterExpression is empty, expression fails to parse or any row expression evaluation fails.
-func SelectDataRowSetFromTable(dataTable *DataTable, filterExpression string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (DataRowHashSet, error) {
+func SelectDataRowSetFromTable(dataTable *DataTable, filterExpression string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (hashset.HashSet[*DataRow], error) {
 	if dataTable == nil {
 		return nil, errors.New("dataTable parameter is nil")
 	}
@@ -1444,7 +1444,7 @@ func SelectDataRowSetFromTable(dataTable *DataTable, filterExpression string, ta
 // "TOP" limit clauses for individual filter expression statements will be respected, but "ORDER BY" clauses
 // will be ignored. An error will be returned if dataSet parameter is nil, the filterExpression is empty,
 // expression fails to parse or any row expression evaluation fails.
-func SelectSignalIDSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (guid.HashSet, error) {
+func SelectSignalIDSet(dataSet *DataSet, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (hashset.HashSet[guid.Guid], error) {
 	parser, err := NewFilterExpressionParserForDataSet(dataSet, filterExpression, primaryTable, tableIDFields, suppressConsoleErrorOutput)
 
 	if err != nil {
@@ -1468,7 +1468,7 @@ func SelectSignalIDSet(dataSet *DataSet, filterExpression string, primaryTable s
 // encountered "TOP" limit clauses for individual filter expression statements will be respected, but "ORDER BY"
 // clauses will be ignored. An error will be returned if dataTable parameter (or its parent DataSet) is nil, the
 // filterExpression is empty, expression fails to parse or any row expression evaluation fails.
-func SelectSignalIDSetFromTable(dataTable *DataTable, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (guid.HashSet, error) {
+func SelectSignalIDSetFromTable(dataTable *DataTable, filterExpression string, primaryTable string, tableIDFields *TableIDFields, suppressConsoleErrorOutput bool) (hashset.HashSet[guid.Guid], error) {
 	if dataTable == nil {
 		return nil, errors.New("dataTable parameter is nil")
 	}

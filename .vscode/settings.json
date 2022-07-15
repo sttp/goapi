@@ -25,6 +25,7 @@
         "goapi",
         "gocyclo",
         "GPLAINS",
+        "hashset",
         "INDEXOF",
         "IPHA",
         "IPHM",
