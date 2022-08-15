@@ -612,12 +612,12 @@ var CompressionModes = struct {
 	GZip CompressionModesEnum
 	// TSSC defines a bit flag used determine if the time-series special compression algorithm will be used for data exchange.
 	TSSC CompressionModesEnum
-	// None defines state where no compression will be used.
-	None CompressionModesEnum
+	// NoFlags defines state where no compression will be used.
+	NoFlags CompressionModesEnum
 }{
 	GZip: 0x00000020,
 	TSSC: 0x00000040,
-	None: 0x00000000,
+	NoFlags: 0x00000000,
 }
 
 // SecurityModeEnum defines the type of the SecurityMode enumeration.
@@ -626,13 +626,13 @@ type SecurityModeEnum int
 // SecurityMode is an enumeration of the possible security modes used by the DataPublisher
 // to secure data sent over the command channel in STTP.
 var SecurityMode = struct {
-	// None defines that data will be sent over the wire unencrypted.
-	None SecurityModeEnum
+	// Off defines that data will be sent over the wire unencrypted.
+	Off SecurityModeEnum
 	// TLS defines that data will be sent over wire using Transport Layer Security.
 	TLS SecurityModeEnum
 }{
-	None: 0,
-	TLS:  1,
+	Off: 0,
+	TLS: 1,
 }
 
 // ConnectStatusEnum defines the type of the ConnectStatus enumeration.
