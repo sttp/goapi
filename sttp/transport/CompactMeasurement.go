@@ -33,7 +33,7 @@ import (
 
 type compactStateFlagsEnum byte
 
-// These constants represent each flag in the 8-bit compact measurement state flags.
+// compactStateFlags constants represent each flag in the 8-bit compact measurement state flags.
 var compactStateFlags = struct {
 	DataRange       compactStateFlagsEnum
 	DataQuality     compactStateFlagsEnum
@@ -161,30 +161,28 @@ func (cm *CompactMeasurement) GetBinaryLength() uint32 {
 	baseTimeOffset := cm.baseTimeOffsets[cm.timeIndex]
 
 	if baseTimeOffset > 0 {
-		if cm.includeTime {
-			// See if timestamp will fit within space allowed for active base offset. We cache result so that post call
-			// to GetBinaryLength, result will speed other subsequent parsing operations by not having to reevaluate.
-			difference := cm.TicksValue() - baseTimeOffset
+		// See if timestamp will fit within space allowed for active base offset. We cache result so that post call
+		// to GetBinaryLength, result will speed other subsequent parsing operations by not having to reevaluate.
+		difference := cm.TicksValue() - baseTimeOffset
 
-			if difference > 0 {
-				if cm.useMillisecondResolution {
-					cm.usingBaseTimeOffset = difference/int64(ticks.PerMillisecond) < math.MaxUint16
-				} else {
-					cm.usingBaseTimeOffset = difference < math.MaxUint32
-				}
+		if difference > 0 {
+			if cm.useMillisecondResolution {
+				cm.usingBaseTimeOffset = difference/int64(ticks.PerMillisecond) < math.MaxUint16
 			} else {
-				cm.usingBaseTimeOffset = false
+				cm.usingBaseTimeOffset = difference < math.MaxUint32
 			}
+		} else {
+			cm.usingBaseTimeOffset = false
+		}
 
-			if cm.usingBaseTimeOffset {
-				if cm.useMillisecondResolution {
-					length += 2 // Use two bytes for millisecond resolution timestamp with valid offset
-				} else {
-					length += 4 // Use four bytes for tick resolution timestamp with valid offset
-				}
+		if cm.usingBaseTimeOffset {
+			if cm.useMillisecondResolution {
+				length += 2 // Use two bytes for millisecond resolution timestamp with valid offset
 			} else {
-				length += 8 // Use eight bytes for full fidelity time
+				length += 4 // Use four bytes for tick resolution timestamp with valid offset
 			}
+		} else {
+			length += 8 // Use eight bytes for full fidelity time
 		}
 	} else {
 		// Use eight bytes for full fidelity time
