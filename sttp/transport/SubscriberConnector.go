@@ -103,7 +103,7 @@ func (ds *DataSubscriber) autoReconnect() {
 			return
 		}
 
-		sc.waitForRetry(ds)
+		sc.waitForRetry()
 
 		if sc.cancel.IsSet() || ds.disposing.IsSet() {
 			return
@@ -130,7 +130,7 @@ func (ds *DataSubscriber) autoReconnect() {
 	reconnectThread.Start()
 }
 
-func (sc *SubscriberConnector) waitForRetry(subscriber *DataSubscriber) {
+func (sc *SubscriberConnector) waitForRetry() {
 	// Apply exponential back-off algorithm for retry attempt delays
 	var exponent float64
 
@@ -196,7 +196,9 @@ func (sc *SubscriberConnector) Connect(ds *DataSubscriber) ConnectStatusEnum {
 
 func (sc *SubscriberConnector) connect(ds *DataSubscriber, autoReconnecting bool) ConnectStatusEnum {
 	if sc.AutoReconnect {
+		ds.BeginCallbackAssignment()
 		ds.AutoReconnectCallback = ds.autoReconnect
+		ds.EndCallbackAssignment()
 	}
 
 	sc.cancel.UnSet()
@@ -213,15 +215,13 @@ func (sc *SubscriberConnector) connect(ds *DataSubscriber, autoReconnecting bool
 			return ConnectStatus.Canceled
 		}
 
-		err := ds.connect(sc.Hostname, sc.Port, autoReconnecting)
-
-		if err == nil {
+		if ds.connect(sc.Hostname, sc.Port, autoReconnecting) == nil {
 			break
 		}
 
 		if ds.disposing.IsNotSet() && sc.RetryInterval > 0 {
 			autoReconnecting = true
-			sc.waitForRetry(ds)
+			sc.waitForRetry()
 
 			if sc.cancel.IsSet() {
 				return ConnectStatus.Canceled

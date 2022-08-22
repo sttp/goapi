@@ -74,6 +74,6 @@ type SubscriptionInfo struct {
 	// interval while a value of 0 means to process data as fast as possible.
 	ProcessingInterval int32
 
-	// ExtraConnectionStringParameters defines any extra custom connection string parameters that may be needed for a subscription.
+	// ExtraConnectionStringParameters defines any extra or custom connection string parameters that may be needed for a subscription.
 	ExtraConnectionStringParameters string
 }

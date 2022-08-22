@@ -124,7 +124,7 @@ type DataSubscriber struct {
 	// CompressSignalIndexCache determines whether the signal index cache is compressed, defaults to GZip.
 	CompressSignalIndexCache bool
 
-	// Version defines the STTP protocol version used by this library
+	// Version defines the STTP protocol version used by this library.
 	Version byte
 
 	// SwapGuidEndianness determines if Guid wire serialization should swap endianness. This should only be enabled for
@@ -144,7 +144,7 @@ type DataSubscriber struct {
 	metadataRequested       time.Time
 	measurementRegistry     map[guid.Guid]*MeasurementMetadata
 	signalIndexCache        [2]*SignalIndexCache
-	signalIndexCacheLock    sync.Mutex
+	signalIndexCacheMutex   sync.Mutex
 	cacheIndex              int32
 	timeIndex               int32
 	baseTimeOffsets         [2]int64
@@ -192,7 +192,7 @@ func (ds *DataSubscriber) Dispose() {
 	ds.connector.Cancel()
 	ds.disconnect(true, false)
 
-	// Allow a moment to connection terminated event to complete
+	// Allow a moment for connection terminated event to complete
 	waitTimer := time.NewTimer(time.Duration(10) * time.Millisecond)
 	<-waitTimer.C
 }
@@ -290,7 +290,7 @@ func (ds *DataSubscriber) Connect(hostName string, port uint16) error {
 
 func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting bool) error {
 	if ds.connected.IsSet() {
-		panic("subscriber is already connected; disconnect first")
+		return errors.New("subscriber is already connected; disconnect first")
 	}
 
 	// Make sure any pending disconnect has completed to make sure socket is closed
@@ -453,6 +453,8 @@ func (ds *DataSubscriber) Unsubscribe() {
 		return
 	}
 
+	ds.SendServerCommand(ServerCommand.Unsubscribe)
+
 	ds.disconnecting.Set()
 
 	if ds.dataChannelSocket != nil {
@@ -466,8 +468,6 @@ func (ds *DataSubscriber) Unsubscribe() {
 	}
 
 	ds.disconnecting.UnSet()
-
-	ds.SendServerCommand(ServerCommand.Unsubscribe)
 }
 
 // Disconnect initiates a DataSubscriber disconnect sequence.
@@ -739,7 +739,7 @@ func (ds *DataSubscriber) handleSucceeded(commandCode ServerCommandEnum, data []
 		message.WriteString("Received success code in response to server command: ")
 		message.WriteString(commandCode.String())
 
-		if data != nil {
+		if len(data) > 0 {
 			message.WriteRune('\n')
 			message.Write(data)
 		}
@@ -754,10 +754,6 @@ func (ds *DataSubscriber) handleSucceeded(commandCode ServerCommandEnum, data []
 }
 
 func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byte) {
-	if data == nil {
-		return
-	}
-
 	var message strings.Builder
 
 	if commandCode == ServerCommand.Connect {
@@ -767,15 +763,17 @@ func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byt
 		message.WriteString(commandCode.String())
 	}
 
-	if data != nil {
+	if len(data) > 0 {
 		if message.Len() > 0 {
 			message.WriteRune('\n')
 		}
 
-		message.Write(data)
+		message.Write(data)		
 	}
 
-	ds.dispatchErrorMessage(message.String())
+	if message.Len() > 0 {
+		ds.dispatchErrorMessage(message.String())
+	}
 }
 
 func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
@@ -860,10 +858,10 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 		return
 	}
 
-	ds.signalIndexCacheLock.Lock()
+	ds.signalIndexCacheMutex.Lock()
 	ds.signalIndexCache[cacheIndex] = signalIndexCache
 	ds.cacheIndex = cacheIndex
-	ds.signalIndexCacheLock.Unlock()
+	ds.signalIndexCacheMutex.Unlock()
 
 	if version > 1 {
 		ds.SendServerCommand(ServerCommand.ConfirmSignalIndexCache)
@@ -883,7 +881,13 @@ func (ds *DataSubscriber) handleUpdateBaseTimes(data []byte) {
 		return
 	}
 
-	ds.timeIndex = int32(binary.BigEndian.Uint32(data))
+	timeIndex := int32(binary.BigEndian.Uint32(data))
+
+	if timeIndex != 0 {
+		timeIndex = 1
+	}
+
+	ds.timeIndex = timeIndex
 
 	var baseTimeOffsets [2]int64
 
@@ -999,14 +1003,14 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 		cacheIndex = 1
 	}
 
-	ds.signalIndexCacheLock.Lock()
+	ds.signalIndexCacheMutex.Lock()
 	signalIndexCache := ds.signalIndexCache[cacheIndex]
-	ds.signalIndexCacheLock.Unlock()
+	ds.signalIndexCacheMutex.Unlock()
 
 	if compressed {
 		ds.parseTSSCMeasurements(signalIndexCache, data[4:], measurements)
 	} else {
-		ds.parseCompactMeasurements(signalIndexCache, dataPacketFlags, data[4:], measurements)
+		ds.parseCompactMeasurements(signalIndexCache, data[4:], measurements)
 	}
 
 	ds.BeginCallbackSync()
@@ -1113,26 +1117,9 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCac
 	}
 }
 
-func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndexCache, dataPacketFlags DataPacketFlagsEnum, data []byte, measurements []Measurement) {
-	useMillisecondResolution := ds.subscription.UseMillisecondResolution
-	includeTime := ds.subscription.IncludeTime
-	index := 0
-
-	for i := 0; i < len(measurements); i++ {
-		if signalIndexCache.Count() > 0 {
-			// Deserialize compact measurement format
-			compactMeasurement := NewCompactMeasurement(signalIndexCache, includeTime, useMillisecondResolution, &ds.baseTimeOffsets)
-			bytesDecoded, err := compactMeasurement.Decode(data[index:])
-
-			if err != nil {
-				ds.dispatchErrorMessage("Failed to parse compact measurements - disconnecting: " + err.Error())
-				ds.dispatchConnectionTerminated()
-				return
-			}
-
-			index += bytesDecoded
-			measurements[i] = compactMeasurement.Measurement
-		} else if ds.lastMissingCacheWarning+missingCacheWarningInterval < ticks.UtcNow() {
+func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndexCache, data []byte, measurements []Measurement) {
+	if signalIndexCache.Count() == 0 {
+		if ds.lastMissingCacheWarning+missingCacheWarningInterval < ticks.UtcNow() {
 			// Warning message for missing signal index cache
 			if ds.lastMissingCacheWarning != 0 {
 				ds.dispatchStatusMessage("Signal index cache has not arrived. No compact measurements can be parsed.")
@@ -1140,6 +1127,27 @@ func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndex
 
 			ds.lastMissingCacheWarning = ticks.UtcNow()
 		}
+		
+		return
+	}
+
+	useMillisecondResolution := ds.subscription.UseMillisecondResolution
+	includeTime := ds.subscription.IncludeTime
+	index := 0
+
+	for i := 0; i < len(measurements); i++ {
+		// Deserialize compact measurement format
+		compactMeasurement := NewCompactMeasurement(signalIndexCache, includeTime, useMillisecondResolution, &ds.baseTimeOffsets)
+		bytesDecoded, err := compactMeasurement.Decode(data[index:])
+
+		if err != nil {
+			ds.dispatchErrorMessage("Failed to parse compact measurements - disconnecting: " + err.Error())
+			ds.dispatchConnectionTerminated()
+			return
+		}
+
+		index += bytesDecoded
+		measurements[i] = compactMeasurement.Measurement
 	}
 }
 
@@ -1167,9 +1175,9 @@ func (ds *DataSubscriber) handleBufferBlock(data []byte) {
 		// Get measurement key from signal index cache
 		signalIndex := int32(binary.BigEndian.Uint32(data))
 
-		ds.signalIndexCacheLock.Lock()
+		ds.signalIndexCacheMutex.Lock()
 		signalIndexCache := ds.signalIndexCache[signalIndexCacheIndex]
-		ds.signalIndexCacheLock.Unlock()
+		ds.signalIndexCacheMutex.Unlock()
 
 		signalID := signalIndexCache.SignalID(signalIndex)
 		bufferBlockMeasurement := BufferBlock{SignalID: signalID}
@@ -1276,12 +1284,13 @@ func (ds *DataSubscriber) SendServerCommandWithPayload(commandCode ServerCommand
 	}
 
 	if commandCode == ServerCommand.MetadataRefresh {
-		// Track time of metadata request to calculate round-trip receive time
+		// Track start time of metadata request to calculate round-trip receive time
 		ds.metadataRequested = time.Now()
 	}
 
 	if _, err := ds.commandChannelSocket.Write(ds.writeBuffer[:commandBufferSize]); err != nil {
 		// Write error, connection may have been closed by peer; terminate connection
+		ds.dispatchErrorMessage("Failed to send server command - disconnecting: " + err.Error())
 		ds.dispatchConnectionTerminated()
 	}
 }
@@ -1323,9 +1332,9 @@ func (ds *DataSubscriber) Connector() *SubscriberConnector {
 
 // ActiveSignalIndexCache gets the active signal index cache.
 func (ds *DataSubscriber) ActiveSignalIndexCache() *SignalIndexCache {
-	ds.signalIndexCacheLock.Lock()
+	ds.signalIndexCacheMutex.Lock()
 	signalIndexCache := ds.signalIndexCache[ds.cacheIndex]
-	ds.signalIndexCacheLock.Unlock()
+	ds.signalIndexCacheMutex.Unlock()
 
 	return signalIndexCache
 }
