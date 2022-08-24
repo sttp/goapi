@@ -23,7 +23,7 @@
 
 package sttp
 
-// Config defines the STTP connection parameters.
+// Config defines the STTP connection related configuration parameters.
 type Config struct {
 	// MaxRetries defines the maximum number of times to retry a connection.
 	// Set value to -1 to retry infinitely.

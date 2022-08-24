@@ -78,7 +78,7 @@ func NewSubscriber() *Subscriber {
 	return &sb
 }
 
-// Close cleanly shuts down a DataSubscriber that is no longer being used, e.g.,
+// Close cleanly shuts down a Subscriber that is no longer being used, e.g.,
 // during a normal application exit.
 func (sb *Subscriber) Close() {
 	if sb.ds != nil {
