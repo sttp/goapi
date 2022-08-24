@@ -24,6 +24,10 @@
 package sttp
 
 // Settings defines the STTP subscription related settings.
+//
+// Settings exists as a simplified implementation of the SubscriptionInfo
+// found in the transport namespace. Internally, the Subscriber class maps
+// Settings values to a SubscriptionInfo instance for use with a DataSubscriber.
 type Settings struct {
 	// Throttled determines if data will be published using down-sampling.
 	Throttled bool

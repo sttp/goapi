@@ -43,6 +43,11 @@ import (
 )
 
 // Subscriber represents an STTP data subscriber.
+//
+// The Subscriber exists as a simplified implementation of the DataSubscriber found
+// in the transport namespace. The Subscriber is intended to simplify common uses of
+// STTP data reception and maintains an internal instance of the DataSubscriber for
+// subscription based functionality.
 type Subscriber struct {
 	// Configuration reference
 	config *Config
