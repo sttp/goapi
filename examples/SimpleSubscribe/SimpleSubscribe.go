@@ -24,7 +24,6 @@
 package main
 
 import (
-	"context"
 	"strconv"
 	"strings"
 	"time"
@@ -44,7 +43,7 @@ func main() {
 			var lastMessage time.Time
 
 			for subscriber.IsConnected() {
-				measurement, _ := reader.NextMeasurement(context.Background())
+				measurement, _ := reader.NextMeasurement(nil)
 
 				if time.Since(lastMessage).Seconds() < 5.0 {
 					continue

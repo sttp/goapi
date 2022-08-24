@@ -52,6 +52,10 @@ func newMeasurementReader(parent *Subscriber) *MeasurementReader {
 // Returns tuple of measurement and completed state. Completed state flag will be false if a measurement
 // was received; otherwise, state flag will be true along with a nil measurement when context is done.
 func (mr *MeasurementReader) NextMeasurement(ctx context.Context) (*transport.Measurement, bool) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	select {
 	case <-ctx.Done():
 		return nil, true
