@@ -779,8 +779,10 @@ func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byt
 
 func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
 	ds.BeginCallbackSync()
+	metadataReceivedCallback := ds.MetadataReceivedCallback
+	ds.EndCallbackSync()
 
-	if ds.MetadataReceivedCallback != nil {
+	if metadataReceivedCallback != nil {
 		if ds.CompressMetadata {
 			ds.dispatchStatusMessage(fmt.Sprintf("Received %s bytes of metadata in %s seconds. Decompressing...", format.Int(len(data)), format.Float(time.Since(ds.metadataRequested).Seconds(), 3)))
 
@@ -797,10 +799,8 @@ func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
 			ds.dispatchStatusMessage(fmt.Sprintf("Received %s bytes of metadata in %s seconds. Parsing...", format.Int(len(data)), format.Float(time.Since(ds.metadataRequested).Seconds(), 3)))
 		}
 
-		go ds.MetadataReceivedCallback(data)
+		go metadataReceivedCallback(data)
 	}
-
-	ds.EndCallbackSync()
 }
 
 func (ds *DataSubscriber) handleDataStartTime(data []byte) {
