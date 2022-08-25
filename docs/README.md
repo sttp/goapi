@@ -28,6 +28,8 @@ func main() {
 
     // Start data read at each connection
     subscriber.SetConnectionEstablishedReceiver(func() {
+        subscriber.DefaultConnectionEstablishedReceiver()
+        
         go func() {
             reader := subscriber.ReadMeasurements()
             var lastMessage time.Time
