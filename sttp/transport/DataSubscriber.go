@@ -334,10 +334,11 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 
 	if err == nil {
 		ds.commandChannelResponseThread = thread.NewThread(ds.runCommandChannelResponseThread)
-		ds.commandChannelResponseThread.Start()
 
 		ds.connected.Set()
 		ds.lastMissingCacheWarning = 0
+
+		ds.commandChannelResponseThread.Start()
 		ds.sendOperationalModes()
 	}
 
