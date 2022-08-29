@@ -63,7 +63,7 @@ const (
 	calculatedValueMask StateFlagsEnum = 0x00001000
 	discardedValueMask  StateFlagsEnum = 0x00400000
 
-	fixedLength uint32 = 9
+	fixedLength = 9
 )
 
 func (compactFlags compactStateFlagsEnum) mapToFullFlags() StateFlagsEnum {
@@ -246,7 +246,7 @@ func (cm *CompactMeasurement) SetRuntimeID(signalIndex int32) {
 
 // Decode parses a CompactMeasurement from the specified byte buffer.
 func (cm *CompactMeasurement) Decode(buffer []byte) (int, error) {
-	if len(buffer) < 1 {
+	if len(buffer) < fixedLength {
 		return 0, errors.New("not enough buffer available to deserialize compact measurement")
 	}
 
