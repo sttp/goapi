@@ -486,7 +486,7 @@ func (ds *DataSubscriber) Disconnect() {
 func (ds *DataSubscriber) disconnect(joinThread bool, autoReconnecting bool) {
 	// Check if disconnect thread is running or subscriber has already disconnected
 	if ds.disconnecting.IsSet() {
-		if !autoReconnecting && ds.disconnecting.IsSet() && ds.disconnected.IsNotSet() {
+		if !autoReconnecting && ds.disconnected.IsNotSet() {
 			ds.connector.Cancel()
 		}
 
