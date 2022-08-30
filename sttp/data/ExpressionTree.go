@@ -1000,7 +1000,7 @@ func (et *ExpressionTree) evaluateReplace(arguments []Expression) (*ValueExpress
 		return nil, errors.New("failed while evaluating \"Replace\" function replace value, third argument: " + err.Error())
 	}
 
-	if len(arguments) == 2 {
+	if len(arguments) == 3 {
 		return et.replace(sourceValue, testValue, replaceValue, NullValue(ExpressionValueType.Boolean))
 	}
 
