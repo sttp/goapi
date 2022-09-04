@@ -1033,7 +1033,7 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCac
 
 	// Use TSSC to decompress measurements
 	if decoder == nil {
-		signalIndexCache.tsscDecoder = tssc.NewDecoder(signalIndexCache.MaxSignalIndex())
+		signalIndexCache.tsscDecoder = tssc.NewDecoder()
 		decoder = signalIndexCache.tsscDecoder
 		decoder.SequenceNumber = 0
 		newDecoder = true
@@ -1053,7 +1053,7 @@ func (ds *DataSubscriber) parseTSSCMeasurements(signalIndexCache *SignalIndexCac
 				ds.dispatchStatusMessage("TSSC algorithm reset before sequence number: " + strconv.Itoa(int(decoder.SequenceNumber)))
 			}
 
-			signalIndexCache.tsscDecoder = tssc.NewDecoder(signalIndexCache.MaxSignalIndex())
+			signalIndexCache.tsscDecoder = tssc.NewDecoder()
 			decoder = signalIndexCache.tsscDecoder
 			decoder.SequenceNumber = 0
 		}

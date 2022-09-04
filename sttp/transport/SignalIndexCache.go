@@ -42,7 +42,6 @@ type SignalIndexCache struct {
 	idList         []uint64
 	signalIDCache  map[guid.Guid]int32
 	binaryLength   uint32
-	maxSignalIndex uint32
 	tsscDecoder    *tssc.Decoder
 }
 
@@ -62,10 +61,6 @@ func (sic *SignalIndexCache) addRecord(ds *DataSubscriber, signalIndex int32, si
 	sic.sourceList = append(sic.sourceList, source)
 	sic.idList = append(sic.idList, id)
 	sic.signalIDCache[signalID] = signalIndex
-
-	if index > sic.maxSignalIndex {
-		sic.maxSignalIndex = index
-	}
 
 	metadata := ds.LookupMetadata(signalID)
 
@@ -145,11 +140,6 @@ func (sic *SignalIndexCache) SignalIndex(signalID guid.Guid) int32 {
 	}
 
 	return -1
-}
-
-// MaxSignalIndex gets the largest signal index in the SignalIndexCache.
-func (sic *SignalIndexCache) MaxSignalIndex() uint32 {
-	return sic.maxSignalIndex
 }
 
 // Count returns the number of Measurement records that can be found in the SignalIndexCache.

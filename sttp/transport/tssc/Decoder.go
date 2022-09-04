@@ -60,13 +60,13 @@ type Decoder struct {
 }
 
 // NewDecoder creates a new TSSC decoder.
-func NewDecoder(maxSignalIndex uint32) *Decoder {
+func NewDecoder() *Decoder {
 	td := &Decoder{
 		prevTimeDelta1: math.MaxInt64,
 		prevTimeDelta2: math.MaxInt64,
 		prevTimeDelta3: math.MaxInt64,
 		prevTimeDelta4: math.MaxInt64,
-		points:         make(map[int32]*pointMetadata, maxSignalIndex+1),
+		points:         make(map[int32]*pointMetadata),
 	}
 
 	td.lastPoint = td.newPointMetadata()
