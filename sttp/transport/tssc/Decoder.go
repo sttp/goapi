@@ -47,7 +47,7 @@ type Decoder struct {
 	prevTimeDelta4 int64
 
 	lastPoint *pointMetadata
-	points    []*pointMetadata
+	points    map[int32]*pointMetadata
 
 	// The number of bits in m_bitStreamCache that are valid. 0 Means the bitstream is empty
 	bitStreamCount int32
@@ -66,7 +66,7 @@ func NewDecoder(maxSignalIndex uint32) *Decoder {
 		prevTimeDelta2: math.MaxInt64,
 		prevTimeDelta3: math.MaxInt64,
 		prevTimeDelta4: math.MaxInt64,
-		points:         make([]*pointMetadata, maxSignalIndex+1),
+		points:         make(map[int32]*pointMetadata, maxSignalIndex+1),
 	}
 
 	td.lastPoint = td.newPointMetadata()
@@ -163,30 +163,12 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 
 	// Assign decoded measurement ID to out parameter
 	*id = td.lastPoint.PrevNextPointID1
+	var nextPoint *pointMetadata
+	var ok bool
 
 	// Setup tracking for metadata associated with measurement ID and next point to decode
-	pointCount := int32(len(td.points))
-	var nextPoint *pointMetadata
-
-	if *id >= pointCount {
-		nextPoint = nil
-	} else {
-		nextPoint = td.points[*id]
-	}
-
-	if nextPoint == nil {
+	if nextPoint, ok = td.points[*id]; !ok || nextPoint == nil {
 		nextPoint = td.newPointMetadata()
-
-		if *id >= pointCount {
-			if td.points == nil {
-				td.points = make([]*pointMetadata, *id+1)
-			} else {
-				for *id+1 > int32(len(td.points)) {
-					td.points = append(td.points, nil)
-				}
-			}
-		}
-
 		td.points[*id] = nextPoint
 		nextPoint.PrevNextPointID1 = *id + 1
 	}
