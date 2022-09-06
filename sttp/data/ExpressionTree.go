@@ -161,7 +161,7 @@ func (et *ExpressionTree) SelectWhere(table *DataTable, predicate func(*ValueExp
 
 // Evaluate traverses the the ExpressionTree for the provided dataRow to produce a ValueExpression.
 // Root expression should be assigned before calling Evaluate. The dataRow parameter can be nil if
-// there are no columns references in expression tree. An error will be returned if the expresssion
+// there are no columns referenced in expression tree. An error will be returned if the expresssion
 // evaluation fails.
 func (et *ExpressionTree) Evaluate(dataRow *DataRow) (*ValueExpression, error) {
 	et.currentRow = dataRow
@@ -558,7 +558,7 @@ func (et *ExpressionTree) evaluateContains(arguments []Expression) (*ValueExpres
 	}
 
 	if testValue, err = et.evaluateAs(arguments[1], ExpressionValueType.String); err != nil {
-		return nil, errors.New("failed while evaluating \"Contains\" function test value, first argument: " + err.Error())
+		return nil, errors.New("failed while evaluating \"Contains\" function test value, second argument: " + err.Error())
 	}
 
 	if len(arguments) == 2 {
@@ -2063,7 +2063,7 @@ func (et *ExpressionTree) minOf(arguments []Expression) (*ValueExpression, error
 			return nil, errors.New("failed while deriving \"MinOf\" function less than comparison operation value type: " + err.Error())
 		}
 
-		result, err := et.greaterThanOp(nextValue, testValue, valueType)
+		result, err := et.lessThanOp(nextValue, testValue, valueType)
 
 		if err != nil {
 			return nil, errors.New("failed while executing \"<\" comparison operation in \"MinOf\" function: " + err.Error())
