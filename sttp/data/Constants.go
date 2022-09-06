@@ -1009,9 +1009,9 @@ func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueTypeFromInt
 	case ExpressionValueType.Boolean:
 		fallthrough
 	case ExpressionValueType.Int32:
-		fallthrough
-	case ExpressionValueType.String:
 		return ExpressionValueType.Int32, nil
+	case ExpressionValueType.String:
+		return ExpressionValueType.Decimal, nil
 	case ExpressionValueType.Int64:
 		return ExpressionValueType.Int64, nil
 	case ExpressionValueType.Decimal:
@@ -1034,9 +1034,9 @@ func (eote ExpressionOperatorTypeEnum) deriveComparisonOperationValueTypeFromInt
 	case ExpressionValueType.Int32:
 		fallthrough
 	case ExpressionValueType.Int64:
-		fallthrough
-	case ExpressionValueType.String:
 		return ExpressionValueType.Int64, nil
+	case ExpressionValueType.String:
+		fallthrough
 	case ExpressionValueType.Decimal:
 		return ExpressionValueType.Decimal, nil
 	case ExpressionValueType.Double:

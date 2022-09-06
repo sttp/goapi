@@ -537,10 +537,12 @@ func (ve *ValueExpression) convertFromString(targetValueType ExpressionValueType
 		targetValue, _ := strconv.ParseBool(value)
 		return newValueExpression(targetValueType, targetValue), nil
 	case ExpressionValueType.Int32:
-		targetValue, _ := strconv.ParseInt(value, 0, 32)
+		decimalValue, _ := decimal.NewFromString(value)
+		targetValue := decimalValue.IntPart()
 		return newValueExpression(targetValueType, int32(targetValue)), nil
 	case ExpressionValueType.Int64:
-		targetValue, _ := strconv.ParseInt(value, 0, 64)
+		decimalValue, _ := decimal.NewFromString(value)
+		targetValue := decimalValue.IntPart()
 		return newValueExpression(targetValueType, targetValue), nil
 	case ExpressionValueType.Decimal:
 		targetValue, _ := decimal.NewFromString(value)

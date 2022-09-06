@@ -2483,6 +2483,38 @@ func TestBasicExpressions(t *testing.T) {
 	if !result {
 		t.Fatal("TestBasicExpressions: unexpected value expression result")
 	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "Convert(maxof(12, '99.9', 99.99), 'Double')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	f64, err := valueExpression.DoubleValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if f64 != 99.99 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
+
+	valueExpression, err = EvaluateDataRowExpression(dataRow, "Convert(minof(12, '99.9', 99.99), 'double')", false)
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error during EvaluateDataRowExpression: " + err.Error())
+	}
+
+	f64, err = valueExpression.DoubleValue()
+
+	if err != nil {
+		t.Fatal("TestBasicExpressions: error getting value: " + err.Error())
+	}
+
+	if f64 != 12.0 {
+		t.Fatal("TestBasicExpressions: unexpected value expression result")
+	}
 }
 
 func TestNegativeExpressions(t *testing.T) {
