@@ -3231,7 +3231,7 @@ func (et *ExpressionTree) likeOp(leftValue, rightValue *ValueExpression, exactMa
 
 	// Wild cards in the middle of the string are not supported
 	if strings.ContainsRune(testExpression, '*') {
-		return nil, errors.New("Right operand of \"LIKE\" expression \"" + rightOperand + "\" has an invalid pattern")
+		return nil, errors.New("right operand of \"LIKE\" expression \"" + rightOperand + "\" has an invalid pattern")
 	}
 
 	if startsWithWildcard {

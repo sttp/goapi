@@ -37,9 +37,7 @@ import (
 	"github.com/sttp/goapi/sttp/xml"
 )
 
-func TestEvaluateBooleanLiteralExpression(t *testing.T) {
-	b := true
-
+func testEvaluateBooleanLiteralExpression(t *testing.T, b bool) {
 	result, err := EvaluateExpression(strconv.FormatBool(b), false)
 
 	if err != nil {
@@ -65,9 +63,12 @@ func TestEvaluateBooleanLiteralExpression(t *testing.T) {
 	}
 }
 
-func TestEvaluateInt32LiteralExpression(t *testing.T) {
-	var i32 int32 = math.MaxInt32
+func TestEvaluateBooleanLiteralExpression(t *testing.T) {
+	testEvaluateBooleanLiteralExpression(t, false)
+	testEvaluateBooleanLiteralExpression(t, true)
+}
 
+func testEvaluateInt32LiteralExpression(t *testing.T, i32 int32) {
 	result, err := EvaluateExpression(strconv.FormatInt(int64(i32), 10), false)
 
 	if err != nil {
@@ -93,9 +94,15 @@ func TestEvaluateInt32LiteralExpression(t *testing.T) {
 	}
 }
 
-func TestEvaluateInt64LiteralExpression(t *testing.T) {
-	var i64 int64 = math.MaxInt64
+func TestEvaluateInt32LiteralExpression(t *testing.T) {
+	testEvaluateInt32LiteralExpression(t, math.MinInt32 + 1) // Min int32 value interpreted as int64
+	testEvaluateInt32LiteralExpression(t, -1)
+	testEvaluateInt32LiteralExpression(t, 0)
+	testEvaluateInt32LiteralExpression(t, 1)
+	testEvaluateInt32LiteralExpression(t, math.MaxInt32)
+}
 
+func testEvaluateInt64LiteralExpression(t *testing.T, i64 int64) {
 	result, err := EvaluateExpression(strconv.FormatInt(i64, 10), false)
 
 	if err != nil {
@@ -119,6 +126,11 @@ func TestEvaluateInt64LiteralExpression(t *testing.T) {
 	if ve != i64 {
 		t.Fatal("TestEvaluateInt64LiteralExpression: retrieved value does not match source")
 	}
+}
+
+func TestEvaluateInt64LiteralExpression(t *testing.T) {
+	testEvaluateInt64LiteralExpression(t, math.MinInt64 + 1) // Min int64 value interpreted as Decimal
+	testEvaluateInt64LiteralExpression(t, math.MaxInt64)
 }
 
 func TestEvaluateDecimalLiteralExpression(t *testing.T) {

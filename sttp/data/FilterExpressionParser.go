@@ -1046,11 +1046,12 @@ func (fep *FilterExpressionParser) ExitValueExpression(context *parser.ValueExpr
 func (fep *FilterExpressionParser) ExitLiteralValue(context *parser.LiteralValueContext) {
 	var result *ValueExpression
 
+	// Literal numeric values with not be negative, unary operators will handle negative values
 	if integerLiteral := context.INTEGER_LITERAL(); integerLiteral != nil {
 		literal := integerLiteral.GetText()
 
 		if i64, err := strconv.ParseInt(literal, 0, 64); err == nil {
-			if i64 < math.MinInt32 || i64 > math.MaxInt32 {
+			if i64 > math.MaxInt32 {
 				result = newValueExpression(ExpressionValueType.Int64, i64)
 			} else {
 				result = newValueExpression(ExpressionValueType.Int32, int32(i64))
