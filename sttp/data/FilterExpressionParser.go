@@ -1046,7 +1046,7 @@ func (fep *FilterExpressionParser) ExitValueExpression(context *parser.ValueExpr
 func (fep *FilterExpressionParser) ExitLiteralValue(context *parser.LiteralValueContext) {
 	var result *ValueExpression
 
-	// Literal numeric values with not be negative, unary operators will handle negative values
+	// Literal numeric values will not be negative, unary operators will handle negative values
 	if integerLiteral := context.INTEGER_LITERAL(); integerLiteral != nil {
 		literal := integerLiteral.GetText()
 
