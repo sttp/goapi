@@ -130,6 +130,8 @@ func testEvaluateInt64LiteralExpression(t *testing.T, i64 int64) {
 
 func TestEvaluateInt64LiteralExpression(t *testing.T) {
 	testEvaluateInt64LiteralExpression(t, math.MinInt64 + 1) // Min int64 value interpreted as Decimal
+	testEvaluateInt64LiteralExpression(t, math.MinInt32)
+	testEvaluateInt64LiteralExpression(t, math.MaxInt32 + 1)
 	testEvaluateInt64LiteralExpression(t, math.MaxInt64)
 }
 
