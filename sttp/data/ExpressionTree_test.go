@@ -2583,7 +2583,7 @@ func TestMiscExpressions(t *testing.T) {
 		t.Fatal("TestMiscExpressions: unexpected value expression result")
 	}
 
-	// test computed column with expression defined in schema
+	// test edge case of evaluating standalone Guid not used as a row identifier
 	g := guid.New()
 	valueExpression, err = EvaluateDataRowExpression(dataRow, g.String(), false)
 
@@ -2605,7 +2605,7 @@ func TestMiscExpressions(t *testing.T) {
 		t.Fatal("TestMiscExpressions: unexpected value expression result")
 	}
 
-	// test edge case of evaluating standalone Guid not used as a row identifier
+	// test computed column with expression defined in schema
 	valueExpression, err = EvaluateDataRowExpression(dataRow, "ComputedCol", false)
 
 	if err != nil {
