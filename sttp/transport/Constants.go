@@ -53,19 +53,19 @@ var StateFlags = struct {
 	BadData StateFlagsEnum
 	// SuspectData defines a Measurement flag for a suspect data state.
 	SuspectData StateFlagsEnum
-	// OverRangeError defines a Measurement flag for a over range error, i.e., unreasonable high value.
+	// OverRangeError defines a Measurement flag for an over range error, i.e., unreasonable high value.
 	OverRangeError StateFlagsEnum
-	// UnderRangeError defines a Measurement flag for a under range error, i.e., unreasonable low value.
+	// UnderRangeError defines a Measurement flag for an under range error, i.e., unreasonable low value.
 	UnderRangeError StateFlagsEnum
-	// AlarmHigh defines a Measurement flag for a alarm for high value.
+	// AlarmHigh defines a Measurement flag for an alarm for high value.
 	AlarmHigh StateFlagsEnum
-	// AlarmLow defines a Measurement flag for a alarm for low value.
+	// AlarmLow defines a Measurement flag for an alarm for low value.
 	AlarmLow StateFlagsEnum
 	// WarningHigh defines a Measurement flag for a warning for high value.
 	WarningHigh StateFlagsEnum
 	// WarningLow defines a Measurement flag for a warning for low value.
 	WarningLow StateFlagsEnum
-	// FlatlineAlarm defines a Measurement flag for a alarm for flat-lined value, i.e., latched value test alarm.
+	// FlatlineAlarm defines a Measurement flag for an alarm for flat-lined value, i.e., latched value test alarm.
 	FlatlineAlarm StateFlagsEnum
 	// ComparisonAlarm defines a Measurement flag for a comparison alarm, i.e., outside threshold of comparison with a real-time value.
 	ComparisonAlarm StateFlagsEnum
@@ -89,7 +89,7 @@ var StateFlags = struct {
 	LateTimeAlarm StateFlagsEnum
 	// FutureTimeAlarm defines a Measurement flag for a future time alarm.
 	FutureTimeAlarm StateFlagsEnum
-	// UpSampled defines a Measurement flag for a up-sampled state.
+	// UpSampled defines a Measurement flag for an up-sampled state.
 	UpSampled StateFlagsEnum
 	// DownSampled defines a Measurement flag for a down-sampled state.
 	DownSampled StateFlagsEnum
@@ -208,15 +208,19 @@ type DataPacketFlagsEnum byte
 
 // DataPacketFlags is an enumeration of the possible flags for a data packet.
 var DataPacketFlags = struct {
-	// Compact determines if serialized measurement is compact. Bit set = compact, bit clear = full fidelity.
+	// Compact determines if serialized measurement is compact.
+	// Deprecated: Bit will be removed in future version. Currently this bit is always set.
 	Compact DataPacketFlagsEnum
-	// CipherIndex determines which cipher index to use when encrypting data packet. Bit set = use odd cipher index (i.e., 1), bit clear = use even cipher index (i.e., 0).
+	// CipherIndex determines which cipher index to use when encrypting data packet.
+	// Bit set = use odd cipher index (i.e., 1), bit clear = use even cipher index (i.e., 0).
 	CipherIndex DataPacketFlagsEnum
-	// Compressed determines if data packet payload is compressed. Bit set = payload compressed, bit clear = payload normal.
+	// Compressed determines if data packet payload is compressed.
+	// Bit set = payload compressed, bit clear = payload normal.
 	Compressed DataPacketFlagsEnum
-	// CacheIndex determines with signal index cache to use when decoding a data packet. Used by STTP version 2 or greater.
+	// CacheIndex determines which signal index cache to use when decoding a data packet. Used by STTP version 2 or greater.
+	// Bit set = use odd cache index (i.e., 1), bit clear = use even cache index (i.e., 0).
 	CacheIndex DataPacketFlagsEnum
-	// NoFlags defines state where there are no flags set. This would represent unsynchronized, full fidelity measurement data packets.
+	// NoFlags defines state where there are no flags set.
 	NoFlags DataPacketFlagsEnum
 }{
 	Compact:     0x02,
@@ -232,57 +236,69 @@ type ServerCommandEnum byte
 // ServerCommand is an enumeration of the possible server commands received
 // by a DataPublisher and sent by a DataSubscriber during an STTP session.
 var ServerCommand = struct {
-	// Connect defines a service command code for handling connect operations. Only used as part of connection refused response.
+	// Connect defines a command code handling connect operations.
+	// Only used as part of connection refused response -- value not sent on the wire.
 	Connect ServerCommandEnum
-	// MetaDataRefresh defines a service command code for requesting an updated set of metadata.
+	// MetaDataRefresh defines a command code for requesting an updated set of metadata.
 	MetadataRefresh ServerCommandEnum
-	// Subscribe defines a service command code for requesting a subscription of streaming data from server based on connection string that follows.
+	// Subscribe defines a command code for requesting a subscription of streaming data from server based on connection string that follows.
 	Subscribe ServerCommandEnum
-	// Unsubscribe  defines a service command code for requesting that server stop sending streaming data to the client and cancel the current subscription.
+	// Unsubscribe  defines a command code for requesting that server stop sending streaming data to the client and cancel the current subscription.
 	Unsubscribe ServerCommandEnum
-	// RotateCipherKeys defines a service command code for manually requesting that server send a new set of cipher keys for data packet encryption (UDP only).
+	// RotateCipherKeys defines a command code for manually requesting that server send a new set of cipher keys for data packet encryption (UDP only).
 	RotateCipherKeys ServerCommandEnum
-	// UpdateProcessingInterval defines a service command code for manually requesting that server to update the processing interval with the following specified value.
+	// UpdateProcessingInterval defines a command code for manually requesting that server to update the processing interval with the following specified value.
 	UpdateProcessingInterval ServerCommandEnum
-	// DefineOperationalModes defines a service command code for establishing operational modes. As soon as connection is established, requests that server set operational modes that affect how the subscriber and publisher will communicate.
+	// DefineOperationalModes defines a command code for establishing operational modes.
+	// As soon as connection is established, requests that server set operational modes that affect how the subscriber and publisher will communicate.
 	DefineOperationalModes ServerCommandEnum
-	// ConfirmNotification defines a service command code for receipt of a notification. This message is sent in response to ServerResponse.Notify.
+	// ConfirmNotification defines a command code for receipt of a notification.
+	// This message is sent in response to ServerResponse.Notify.
 	ConfirmNotification ServerCommandEnum
-	// ConfirmBufferBlock defines a service command code for receipt of a buffer block measurement. This message is sent in response to ServerResponse.BufferBlock.
+	// ConfirmBufferBlock defines a command code for receipt of a buffer block measurement.
+	// This message is sent in response to ServerResponse.BufferBlock.
 	ConfirmBufferBlock ServerCommandEnum
-	// ConfirmSignalIndexCache defines a service command for confirming the receipt of a signal index cache. This allows publisher to safely transition to next signal index cache.
+	// ConfirmUpdateBaseTimes defines a command code for receipt of a base time update.
+	// This message is sent in response to ServerResponse.UpdateBaseTimes.
+	ConfirmUpdateBaseTimes ServerCommandEnum
+	// ConfirmSignalIndexCache defines a service command for confirming the receipt of a signal index cache.
+	// This allows publisher to safely transition to next signal index cache.
 	ConfirmSignalIndexCache ServerCommandEnum
-	// UserCommand00 defines a service command code for handling user-defined commands.
+	// GetPrimaryMetadataSchema defines a command code for requesting the primary metadata schema.
+	GetPrimaryMetadataSchema ServerCommandEnum
+	// GetSignalSelectionSchema defines a command code for requesting the signal selection schema.
+	GetSignalSelectionSchema ServerCommandEnum
+	// UserCommand00 defines a command code handling user-defined commands.
 	UserCommand00 ServerCommandEnum
-	// UserCommand01 defines a service command code for handling user-defined commands.
+	// UserCommand01 defines a command code handling user-defined commands.
 	UserCommand01 ServerCommandEnum
-	// UserCommand02 defines a service command code for handling user-defined commands.
+	// UserCommand02 defines a command code handling user-defined commands.
 	UserCommand02 ServerCommandEnum
-	// UserCommand03 defines a service command code for handling user-defined commands.
+	// UserCommand03 defines a command code handling user-defined commands.
 	UserCommand03 ServerCommandEnum
-	// UserCommand04 defines a service command code for handling user-defined commands.
+	// UserCommand04 defines a command code handling user-defined commands.
 	UserCommand04 ServerCommandEnum
-	// UserCommand05 defines a service command code for handling user-defined commands.
+	// UserCommand05 defines a command code handling user-defined commands.
 	UserCommand05 ServerCommandEnum
-	// UserCommand06 defines a service command code for handling user-defined commands.
+	// UserCommand06 defines a command code handling user-defined commands.
 	UserCommand06 ServerCommandEnum
-	// UserCommand07 defines a service command code for handling user-defined commands.
+	// UserCommand07 defines a command code handling user-defined commands.
 	UserCommand07 ServerCommandEnum
-	// UserCommand08 defines a service command code for handling user-defined commands.
+	// UserCommand08 defines a command code handling user-defined commands.
 	UserCommand08 ServerCommandEnum
-	// UserCommand09 defines a service command code for handling user-defined commands.
+	// UserCommand09 defines a command code handling user-defined commands.
 	UserCommand09 ServerCommandEnum
-	// UserCommand10 defines a service command code for handling user-defined commands.
+	// UserCommand10 defines a command code handling user-defined commands.
 	UserCommand10 ServerCommandEnum
-	// UserCommand11 defines a service command code for handling user-defined commands.
+	// UserCommand11 defines a command code handling user-defined commands.
 	UserCommand11 ServerCommandEnum
-	// UserCommand12 defines a service command code for handling user-defined commands.
+	// UserCommand12 defines a command code handling user-defined commands.
 	UserCommand12 ServerCommandEnum
-	// UserCommand13 defines a service command code for handling user-defined commands.
+	// UserCommand13 defines a command code handling user-defined commands.
 	UserCommand13 ServerCommandEnum
-	// UserCommand14 defines a service command code for handling user-defined commands.
+	// UserCommand14 defines a command code handling user-defined commands.
 	UserCommand14 ServerCommandEnum
-	// UserCommand15 defines a service command code for handling user-defined commands.
+	// UserCommand15 defines a command code handling user-defined commands.
 	UserCommand15 ServerCommandEnum
 }{
 	/*
@@ -301,7 +317,10 @@ var ServerCommand = struct {
 	DefineOperationalModes:   0x06,
 	ConfirmNotification:      0x07,
 	ConfirmBufferBlock:       0x08,
+	ConfirmUpdateBaseTimes:   0x09,
 	ConfirmSignalIndexCache:  0x0A,
+	GetPrimaryMetadataSchema: 0x0B,
+	GetSignalSelectionSchema: 0x0C,
 	UserCommand00:            0xD0,
 	UserCommand01:            0xD1,
 	UserCommand02:            0xD2,
@@ -387,61 +406,73 @@ type ServerResponseEnum byte
 // ServerResponse is an enumeration of the possible server responses received sent
 // by a DataPublisher and received by a DataSubscriber during an STTP session.
 var ServerResponse = struct {
-	// Succeeded defines a service response code for indicating a succeeded response. Informs client that its solicited server command succeeded, original command and success message follow.
+	// Succeeded defines a response code for indicating a succeeded response.
+	// Informs client that its solicited server command succeeded, original command and success message follow.
 	Succeeded ServerResponseEnum
-	// Failed defines a service response code for indicating a failed response. Informs client that its solicited server command failed, original command and failure message follow.
+	// Failed defines a response code for indicating a failed response.
+	// Informs client that its solicited server command failed, original command and failure message follow.
 	Failed ServerResponseEnum
-	// DataPacket defines a service response code for indicating a data packet. Unsolicited response informs client that a data packet follows.
+	// DataPacket defines a response code for indicating a data packet.
+	// Unsolicited response informs client that a data packet follows.
 	DataPacket ServerResponseEnum
-	// UpdateSignalIndexCache defines a service response code for indicating a signal index cache update. Unsolicited response requests that client update its runtime signal index cache with the one that follows.
+	// UpdateSignalIndexCache defines a response code for indicating a signal index cache update.
+	// Unsolicited response requests that client update its runtime signal index cache with the one that follows.
 	UpdateSignalIndexCache ServerResponseEnum
-	// UpdateBaseTimes defines a service response code for indicating a runtime base-timestamp offsets have been updated. Unsolicited response requests that client update its runtime base-timestamp offsets with those that follow.
+	// UpdateBaseTimes defines a response code for indicating a runtime base-timestamp offsets have been updated.
+	// Unsolicited response requests that client update its runtime base-timestamp offsets with those that follow.
 	UpdateBaseTimes ServerResponseEnum
-	// UpdateCipherKeys defines a service response code for indicating a runtime cipher keys have been updated. Response, solicited or unsolicited, requests that client update its runtime data cipher keys with those that follow.
+	// UpdateCipherKeys defines a response code for indicating a runtime cipher keys have been updated.
+	// Response, solicited or unsolicited, requests that client update its runtime data cipher keys with those that follow.
 	UpdateCipherKeys ServerResponseEnum
-	// DataStartTime defines a service response code for indicating the start time of data being published. Unsolicited response provides the start time of data being processed from the first measurement.
+	// DataStartTime defines a response code for indicating the start time of data being published.
+	// Unsolicited response provides the start time of data being processed from the first measurement.
 	DataStartTime ServerResponseEnum
-	// ProcessingComplete defines a service response code for indicating that processing has completed. Unsolicited response provides notification that input processing has completed, typically via temporal constraint.
+	// ProcessingComplete defines a response code for indicating that processing has completed.
+	// Unsolicited response provides notification that input processing has completed, typically via temporal constraint.
 	ProcessingComplete ServerResponseEnum
-	// BufferBlock defines a service response code for indicating a buffer block. Unsolicited response informs client that a raw buffer block follows.
+	// BufferBlock defines a response code for indicating a buffer block.
+	// Unsolicited response informs client that a raw buffer block follows.
 	BufferBlock ServerResponseEnum
-	// Notification defines a service response code for indicating a notification. Unsolicited response provides a notification message to the client.
+	// Notification defines a response code for indicating a notification.
+	// Unsolicited response provides a notification message to the client.
 	Notification ServerResponseEnum
-	// ConfigurationChanged defines a service response code for indicating a that the publisher configuration metadata has changed. Unsolicited response provides a notification that the publisher's source configuration has changed and that client may want to request a meta-data refresh.
+	// ConfigurationChanged defines a response code for indicating a that the publisher configuration metadata has changed.
+	// Unsolicited response provides a notification that the publisher's source configuration has changed and that client may want to request a meta-data refresh.
 	ConfigurationChanged ServerResponseEnum
-	// UserResponse00 defines a service response code for handling user-defined responses.
+	// UserResponse00 defines a response code handling user-defined responses.
 	UserResponse00 ServerResponseEnum
-	// UserResponse01 defines a service response code for handling user-defined responses.
+	// UserResponse01 defines a response code handling user-defined responses.
 	UserResponse01 ServerResponseEnum
-	// UserResponse02 defines a service response code for handling user-defined responses.
+	// UserResponse02 defines a response code handling user-defined responses.
 	UserResponse02 ServerResponseEnum
-	// UserResponse03 defines a service response code for handling user-defined responses.
+	// UserResponse03 defines a response code handling user-defined responses.
 	UserResponse03 ServerResponseEnum
-	// UserResponse04 defines a service response code for handling user-defined responses.
+	// UserResponse04 defines a response code handling user-defined responses.
 	UserResponse04 ServerResponseEnum
-	// UserResponse05 defines a service response code for handling user-defined responses.
+	// UserResponse05 defines a response code handling user-defined responses.
 	UserResponse05 ServerResponseEnum
-	// UserResponse06 defines a service response code for handling user-defined responses.
+	// UserResponse06 defines a response code handling user-defined responses.
 	UserResponse06 ServerResponseEnum
-	// UserResponse07 defines a service response code for handling user-defined responses.
+	// UserResponse07 defines a response code handling user-defined responses.
 	UserResponse07 ServerResponseEnum
-	// UserResponse08 defines a service response code for handling user-defined responses.
+	// UserResponse08 defines a response code handling user-defined responses.
 	UserResponse08 ServerResponseEnum
-	// UserResponse09 defines a service response code for handling user-defined responses.
+	// UserResponse09 defines a response code handling user-defined responses.
 	UserResponse09 ServerResponseEnum
-	// UserResponse10 defines a service response code for handling user-defined responses.
+	// UserResponse10 defines a response code handling user-defined responses.
 	UserResponse10 ServerResponseEnum
-	// UserResponse11 defines a service response code for handling user-defined responses.
+	// UserResponse11 defines a response code handling user-defined responses.
 	UserResponse11 ServerResponseEnum
-	// UserResponse12 defines a service response code for handling user-defined responses.
+	// UserResponse12 defines a response code handling user-defined responses.
 	UserResponse12 ServerResponseEnum
-	// UserResponse13 defines a service response code for handling user-defined responses.
+	// UserResponse13 defines a response code handling user-defined responses.
 	UserResponse13 ServerResponseEnum
-	// UserResponse14 defines a service response code for handling user-defined responses.
+	// UserResponse14 defines a response code handling user-defined responses.
 	UserResponse14 ServerResponseEnum
-	// UserResponse15 defines a service response code for handling user-defined responses.
+	// UserResponse15 defines a response code handling user-defined responses.
 	UserResponse15 ServerResponseEnum
-	// NoOP defines a service response code for indicating a nil-operation keep-alive ping. The command channel can remain quiet for some time, this command allows a period test of client connectivity.
+	// NoOP defines a response code for indicating a nil-operation keep-alive ping.
+	// The command channel can remain quiet for some time, this command allows a period test of client connectivity.
 	NoOP ServerResponseEnum
 }{
 	/*
@@ -556,34 +587,44 @@ type OperationalModesEnum uint32
 // OperationalModes is an enumeration of the possible modes that affect how DataPublisher and DataSubscriber
 // communicate during an STTP session.
 var OperationalModes = struct {
-	// VersionMask defines a bit mask used to get version number of protocol. Version number is currently set to 2.
+	// VersionMask defines a bit mask used to get version number of protocol.
+	// Version number is currently set to 2.
 	VersionMask OperationalModesEnum
-	// CompressionModeMask defines a bit mask used to get mode of compression. GZip and TSSC compression are the only modes currently supported. Remaining bits are reserved for future compression modes.
-	CompressionModeMask OperationalModesEnum
 	// EncodingMask defines a bit mask used to get character encoding used when exchanging messages between publisher and subscriber.
+	// STTP currently only supports UTF-8 string encoding.
 	EncodingMask OperationalModesEnum
-	// ReceiveExternalMetadata defines a bit flag used to determine whether external measurements are exchanged during metadata synchronization. Bit set = external measurements are exchanged, bit clear = no external measurements are exchanged.
+    /// Bit mask used to apply an implementation-specific extension to STTP.
+    /// If the value is zero, no implementation specific extensions are applied.
+    /// If the value is non-zero, an implementation specific extension is applied, and all parties need to coordinate and agree to the extension.
+    /// If extended flags are unsupported, returned failure message text should be prefixed with UNSUPPORTED EXTENSION: as the context reference.
+    ImplementationSpecificExtensionMask OperationalModesEnum
+	// ReceiveExternalMetadata defines a bit flag used to determine whether external measurements are exchanged during metadata synchronization.
+	// Bit set = external measurements are exchanged, bit clear = no external measurements are exchanged.
 	ReceiveExternalMetadata OperationalModesEnum
-	// ReceiveInternalMetadata defines a bit flag used to determine whether internal measurements are exchanged during metadata synchronization. Bit set = internal measurements are exchanged, bit clear = no internal measurements are exchanged.
+	// ReceiveInternalMetadata defines a bit flag used to determine whether internal measurements are exchanged during metadata synchronization.
+	// Bit set = internal measurements are exchanged, bit clear = no internal measurements are exchanged.
 	ReceiveInternalMetadata OperationalModesEnum
-	// CompressPayloadData defines a bit flag used to determine whether payload data is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
+	// CompressPayloadData defines a bit flag used to determine whether payload data is compressed when exchanging between publisher and subscriber.
+	// Bit set = compress, bit clear = no compression.
 	CompressPayloadData OperationalModesEnum
-	// CompressSignalIndexCache defines a bit flag used to determine whether the signal index cache is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
+	// CompressSignalIndexCache defines a bit flag used to determine whether the signal index cache is compressed when exchanging between publisher and subscriber.
+	// Bit set = compress, bit clear = no compression.
 	CompressSignalIndexCache OperationalModesEnum
-	// CompressMetadata defines a bit flag used to determine whether metadata is compressed when exchanging between publisher and subscriber. Bit set = compress, bit clear = no compression.
+	// CompressMetadata defines a bit flag used to determine whether metadata is compressed when exchanging between publisher and subscriber.
+	// Bit set = compress, bit clear = no compression.
 	CompressMetadata OperationalModesEnum
 	// NoFlags defines state where there are no flags set.
 	NoFlags OperationalModesEnum
 }{
-	VersionMask:              0x0000001F,
-	CompressionModeMask:      0x000000E0,
-	EncodingMask:             0x00000300,
-	ReceiveExternalMetadata:  0x02000000,
-	ReceiveInternalMetadata:  0x04000000,
-	CompressPayloadData:      0x20000000,
-	CompressSignalIndexCache: 0x40000000,
-	CompressMetadata:         0x80000000,
-	NoFlags:                  0x00000000,
+	VersionMask:              			 0x000000FF,
+	EncodingMask:             			 0x00000300,
+	ImplementationSpecificExtensionMask: 0x00FF0000,
+	ReceiveExternalMetadata:             0x02000000,
+	ReceiveInternalMetadata:			 0x04000000,
+	CompressPayloadData:      			 0x20000000,
+	CompressSignalIndexCache: 			 0x40000000,
+	CompressMetadata:         			 0x80000000,
+	NoFlags:                  			 0x00000000,
 }
 
 // OperationalEncodingEnum defines the type of the OperationalEncoding enumeration.
@@ -591,9 +632,11 @@ type OperationalEncodingEnum uint32
 
 // OperationalEncoding is an enumeration of the possible string encoding options of an STTP session.
 var OperationalEncoding = struct {
-	// UTF16LE targets little-endian 16-bit Unicode character encoding for strings (deprecated).
+	// UTF16LE targets little-endian 16-bit Unicode character encoding for strings.
+	// Deprecated: STTP currently only supports UTF-8 string encoding.
 	UTF16LE OperationalEncodingEnum
-	// UTF16BE targets big-endian 16-bit Unicode character encoding for strings (deprecated).
+	// UTF16BE targets big-endian 16-bit Unicode character encoding for strings.
+	// Deprecated: STTP currently only supports UTF-8 string encoding.
 	UTF16BE OperationalEncodingEnum
 	// UTF8 targets 8-bit variable-width Unicode character encoding for strings.
 	UTF8 OperationalEncodingEnum
@@ -607,6 +650,8 @@ var OperationalEncoding = struct {
 type CompressionModesEnum uint32
 
 // CompressionModes is an enumeration of the possible compression modes supported by STTP.
+// Deprecated: Only used for backwards compatibility with pre-standard STTP implementations.
+// OperationalModes now supports custom compression types
 var CompressionModes = struct {
 	// GZip defines a bit flag used determine if GZip compression will be used to metadata exchange.
 	GZip CompressionModesEnum

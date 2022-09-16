@@ -45,7 +45,7 @@ import (
 	"github.com/tevino/abool/v2"
 )
 
-// DataSubscriber represents a client subscription for an STTP connection.
+// DataSubscriber represents a subscription for an STTP connection.
 type DataSubscriber struct {
 	subscription SubscriptionInfo
 	subscriberID guid.Guid
