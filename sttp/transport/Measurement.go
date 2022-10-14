@@ -40,7 +40,7 @@ type Measurement struct {
 	// Instantaneous value of the measurement.
 	Value float64
 
-	// The time, in ticks, that this measurement was taken.
+	// The STTP uint64 timestamp, in ticks, that this measurement was taken.
 	Timestamp ticks.Ticks
 
 	// Flags indicating the state of the measurement as reported by the device that took it.

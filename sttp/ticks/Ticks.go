@@ -31,7 +31,8 @@ import (
 // that have elapsed since 12:00:00 midnight, January 1, 0001 UTC, Gregorian calendar. A single tick represents one hundred
 // nanoseconds, or one ten-millionth of a second. There are 10,000 ticks in a millisecond and 10 million ticks in a second.
 // Only bits 01 to 62 (0x3FFFFFFFFFFFFFFF) are used to represent the timestamp value. Bit 64 (0x8000000000000000) is used
-// to denote leap second, i.e., second 60, where actual second value would remain at 59. Bit 63 is reserved and unset.
+// to denote leap second, i.e., second 60, where actual second value would remain at 59. Bit 63 (0x4000000000000000)is used
+// to denote leap second direction, 0 for add, 1 for delete.
 type Ticks uint64
 
 // Min is the minimum value for Ticks. It represents UTC time 01/01/0001 00:00:00.000.
@@ -61,11 +62,11 @@ const PerDay Ticks = 24 * PerHour
 // LeapSecondFlag is the flag (64th bit) that marks a Ticks value as a leap second, i.e., second 60 (one beyond normal second 59).
 const LeapSecondFlag Ticks = 1 << 63
 
-// ReservedUTCFlag is the reserved flag (63rd bit) that should be unset when serializing and deserializing Ticks.
-const ReservedUTCFlag Ticks = 1 << 62
+// LeapSecondDirection is the flag (63rd bit) that indicates if leap second is positive or negative; 0 for add, 1 for delete.
+const LeapSecondDirection Ticks = 1 << 62
 
 // ValueMask defines all bits (bits 1 to 62) that make up the value portion of a Ticks that represent time.
-const ValueMask Ticks = ^LeapSecondFlag & ^ReservedUTCFlag
+const ValueMask Ticks = ^LeapSecondFlag & ^LeapSecondDirection
 
 // UnixBaseOffset is the Ticks representation of the Unix epoch timestamp starting at January 1, 1970.
 const UnixBaseOffset Ticks = 621355968000000000

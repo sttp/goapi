@@ -36,8 +36,8 @@ func TestValidateTicksConstants(t *testing.T) {
 		t.Fatalf("ValidateTicksConstants: unexpected ticks value mask value")
 	}
 
-	if ReservedUTCFlag != 0x4000000000000000 {
-		t.Fatalf("ValidateTicksConstants: unexpected ticks reserved UTC flag value")
+	if LeapSecondDirection != 0x4000000000000000 {
+		t.Fatalf("ValidateTicksConstants: unexpected ticks leap second direction flag value")
 	}
 }
 
