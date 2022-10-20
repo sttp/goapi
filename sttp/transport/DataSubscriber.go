@@ -328,7 +328,7 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 
 	// TODO: Add TLS implementation options
 	// TODO: Add reverse (server-based) connection options, see:
-	// https://sttp.github.io/documentation/reverse-connections/
+	// https://sttp.info/reverse-connections/
 
 	ds.commandChannelSocket, err = net.Dial("tcp", hostName+":"+strconv.Itoa(int(port)))
 
@@ -359,32 +359,32 @@ func (ds *DataSubscriber) Subscribe() error {
 
 	atomic.StoreUint64(&ds.totalMeasurementsReceived, 0)
 
-	var connectionBuilder strings.Builder
+	var parameterBuilder strings.Builder
 
-	connectionBuilder.WriteString("throttled=")
-	connectionBuilder.WriteString(strconv.FormatBool(ds.subscription.Throttled))
-	connectionBuilder.WriteString(";publishInterval=")
-	connectionBuilder.WriteString(strconv.FormatFloat(ds.subscription.PublishInterval, 'f', 6, 64))
-	connectionBuilder.WriteString(";includeTime=")
-	connectionBuilder.WriteString(strconv.FormatBool(ds.subscription.IncludeTime))
-	connectionBuilder.WriteString(";processingInterval=")
-	connectionBuilder.WriteString(strconv.FormatInt(int64(ds.subscription.ProcessingInterval), 10))
-	connectionBuilder.WriteString(";useMillisecondResolution=")
-	connectionBuilder.WriteString(strconv.FormatBool(ds.subscription.UseMillisecondResolution))
-	connectionBuilder.WriteString(";requestNaNValueFilter")
-	connectionBuilder.WriteString(strconv.FormatBool(ds.subscription.RequestNaNValueFilter))
-	connectionBuilder.WriteString(";assemblyInfo={source=")
-	connectionBuilder.WriteString(ds.STTPSourceInfo)
-	connectionBuilder.WriteString(";version=")
-	connectionBuilder.WriteString(ds.STTPVersionInfo)
-	connectionBuilder.WriteString(";updatedOn=")
-	connectionBuilder.WriteString(ds.STTPUpdatedOnInfo)
-	connectionBuilder.WriteString("}")
+	parameterBuilder.WriteString("throttled=")
+	parameterBuilder.WriteString(strconv.FormatBool(ds.subscription.Throttled))
+	parameterBuilder.WriteString(";publishInterval=")
+	parameterBuilder.WriteString(strconv.FormatFloat(ds.subscription.PublishInterval, 'f', 6, 64))
+	parameterBuilder.WriteString(";includeTime=")
+	parameterBuilder.WriteString(strconv.FormatBool(ds.subscription.IncludeTime))
+	parameterBuilder.WriteString(";processingInterval=")
+	parameterBuilder.WriteString(strconv.FormatInt(int64(ds.subscription.ProcessingInterval), 10))
+	parameterBuilder.WriteString(";useMillisecondResolution=")
+	parameterBuilder.WriteString(strconv.FormatBool(ds.subscription.UseMillisecondResolution))
+	parameterBuilder.WriteString(";requestNaNValueFilter")
+	parameterBuilder.WriteString(strconv.FormatBool(ds.subscription.RequestNaNValueFilter))
+	parameterBuilder.WriteString(";assemblyInfo={source=")
+	parameterBuilder.WriteString(ds.STTPSourceInfo)
+	parameterBuilder.WriteString(";version=")
+	parameterBuilder.WriteString(ds.STTPVersionInfo)
+	parameterBuilder.WriteString(";updatedOn=")
+	parameterBuilder.WriteString(ds.STTPUpdatedOnInfo)
+	parameterBuilder.WriteString("}")
 
 	if len(ds.subscription.FilterExpression) > 0 {
-		connectionBuilder.WriteString(";filterExpression={")
-		connectionBuilder.WriteString(ds.subscription.FilterExpression)
-		connectionBuilder.WriteString("}")
+		parameterBuilder.WriteString(";filterExpression={")
+		parameterBuilder.WriteString(ds.subscription.FilterExpression)
+		parameterBuilder.WriteString("}")
 	}
 
 	if ds.subscription.UdpDataChannel {
@@ -404,38 +404,38 @@ func (ds *DataSubscriber) Subscribe() error {
 		ds.dataChannelResponseThread = thread.NewThread(ds.runDataChannelResponseThread)
 		ds.dataChannelResponseThread.Start()
 
-		connectionBuilder.WriteString(";dataChannel={localport=")
-		connectionBuilder.WriteString(udpPort)
-		connectionBuilder.WriteString("}")
+		parameterBuilder.WriteString(";dataChannel={localport=")
+		parameterBuilder.WriteString(udpPort)
+		parameterBuilder.WriteString("}")
 	}
 
 	if len(ds.subscription.StartTime) > 0 {
-		connectionBuilder.WriteString(";startTimeConstraint=")
-		connectionBuilder.WriteString(ds.subscription.StartTime)
+		parameterBuilder.WriteString(";startTimeConstraint=")
+		parameterBuilder.WriteString(ds.subscription.StartTime)
 	}
 
 	if len(ds.subscription.StopTime) > 0 {
-		connectionBuilder.WriteString(";stopTimeConstraint=")
-		connectionBuilder.WriteString(ds.subscription.StopTime)
+		parameterBuilder.WriteString(";stopTimeConstraint=")
+		parameterBuilder.WriteString(ds.subscription.StopTime)
 	}
 
 	if len(ds.subscription.ConstraintParameters) > 0 {
-		connectionBuilder.WriteString(";timeConstraintParameters=")
-		connectionBuilder.WriteString(ds.subscription.ConstraintParameters)
+		parameterBuilder.WriteString(";timeConstraintParameters=")
+		parameterBuilder.WriteString(ds.subscription.ConstraintParameters)
 	}
 
 	if len(ds.subscription.ExtraConnectionStringParameters) > 0 {
-		connectionBuilder.WriteRune(';')
-		connectionBuilder.WriteString(ds.subscription.ExtraConnectionStringParameters)
+		parameterBuilder.WriteRune(';')
+		parameterBuilder.WriteString(ds.subscription.ExtraConnectionStringParameters)
 	}
 
-	connectionString := connectionBuilder.String()
-	length := uint32(len(connectionString))
+	parameterString := parameterBuilder.String()
+	length := uint32(len(parameterString)) // In Go, this is number of bytes in string, not number of characters
 	buffer := make([]byte, 5+length)
 
 	buffer[0] = byte(DataPacketFlags.Compact)
 	binary.BigEndian.PutUint32(buffer[1:], length)
-	copy(buffer[5:], connectionString)
+	copy(buffer[5:], parameterString)
 
 	ds.SendServerCommandWithPayload(ServerCommand.Subscribe, buffer)
 
