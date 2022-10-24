@@ -99,7 +99,7 @@ func SetLeapSecond(ticks Ticks) Ticks {
 
 // IsNegativeLeapSecond determines if the deserialized Ticks value represents a negative leap second, i.e., checks flag on second 58 to see if second 59 will be missing.
 func IsNegativeLeapSecond(ticks Ticks) bool {
-	return (ticks & LeapSecondDirection) > 0
+	return IsLeapSecond(ticks) && (ticks & LeapSecondDirection) > 0
 }
 
 // SetNegativeLeapSecond flags a Ticks value to represent a negative leap second, i.e., sets flag on second 58 to mark that second 59 will be missing, before wire serialization.
