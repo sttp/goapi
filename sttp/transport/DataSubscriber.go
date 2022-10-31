@@ -511,10 +511,9 @@ func (ds *DataSubscriber) disconnect(joinThread bool, autoReconnecting bool) {
 	})
 
 	ds.disconnectThreadMutex.Lock()
+	disconnectThread.Start()
 	ds.disconnectThread = disconnectThread
 	ds.disconnectThreadMutex.Unlock()
-
-	disconnectThread.Start()
 
 	if joinThread {
 		disconnectThread.Join()
