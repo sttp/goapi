@@ -709,7 +709,7 @@ func (ds *DataSubscriber) processServerResponse(buffer []byte) {
 		ds.handleConfigurationChanged()
 	case ServerResponse.BufferBlock:
 		ds.handleBufferBlock(data)
-	case ServerResponse.Notification:
+	case ServerResponse.Notify:
 		ds.handleNotification(data)
 	case ServerResponse.NoOP:
 		// NoOP handled
@@ -864,7 +864,7 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 	ds.signalIndexCacheMutex.Unlock()
 
 	if version > 1 {
-		ds.SendServerCommand(ServerCommand.ConfirmSignalIndexCache)
+		ds.SendServerCommand(ServerCommand.ConfirmUpdateSignalIndexCache)
 	}
 
 	ds.BeginCallbackSync()

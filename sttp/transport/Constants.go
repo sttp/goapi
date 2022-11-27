@@ -261,9 +261,12 @@ var ServerCommand = struct {
 	// ConfirmUpdateBaseTimes defines a command code for receipt of a base time update.
 	// This message is sent in response to ServerResponse.UpdateBaseTimes.
 	ConfirmUpdateBaseTimes ServerCommandEnum
-	// ConfirmSignalIndexCache defines a service command for confirming the receipt of a signal index cache.
+	// ConfirmUpdateSignalIndexCache defines a service command for confirming the receipt of a signal index cache.
 	// This allows publisher to safely transition to next signal index cache.
-	ConfirmSignalIndexCache ServerCommandEnum
+	ConfirmUpdateSignalIndexCache ServerCommandEnum
+	// ConfirmUpdateCipherKeys defines a command code for receipt of a cipher key update.
+	// This verifies delivery of the cipher keys indicating that it is safe to transition to the new keys.
+	ConfirmUpdateCipherKeys ServerCommandEnum
 	// GetPrimaryMetadataSchema defines a command code for requesting the primary metadata schema.
 	GetPrimaryMetadataSchema ServerCommandEnum
 	// GetSignalSelectionSchema defines a command code for requesting the signal selection schema.
@@ -308,38 +311,40 @@ var ServerCommand = struct {
 	   will return a serialized DataSet of the available server metadata. Message type for failed responses
 	   will always be a string of text representing the error message.
 	*/
-	Connect:                  0x00,
-	MetadataRefresh:          0x01,
-	Subscribe:                0x02,
-	Unsubscribe:              0x03,
-	RotateCipherKeys:         0x04,
-	UpdateProcessingInterval: 0x05,
-	DefineOperationalModes:   0x06,
-	ConfirmNotification:      0x07,
-	ConfirmBufferBlock:       0x08,
-	ConfirmUpdateBaseTimes:   0x09,
-	ConfirmSignalIndexCache:  0x0A,
-	GetPrimaryMetadataSchema: 0x0B,
-	GetSignalSelectionSchema: 0x0C,
-	UserCommand00:            0xD0,
-	UserCommand01:            0xD1,
-	UserCommand02:            0xD2,
-	UserCommand03:            0xD3,
-	UserCommand04:            0xD4,
-	UserCommand05:            0xD5,
-	UserCommand06:            0xD6,
-	UserCommand07:            0xD7,
-	UserCommand08:            0xD8,
-	UserCommand09:            0xD9,
-	UserCommand10:            0xDA,
-	UserCommand11:            0xDB,
-	UserCommand12:            0xDC,
-	UserCommand13:            0xDD,
-	UserCommand14:            0xDE,
-	UserCommand15:            0xDF,
+	Connect:                       0x00,
+	MetadataRefresh:               0x01,
+	Subscribe:                     0x02,
+	Unsubscribe:                   0x03,
+	RotateCipherKeys:              0x04,
+	UpdateProcessingInterval:      0x05,
+	DefineOperationalModes:        0x06,
+	ConfirmNotification:           0x07,
+	ConfirmBufferBlock:            0x08,
+	ConfirmUpdateBaseTimes:        0x09,
+	ConfirmUpdateSignalIndexCache: 0x0A,
+	ConfirmUpdateCipherKeys:       0x0B,
+	GetPrimaryMetadataSchema:      0x0C,
+	GetSignalSelectionSchema:      0x0D,
+	UserCommand00:                 0xD0,
+	UserCommand01:                 0xD1,
+	UserCommand02:                 0xD2,
+	UserCommand03:                 0xD3,
+	UserCommand04:                 0xD4,
+	UserCommand05:                 0xD5,
+	UserCommand06:                 0xD6,
+	UserCommand07:                 0xD7,
+	UserCommand08:                 0xD8,
+	UserCommand09:                 0xD9,
+	UserCommand10:                 0xDA,
+	UserCommand11:                 0xDB,
+	UserCommand12:                 0xDC,
+	UserCommand13:                 0xDD,
+	UserCommand14:                 0xDE,
+	UserCommand15:                 0xDF,
 }
 
 // String gets the ServerCommand enumeration value as a string.
+//
 //gocyclo:ignore
 func (sce ServerCommandEnum) String() string {
 	switch sce {
@@ -361,8 +366,14 @@ func (sce ServerCommandEnum) String() string {
 		return "ConfirmNotification"
 	case ServerCommand.ConfirmBufferBlock:
 		return "ConfirmBufferBlock"
-	case ServerCommand.ConfirmSignalIndexCache:
-		return "ConfirmSignalIndexCache"
+	case ServerCommand.ConfirmUpdateSignalIndexCache:
+		return "ConfirmUpdateSignalIndexCache"
+	case ServerCommand.ConfirmUpdateCipherKeys:
+		return "ConfirmUpdateCipherKeys"
+	case ServerCommand.GetPrimaryMetadataSchema:
+		return "GetPrimaryMetadataSchema"
+	case ServerCommand.GetSignalSelectionSchema:
+		return "GetSignalSelectionSchema"
 	case ServerCommand.UserCommand00:
 		return "UserCommand00"
 	case ServerCommand.UserCommand01:
@@ -433,9 +444,9 @@ var ServerResponse = struct {
 	// BufferBlock defines a response code for indicating a buffer block.
 	// Unsolicited response informs client that a raw buffer block follows.
 	BufferBlock ServerResponseEnum
-	// Notification defines a response code for indicating a notification.
+	// Notify defines a response code for indicating a notification.
 	// Unsolicited response provides a notification message to the client.
-	Notification ServerResponseEnum
+	Notify ServerResponseEnum
 	// ConfigurationChanged defines a response code for indicating a that the publisher configuration metadata has changed.
 	// Unsolicited response provides a notification that the publisher's source configuration has changed and that client may want to request a meta-data refresh.
 	ConfigurationChanged ServerResponseEnum
@@ -488,7 +499,7 @@ var ServerResponse = struct {
 	DataStartTime:          0x86,
 	ProcessingComplete:     0x87,
 	BufferBlock:            0x88,
-	Notification:           0x89,
+	Notify:                 0x89,
 	ConfigurationChanged:   0x8A,
 	UserResponse00:         0xE0,
 	UserResponse01:         0xE1,
@@ -510,6 +521,7 @@ var ServerResponse = struct {
 }
 
 // String gets the ServerResponse enumeration value as a string.
+//
 //gocyclo:ignore
 func (sre ServerResponseEnum) String() string {
 	switch sre {
@@ -531,8 +543,8 @@ func (sre ServerResponseEnum) String() string {
 		return "ProcessingComplete"
 	case ServerResponse.BufferBlock:
 		return "BufferBlock"
-	case ServerResponse.Notification:
-		return "Notification"
+	case ServerResponse.Notify:
+		return "Notify"
 	case ServerResponse.ConfigurationChanged:
 		return "ConfigurationChanged"
 	case ServerResponse.UserResponse00:
@@ -593,11 +605,11 @@ var OperationalModes = struct {
 	// EncodingMask defines a bit mask used to get character encoding used when exchanging messages between publisher and subscriber.
 	// STTP currently only supports UTF-8 string encoding.
 	EncodingMask OperationalModesEnum
-    /// Bit mask used to apply an implementation-specific extension to STTP.
-    /// If the value is zero, no implementation specific extensions are applied.
-    /// If the value is non-zero, an implementation specific extension is applied, and all parties need to coordinate and agree to the extension.
-    /// If extended flags are unsupported, returned failure message text should be prefixed with UNSUPPORTED EXTENSION: as the context reference.
-    ImplementationSpecificExtensionMask OperationalModesEnum
+	/// Bit mask used to apply an implementation-specific extension to STTP.
+	/// If the value is zero, no implementation specific extensions are applied.
+	/// If the value is non-zero, an implementation specific extension is applied, and all parties need to coordinate and agree to the extension.
+	/// If extended flags are unsupported, returned failure message text should be prefixed with UNSUPPORTED EXTENSION: as the context reference.
+	ImplementationSpecificExtensionMask OperationalModesEnum
 	// ReceiveExternalMetadata defines a bit flag used to determine whether external measurements are exchanged during metadata synchronization.
 	// Bit set = external measurements are exchanged, bit clear = no external measurements are exchanged.
 	ReceiveExternalMetadata OperationalModesEnum
@@ -616,15 +628,15 @@ var OperationalModes = struct {
 	// NoFlags defines state where there are no flags set.
 	NoFlags OperationalModesEnum
 }{
-	VersionMask:              			 0x000000FF,
-	EncodingMask:             			 0x00000300,
+	VersionMask:                         0x000000FF,
+	EncodingMask:                        0x00000300,
 	ImplementationSpecificExtensionMask: 0x00FF0000,
 	ReceiveExternalMetadata:             0x02000000,
-	ReceiveInternalMetadata:			 0x04000000,
-	CompressPayloadData:      			 0x20000000,
-	CompressSignalIndexCache: 			 0x40000000,
-	CompressMetadata:         			 0x80000000,
-	NoFlags:                  			 0x00000000,
+	ReceiveInternalMetadata:             0x04000000,
+	CompressPayloadData:                 0x20000000,
+	CompressSignalIndexCache:            0x40000000,
+	CompressMetadata:                    0x80000000,
+	NoFlags:                             0x00000000,
 }
 
 // OperationalEncodingEnum defines the type of the OperationalEncoding enumeration.
@@ -660,8 +672,8 @@ var CompressionModes = struct {
 	// NoFlags defines state where no compression will be used.
 	NoFlags CompressionModesEnum
 }{
-	GZip: 0x00000020,
-	TSSC: 0x00000040,
+	GZip:    0x00000020,
+	TSSC:    0x00000040,
 	NoFlags: 0x00000000,
 }
 
