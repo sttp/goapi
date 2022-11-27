@@ -27,17 +27,21 @@ package sttp
 type Config struct {
 	// MaxRetries defines the maximum number of times to retry a connection.
 	// Set value to -1 to retry infinitely.
+	// Note: setting ignored for listening connections.
 	MaxRetries int32
 
 	// RetryInterval defines the base retry interval, in milliseconds. Retries will
 	// exponentially back-off starting from this interval.
+	// Note: setting ignored for listening connections.
 	RetryInterval int32
 
 	// MaxRetryInterval defines the maximum retry interval, in milliseconds.
+	// Note: setting ignored for listening connections.
 	MaxRetryInterval int32
 
 	// AutoReconnect defines flag that determines if connections should be
 	// automatically reattempted.
+	// Note: setting ignored for listening connections.
 	AutoReconnect bool
 
 	// AutoRequestMetadata defines the flag that determines if metadata should be

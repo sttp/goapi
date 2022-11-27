@@ -29,6 +29,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"io"
+	"net"
+	"strings"
 )
 
 func decipherAES(key, iv, data []byte) ([]byte, error) {
@@ -61,4 +63,22 @@ func decompressGZip(data []byte) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func resolveDNSName(addr string) string {
+	if strings.Contains(addr, ":") {
+		host, _, err := net.SplitHostPort(addr)
+
+		if err == nil {
+			addr = host
+		}
+	}
+
+	hostNames, err := net.LookupAddr(addr)
+
+	if err == nil && len(hostNames) > 0 {
+		return hostNames[0] + " (" + addr + ")"
+	}
+
+	return addr
 }

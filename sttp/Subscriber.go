@@ -101,13 +101,32 @@ func (sb *Subscriber) dataSubscriber() *transport.DataSubscriber {
 }
 
 // IsConnected determines if Subscriber is currently connected to a data publisher.
+// When Subscriber is listening for connections, this method will only return true
+// once a data publisher successfully connects to the listening socket.
 func (sb *Subscriber) IsConnected() bool {
 	return sb.dataSubscriber().IsConnected()
+}
+
+// IsValidated determines if Subscriber connection has been validated as an STTP connection.
+// This method will return false until a valid response has been received from the data publisher.
+func (sb *Subscriber) IsValidated() bool {
+	return sb.dataSubscriber().IsValidated()
+}
+
+// IsListening determines if Subscriber is currently listening for connections from
+// a data publisher, i.e., if Subscriber is in reverse connection mode.
+func (sb *Subscriber) IsListening() bool {
+	return sb.dataSubscriber().IsListening()
 }
 
 // IsSubscribed determines if Subscriber is currently subscribed to a data stream.
 func (sb *Subscriber) IsSubscribed() bool {
 	return sb.dataSubscriber().IsSubscribed()
+}
+
+// ConnectionID returns the IP address and DNS host name, if resolvable, of current STTP connection.
+func (sb *Subscriber) ConnectionID() string {
+	return sb.dataSubscriber().ConnectionID()
 }
 
 // ActiveSignalIndexCache gets the active signal index cache.
@@ -161,6 +180,14 @@ func (sb *Subscriber) AdjustedValue(measurement *transport.Measurement) float64 
 // subscription will occur after reception of metadata. When the config defines AutoRequestMetadata
 // as false and AutoSubscribe as true, subscription will occur at successful connection.
 func (sb *Subscriber) Dial(address string, config *Config) error {
+	if sb.IsConnected() {
+		return errors.New("subscriber is already connected; cannot dial at this time")
+	}
+
+	if sb.IsListening() {
+		return errors.New("subscriber is listening for connections; cannot dial at this time")
+	}
+
 	hostname, portname, err := net.SplitHostPort(address)
 
 	if err != nil {
@@ -232,22 +259,7 @@ func (sb *Subscriber) connect(hostname string, port uint16) error {
 	// Connect and subscribe to publisher
 	switch con.Connect(ds) {
 	case transport.ConnectStatus.Success:
-		sb.beginCallbackSync()
-
-		if sb.connectionEstablishedReceiver != nil {
-			sb.connectionEstablishedReceiver()
-		}
-
-		sb.endCallbackSync()
-
-		// If automatically parsing metadata, request metadata upon successful connection,
-		// after metadata is received the SubscriberInstance will then initiate subscribe;
-		// otherwise, subscribe is initiated immediately (when auto subscribe requested)
-		if sb.config.AutoRequestMetadata {
-			sb.RequestMetadata()
-		} else if sb.config.AutoSubscribe {
-			ds.Subscribe()
-		}
+		sb.handleConnect()
 	case transport.ConnectStatus.Failed:
 		err = errors.New("all connection attempts failed")
 	case transport.ConnectStatus.Canceled:
@@ -255,6 +267,79 @@ func (sb *Subscriber) connect(hostname string, port uint16) error {
 	}
 
 	return err
+}
+
+// Listen establishes a listening socket for an incoming STTP publisher connection, also known
+// as a reverse connection, see https://sttp.info/reverse-connections/. Config parameter controls
+// connection related settings, set value to nil for default values. If the config defines
+// AutoRequestMetadata as true, then upon successful connection, meta-data will be requested.
+// When the config defines both AutoRequestMetadata and AutoSubscribe as true, subscription will
+// occur after reception of metadata. When the config defines AutoRequestMetadata as false and
+// AutoSubscribe as true, subscription will occur at successful connection.
+func (sb *Subscriber) Listen(address string, config *Config) error {
+	if sb.IsListening() {
+		return errors.New("subscriber is already listening for connections; cannot listen at this time")
+	}
+
+	if sb.IsConnected() {
+		return errors.New("subscriber is already connected; cannot listen at this time")
+	}
+
+	networkInterface, portname, err := net.SplitHostPort(address)
+
+	if err != nil {
+		return err
+	}
+
+	port, err := strconv.Atoi(portname)
+
+	if err != nil {
+		return fmt.Errorf("invalid port number \"%s\": %s", portname, err.Error())
+	}
+
+	if port < 1 || port > math.MaxUint16 {
+		return fmt.Errorf("port number \"%s\" is out of range: must be 1 to %d", portname, math.MaxUint16)
+	}
+
+	if config != nil {
+		sb.config = config
+	}
+
+	return sb.listen(uint16(port), networkInterface)
+}
+
+func (sb *Subscriber) listen(port uint16, networkInterface string) error {
+	if sb.config == nil {
+		panic("Internal Config instance has not been initialized. Make sure to use NewSubscriber.")
+	}
+
+	ds := sb.dataSubscriber()
+
+	ds.CompressPayloadData = sb.config.CompressPayloadData
+	ds.CompressMetadata = sb.config.CompressMetadata
+	ds.CompressSignalIndexCache = sb.config.CompressSignalIndexCache
+	ds.Version = sb.config.Version
+	ds.SwapGuidEndianness = !sb.config.RfcGuidEncoding
+
+	ds.BeginCallbackAssignment()
+	sb.beginCallbackSync()
+
+	// Register direct Subscriber callbacks
+	ds.StatusMessageCallback = sb.statusMessageLogger
+	ds.ErrorMessageCallback = sb.errorMessageLogger
+
+	// Register callbacks with intermediate handlers
+	ds.ConnectionEstablishedCallback = sb.handleConnect
+	ds.MetadataReceivedCallback = sb.handleMetadataReceived
+	ds.DataStartTimeCallback = sb.handleDataStartTime
+	ds.ConfigurationChangedCallback = sb.handleConfigurationChanged
+	ds.ProcessingCompleteCallback = sb.handleProcessingComplete
+
+	sb.endCallbackSync()
+	ds.EndCallbackAssignment()
+
+	// Listen for publisher connection
+	return ds.Listen(port, networkInterface)
 }
 
 // Disconnect disconnects from an STTP publisher.
@@ -288,16 +373,16 @@ func (sb *Subscriber) RequestMetadata() {
 //
 // The filterExpression defines the desired measurements for a subscription. Examples include:
 //
-// * Directly specified signal IDs (UUID values in string format):
+//   - Directly specified signal IDs (UUID values in string format):
 //     38A47B0-F10B-4143-9A0A-0DBC4FFEF1E8; E4BBFE6A-35BD-4E5B-92C9-11FF913E7877
 //
-// * Directly specified tag names:
+//   - Directly specified tag names:
 //     DOM_GPLAINS-BUS1:VH; TVA_SHELBY-BUS1:VH
 //
-// * Directly specified identifiers in "measurement key" format:
+//   - Directly specified identifiers in "measurement key" format:
 //     PPA:15; STAT:20
 //
-// * A filter expression against a selection view:
+//   - A filter expression against a selection view:
 //     FILTER ActiveMeasurements WHERE Company='GPA' AND SignalType='FREQ'
 //
 // Settings parameter controls subscription related settings, set value to nil for default values.
@@ -392,24 +477,28 @@ func (sb *Subscriber) ErrorMessage(message string) {
 
 // Intermediate callback handlers:
 
+func (sb *Subscriber) handleConnect() {
+	sb.beginCallbackSync()
+
+	if sb.connectionEstablishedReceiver != nil {
+		sb.connectionEstablishedReceiver()
+	}
+
+	sb.endCallbackSync()
+
+	// If automatically parsing metadata, request metadata upon successful connection,
+	// after metadata is received the SubscriberInstance will then initiate subscribe;
+	// otherwise, subscribe is initiated immediately (when auto subscribe requested)
+	if sb.config.AutoRequestMetadata {
+		sb.RequestMetadata()
+	} else if sb.config.AutoSubscribe {
+		sb.dataSubscriber().Subscribe()
+	}
+}
+
 func (sb *Subscriber) handleReconnect(ds *transport.DataSubscriber) {
 	if ds.IsConnected() {
-		sb.beginCallbackSync()
-
-		if sb.connectionEstablishedReceiver != nil {
-			sb.connectionEstablishedReceiver()
-		}
-
-		sb.endCallbackSync()
-
-		// If automatically parsing metadata, request metadata upon successful connection,
-		// after metadata is received the SubscriberInstance will then initiate subscribe;
-		// otherwise, subscribe is initiated immediately (when auto subscribe requested)
-		if sb.config.AutoRequestMetadata {
-			sb.RequestMetadata()
-		} else if sb.config.AutoSubscribe {
-			ds.Subscribe()
-		}
+		sb.handleConnect()
 	} else {
 		ds.Disconnect()
 		sb.StatusMessage("Connection retry attempts exceeded.")
@@ -608,15 +697,21 @@ func (sb *Subscriber) DefaultErrorMessageLogger(message string) {
 // DefaultConnectionEstablishedReceiver implements the default handler for the ConnectionEstablished callback.
 // Default implementation simply writes connection feedback to statusMessage callback.
 func (sb *Subscriber) DefaultConnectionEstablishedReceiver() {
-	con := sb.dataSubscriber().Connector()
-	sb.StatusMessage("Connection to " + con.Hostname + ":" + strconv.Itoa(int(con.Port)) + " established.")
+	var dir string
+
+	if sb.IsListening() {
+		dir = "from"
+	} else {
+		dir = "to"
+	}
+
+	sb.StatusMessage("Connection " + dir + " " + sb.ConnectionID() + " established.")
 }
 
 // DefaultConnectionTerminatedReceiver implements the default handler for the ConnectionTerminated callback.
 // Default implementation simply writes connection terminated feedback to errorMessage callback.
 func (sb *Subscriber) DefaultConnectionTerminatedReceiver() {
-	con := sb.dataSubscriber().Connector()
-	sb.ErrorMessage("Connection to " + con.Hostname + ":" + strconv.Itoa(int(con.Port)) + " terminated.")
+	sb.ErrorMessage("Connection for " + sb.ConnectionID() + " terminated.")
 }
 
 // SetStatusMessageLogger defines the callback that handles informational message logging.

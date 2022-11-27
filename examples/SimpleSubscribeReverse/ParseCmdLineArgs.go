@@ -1,5 +1,5 @@
 //******************************************************************************************************
-//  Version.go - Gbtc
+//  ParseCmdLineArgs.go - Gbtc
 //
 //  Copyright © 2021, Grid Protection Alliance.  All Rights Reserved.
 //
@@ -16,21 +16,46 @@
 //
 //  Code Modification History:
 //  ----------------------------------------------------------------------------------------------------
-//  09/14/2021 - J. Ritchie Carroll
+//  09/30/2021 - J. Ritchie Carroll
 //       Generated original version of source code.
 //
 //******************************************************************************************************
 
-package version
+package main
 
-const (
-	// STTPSource defines the STTP library API title used for data subscriber identification.
-	STTPSource = "STTP Go Library"
-
-	// STTPVersion defines the STTP library API version used for data subscriber identification.
-	// Note: This is not the STTP protocol version, but the version of the STTP library API.
-	STTPVersion = "0.8.0"
-
-	// STTPUpdatedOn defines when the STTP library API was last updated used for data subscriber identification.
-	STTPUpdatedOn = "2022-11-27"
+import (
+	"bufio"
+	"fmt"
+	"math"
+	"os"
+	"strconv"
 )
+
+func parseCmdLineArgs() string {
+	args := os.Args
+
+	if len(args) < 3 {
+		fmt.Println("Usage:")
+		fmt.Println("    SimpleSubscribe HOSTNAME PORT")
+		os.Exit(1)
+	}
+
+	hostname := args[1]
+	port, err := strconv.Atoi(args[2])
+
+	if err != nil {
+		fmt.Printf("Invalid port number \"%s\": %s\n", args[1], err.Error())
+		os.Exit(2)
+	}
+
+	if port < 1 || port > math.MaxUint16 {
+		fmt.Printf("Port number \"%s\" is out of range: must be 1 to %d\n", args[1], math.MaxUint16)
+		os.Exit(2)
+	}
+
+	return hostname + ":" + strconv.Itoa(port)
+}
+
+func readKey() {
+	bufio.NewReader(os.Stdin).ReadRune()
+}

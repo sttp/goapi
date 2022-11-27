@@ -52,8 +52,12 @@ type DataSubscriber struct {
 	encoding     OperationalEncodingEnum
 	connector    *SubscriberConnector
 	connected    abool.AtomicBool
+	validated    abool.AtomicBool
+	listening    abool.AtomicBool
 	subscribed   abool.AtomicBool
 
+	listeningSocket              net.Listener
+	listeningSocketAcceptThread  *thread.Thread
 	commandChannelSocket         net.Conn
 	commandChannelResponseThread *thread.Thread
 	readBuffer                   []byte
@@ -61,6 +65,7 @@ type DataSubscriber struct {
 	writeBuffer                  []byte
 	dataChannelSocket            net.Conn
 	dataChannelResponseThread    *thread.Thread
+	connectionID                 string
 
 	assigningHandlerMutex sync.RWMutex
 
@@ -83,6 +88,9 @@ type DataSubscriber struct {
 
 	// ErrorMessageCallback is called when an error message should be logged.
 	ErrorMessageCallback func(string)
+
+	// ConnectionEstablishedCallback is called when a DataSubscriber connection has been established.
+	ConnectionEstablishedCallback func()
 
 	// ConnectionTerminatedCallback is called when DataSubscriber terminates its connection.
 	ConnectionTerminatedCallback func()
@@ -179,7 +187,7 @@ func NewDataSubscriber() *DataSubscriber {
 	}
 
 	ds.connectionTerminationThread = thread.NewThread(func() {
-		ds.disconnect(false, true)
+		ds.disconnect(false, true, false)
 	})
 
 	return ds
@@ -190,7 +198,7 @@ func NewDataSubscriber() *DataSubscriber {
 func (ds *DataSubscriber) Dispose() {
 	ds.disposing.Set()
 	ds.connector.Cancel()
-	ds.disconnect(true, false)
+	ds.disconnect(true, false, true)
 
 	// Allow a moment for connection terminated event to complete
 	waitTimer := time.NewTimer(time.Duration(10) * time.Millisecond)
@@ -222,9 +230,25 @@ func (ds *DataSubscriber) IsConnected() bool {
 	return ds.connected.IsSet()
 }
 
+// IsValidated determines if a DataSubscriber connection has been validated as an STTP connection.
+func (ds *DataSubscriber) IsValidated() bool {
+	return ds.validated.IsSet()
+}
+
+// IsListening determines if a DataSubscriber is currently listening for a DataPublisher
+// connection, i.e., DataSubscriber is in reverse connection mode.
+func (ds *DataSubscriber) IsListening() bool {
+	return ds.listening.IsSet()
+}
+
 // IsSubscribed determines if a DataSubscriber is currently subscribed to a data stream.
 func (ds *DataSubscriber) IsSubscribed() bool {
 	return ds.subscribed.IsSet()
+}
+
+// ConnectionID returns the IP address and DNS host name, if resolvable, of current STTP connection.
+func (ds *DataSubscriber) ConnectionID() string {
+	return ds.connectionID
 }
 
 // EncodeString encodes an STTP string according to the defined operational modes.
@@ -293,6 +317,10 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 		return errors.New("subscriber is already connected; disconnect first")
 	}
 
+	if ds.listening.IsSet() {
+		return errors.New("subscriber is listening for connections; direct connections disallowed")
+	}
+
 	// Make sure any pending disconnect has completed to make sure socket is closed
 	ds.disconnectThreadMutex.Lock()
 	disconnectThread := ds.disconnectThread
@@ -309,6 +337,26 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 
 	var err error
 
+	// Initialize connection state
+	ds.setupConnection()
+
+	if !autoReconnecting {
+		ds.connector.ResetConnection()
+	}
+
+	ds.connector.connectionRefused.UnSet()
+
+	// TODO: Add TLS implementation options
+	conn, err := net.Dial("tcp", hostName+":"+strconv.Itoa(int(port)))
+
+	if err == nil {
+		ds.establishConnection(conn, false)
+	}
+
+	return err
+}
+
+func (ds *DataSubscriber) setupConnection() {
 	ds.disconnected.UnSet()
 	ds.subscribed.UnSet()
 
@@ -319,28 +367,78 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 	ds.keyIVs = nil
 	ds.bufferBlockExpectedSequenceNumber = 0
 	ds.measurementRegistry = make(map[guid.Guid]*MeasurementMetadata)
+}
 
-	if !autoReconnecting {
-		ds.connector.ResetConnection()
+func (ds *DataSubscriber) establishConnection(connection net.Conn, listening bool) {
+	addrName := "<unknown>"
+
+	if listening {
+		addr := connection.RemoteAddr()
+
+		if addr != nil {
+			addrName = resolveDNSName(addr.String())
+		}
+	} else {
+		connector := ds.connector
+		addrName = connector.Hostname + ":" + strconv.Itoa(int(connector.Port))
 	}
 
-	ds.connector.connectionRefused.UnSet()
+	ds.connectionID = addrName
+
+	if listening {
+		ds.dispatchStatusMessage("Processing connection attempt from \"" + ds.connectionID + "\" ...")
+	}
+
+	ds.commandChannelSocket = connection
+	ds.commandChannelResponseThread = thread.NewThread(ds.runCommandChannelResponseThread)
+
+	ds.connected.Set()
+	ds.lastMissingCacheWarning = 0
+
+	ds.commandChannelResponseThread.Start()
+	ds.sendOperationalModes()
+
+	// Notify consumers of connect
+	ds.BeginCallbackSync()
+
+	if ds.ConnectionEstablishedCallback != nil {
+		ds.ConnectionEstablishedCallback()
+	}
+
+	ds.EndCallbackSync()
+}
+
+// Listen requests that the DataSubscriber establish a listening connection for a DataPublisher.
+func (ds *DataSubscriber) Listen(port uint16, networkInterface string) error {
+	if ds.listening.IsSet() {
+		return errors.New("subscriber is already listening; disconnect first")
+	}
+
+	if ds.connected.IsSet() {
+		return errors.New("subscriber is already connected; disconnect first")
+	}
+
+	// Make sure any pending disconnect has completed to make sure socket is closed
+	ds.disconnectThreadMutex.Lock()
+	disconnectThread := ds.disconnectThread
+	ds.disconnectThreadMutex.Unlock()
+
+	if disconnectThread != nil {
+		disconnectThread.Join()
+	}
+
+	var err error
 
 	// TODO: Add TLS implementation options
-	// TODO: Add reverse (server-based) connection options, see:
-	// https://sttp.info/reverse-connections/
+	ds.listeningSocket, err = net.Listen("tcp", networkInterface+":"+strconv.Itoa(int(port)))
 
-	ds.commandChannelSocket, err = net.Dial("tcp", hostName+":"+strconv.Itoa(int(port)))
-
-	if err == nil {
-		ds.commandChannelResponseThread = thread.NewThread(ds.runCommandChannelResponseThread)
-
-		ds.connected.Set()
-		ds.lastMissingCacheWarning = 0
-
-		ds.commandChannelResponseThread.Start()
-		ds.sendOperationalModes()
+	if err != nil {
+		return err
 	}
+
+	ds.listeningSocketAcceptThread = thread.NewThread(ds.runListeningSocketAcceptThread)
+	ds.listening.Set()
+	ds.listeningSocketAcceptThread.Start()
 
 	return err
 }
@@ -349,6 +447,10 @@ func (ds *DataSubscriber) connect(hostName string, port uint16, autoReconnecting
 func (ds *DataSubscriber) Subscribe() error {
 	if ds.connected.IsNotSet() {
 		return errors.New("subscriber is not connected; cannot subscribe")
+	}
+
+	if ds.validated.IsNotSet() {
+		return errors.New("subscriber is not validated; cannot subscribe")
 	}
 
 	// Make sure to unsubscribe before attempting another
@@ -450,7 +552,7 @@ func (ds *DataSubscriber) Subscribe() error {
 
 // Unsubscribe notifies the DataPublisher that a DataSubscriber would like to stop receiving streaming data.
 func (ds *DataSubscriber) Unsubscribe() {
-	if ds.connected.IsSet() {
+	if ds.connected.IsNotSet() || ds.validated.IsNotSet() {
 		return
 	}
 
@@ -479,14 +581,15 @@ func (ds *DataSubscriber) Disconnect() {
 
 	// Disconnect method executes shutdown on a separate thread without stopping to prevent
 	// issues where user may call disconnect method from a dispatched event thread. Also,
-	// user requests to disconnect are not an auto-reconnect attempt
-	ds.disconnect(false, false)
+	// user requests to disconnect are not an auto-reconnect attempt and should should
+	// initiate shutdown of listening socket as well.
+	ds.disconnect(false, false, true)
 }
 
-func (ds *DataSubscriber) disconnect(joinThread bool, autoReconnecting bool) {
+func (ds *DataSubscriber) disconnect(joinThread bool, autoReconnecting bool, includeListener bool) {
 	// Check if disconnect thread is running or subscriber has already disconnected
 	if ds.disconnecting.IsSet() {
-		if !autoReconnecting && ds.disconnected.IsNotSet() {
+		if !autoReconnecting && ds.listening.IsNotSet() && ds.disconnected.IsNotSet() {
 			ds.connector.Cancel()
 		}
 
@@ -504,10 +607,16 @@ func (ds *DataSubscriber) disconnect(joinThread bool, autoReconnecting bool) {
 	// Notify running threads that the subscriber is disconnecting, i.e., disconnect thread is active
 	ds.disconnecting.Set()
 	ds.connected.UnSet()
+	ds.validated.UnSet()
+
+	if includeListener {
+		ds.listening.UnSet()
+	}
+
 	ds.subscribed.UnSet()
 
 	disconnectThread := thread.NewThread(func() {
-		ds.runDisconnectThread(autoReconnecting)
+		ds.runDisconnectThread(autoReconnecting, includeListener)
 	})
 
 	ds.disconnectThreadMutex.Lock()
@@ -520,7 +629,7 @@ func (ds *DataSubscriber) disconnect(joinThread bool, autoReconnecting bool) {
 	}
 }
 
-func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
+func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool, includeListener bool) {
 	// Let any pending connect operation complete before disconnect - prevents destruction disconnect before connection is completed
 	if !autoReconnecting {
 		ds.connector.Cancel()
@@ -529,6 +638,12 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 	}
 
 	// Release queues and close sockets so that threads can shut down gracefully
+	if includeListener && ds.listeningSocket != nil {
+		if err := ds.listeningSocket.Close(); err != nil {
+			ds.dispatchErrorMessage("Exception while disconnecting data subscriber TCP listening socket: " + err.Error())
+		}
+	}
+
 	if ds.commandChannelSocket != nil {
 		if err := ds.commandChannelSocket.Close(); err != nil {
 			ds.dispatchErrorMessage("Exception while disconnecting data subscriber TCP command channel: " + err.Error())
@@ -542,12 +657,19 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool) {
 	}
 
 	// Join with all threads to guarantee their completion before returning control to the caller
+	if includeListener && ds.listeningSocketAcceptThread != nil {
+		ds.listeningSocketAcceptThread.Join()
+		ds.listeningSocketAcceptThread = nil
+	}
+
 	if ds.commandChannelResponseThread != nil {
 		ds.commandChannelResponseThread.Join()
+		ds.commandChannelResponseThread = nil
 	}
 
 	if ds.dataChannelResponseThread != nil {
 		ds.dataChannelResponseThread.Join()
+		ds.dataChannelResponseThread = nil
 	}
 
 	// Notify consumers of disconnect
@@ -608,6 +730,55 @@ func (ds *DataSubscriber) dispatchErrorMessage(message string) {
 	ds.EndCallbackSync()
 }
 
+func (ds *DataSubscriber) runListeningSocketAcceptThread() {
+	for ds.listening.IsSet() {
+		conn, err := ds.listeningSocket.Accept()
+
+		if err != nil {
+			if ds.disconnecting.IsNotSet() {
+				ds.dispatchErrorMessage("Exception while accepting data publisher connection: " + err.Error())
+			}
+
+			continue
+		}
+
+		// Will only accept one active connection at a time, this may be indicative
+		// of a rouge connection attempt - consumer should log warning
+		if ds.connected.IsSet() {
+			var errMsg string
+			err = conn.Close()
+
+			if err == nil {
+				errMsg = "closed."
+			} else {
+				errMsg = "close error:" + err.Error()
+			}
+
+			addrName := "<unknown>"
+			addr := conn.RemoteAddr()
+
+			if addr != nil {
+				addrName = resolveDNSName(addr.String())
+			}
+
+			ds.dispatchErrorMessage("WARNING: Duplicate connection attempt detected from: \"" + addrName + "\". Existing data publisher connection already established, data subscriber will only accept one connection at a time - connection " + errMsg)
+			continue
+		}
+
+		// Let any pending connect or disconnect operation complete before new connect,
+		// this prevents destruction disconnect before connection is completed
+		ds.connectActionMutex.Lock()
+
+		// Initialize connection state
+		ds.setupConnection()
+
+		// Create new command channel
+		ds.establishConnection(conn, true)
+
+		ds.connectActionMutex.Unlock()
+	}
+}
+
 func (ds *DataSubscriber) runCommandChannelResponseThread() {
 	ds.reader = bufio.NewReader(ds.commandChannelSocket)
 
@@ -631,6 +802,30 @@ func (ds *DataSubscriber) readPayloadHeader(bytesTransferred int, err error) {
 	atomic.AddUint64(&ds.totalCommandChannelBytesReceived, uint64(bytesTransferred))
 
 	packetSize := binary.BigEndian.Uint32(ds.readBuffer)
+
+	if ds.validated.IsNotSet() {
+		if ds.Version > 2 {
+			// We need to check for a valid initial payload header size before attempting to resize
+			// the payload buffer, especially when subscriber may be in listening mode. The very first
+			// response received from the publisher should be the succeeded or failed response command
+			// for the DefineOperationalModes command sent by the subscriber. The packet payload size
+			// for this response will typically be zero for successes and a short message for failures.
+			// Longer message sizes would be considered suspect data, likely from a non-STTP based
+			// client connection. In context of this initial response message, anything larger than 8KB
+			// of payload is considered suspect and will be evaluated as a non-STTP type response.
+			const maxInitialPacketSize = responseHeaderSize + 8192
+
+			if packetSize > maxInitialPacketSize {
+				ds.dispatchErrorMessage("Possible invalid protocol detected from \"" + ds.connectionID + "\": encountered request for " + strconv.Itoa(int(packetSize)) + " byte initial packet size -- connection likely from non-STTP client, disconnecting.")
+				ds.dispatchConnectionTerminated()
+				return
+			}
+		} else {
+			// Older versions of STTP did not provide a response to define operational modes - in this
+			// case common first response was for metadata refresh, which may be larger than 8KB
+			ds.validated.Set()
+		}
+	}
 
 	if int(packetSize) > cap(ds.readBuffer) {
 		ds.readBuffer = make([]byte, packetSize)
@@ -688,6 +883,16 @@ func (ds *DataSubscriber) processServerResponse(buffer []byte) {
 	responseCode := ServerResponseEnum(buffer[0])
 	commandCode := ServerCommandEnum(buffer[1])
 
+	if ds.validated.IsNotSet() {
+		if commandCode != ServerCommand.DefineOperationalModes || (responseCode != ServerResponse.Succeeded && responseCode != ServerResponse.Failed) {
+			ds.dispatchErrorMessage("Possible invalid protocol detected from \"" + ds.connectionID + "\": encountered unexpected initial command / response code: " + commandCode.String() + " / " + responseCode.String() + " -- connection likely from non-STTP client, disconnecting.")
+			ds.dispatchConnectionTerminated()
+			return
+		}
+
+		ds.validated.Set()
+	}
+
 	switch responseCode {
 	case ServerResponse.Succeeded:
 		ds.handleSucceeded(commandCode, data)
@@ -714,7 +919,7 @@ func (ds *DataSubscriber) processServerResponse(buffer []byte) {
 	case ServerResponse.NoOP:
 		// NoOP handled
 	default:
-		ds.dispatchErrorMessage("Encountered unexpected server response code: " + responseCode.String())
+		ds.dispatchErrorMessage("Encountered unexpected server response code: " + responseCode.String() + " from \"" + ds.connectionID + "\"")
 	}
 }
 
@@ -732,7 +937,7 @@ func (ds *DataSubscriber) handleSucceeded(commandCode ServerCommandEnum, data []
 		// Fallthrough on these messages because there is
 		// still an associated message to be processed.
 		fallthrough
-	case ServerCommand.RotateCipherKeys, ServerCommand.UpdateProcessingInterval:
+	case ServerCommand.DefineOperationalModes, ServerCommand.RotateCipherKeys, ServerCommand.UpdateProcessingInterval:
 		// Each of these responses come with a message that will
 		// be delivered to the user via the status message callback.
 		var message strings.Builder
@@ -768,7 +973,7 @@ func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byt
 			message.WriteRune('\n')
 		}
 
-		message.Write(data)		
+		message.Write(data)
 	}
 
 	if message.Len() > 0 {
@@ -1127,7 +1332,7 @@ func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndex
 
 			ds.lastMissingCacheWarning = ticks.UtcNow()
 		}
-		
+
 		return
 	}
 
