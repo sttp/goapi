@@ -31,8 +31,8 @@ import (
 // that have elapsed since 12:00:00 midnight, January 1, 0001 UTC, Gregorian calendar. A single tick represents one hundred
 // nanoseconds, or one ten-millionth of a second. There are 10,000 ticks in a millisecond and 10 million ticks in a second.
 // Only bits 01 to 62 (0x3FFFFFFFFFFFFFFF) are used to represent the timestamp value. Bit 64 (0x8000000000000000) is used
-// to denote leap second, i.e., second 60, where actual second value would remain at 59. Bit 63 (0x4000000000000000)is used
-// to denote leap second direction, 0 for add, 1 for delete.
+// to denote leap second, i.e., second 60, where actual second value would remain at 59. Bit 63 (0x4000000000000000) is
+// used to denote leap second direction, 0 for add, 1 for delete.
 type Ticks uint64
 
 // Min is the minimum value for Ticks. It represents UTC time 01/01/0001 00:00:00.000.
