@@ -6,6 +6,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/sttp/goapi)](https://goreportcard.com/report/github.com/sttp/goapi)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/sttp/goapi)](https://pkg.go.dev/github.com/sttp/goapi)
 [![Release](https://img.shields.io/github/release/sttp/goapi.svg?style=flat-square)](https://github.com/sttp/goapi/releases/latest)
+[![CodeQL](https://github.com/sttp/goapi/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/sttp/goapi/actions/workflows/codeql-analysis.yml)
 
 ## Quick Installation
 ```console
