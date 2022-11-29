@@ -243,7 +243,7 @@ var ServerCommand = struct {
 	MetadataRefresh ServerCommandEnum
 	// Subscribe defines a command code for requesting a subscription of streaming data from server based on connection string that follows.
 	Subscribe ServerCommandEnum
-	// Unsubscribe  defines a command code for requesting that server stop sending streaming data to the client and cancel the current subscription.
+	// Unsubscribe defines a command code for requesting that server stop sending streaming data to the client and cancel the current subscription.
 	Unsubscribe ServerCommandEnum
 	// RotateCipherKeys defines a command code for manually requesting that server send a new set of cipher keys for data packet encryption (UDP only).
 	RotateCipherKeys ServerCommandEnum
