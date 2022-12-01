@@ -809,10 +809,10 @@ func (ds *DataSubscriber) readPayloadHeader(bytesTransferred int, err error) {
 			// the payload buffer, especially when subscriber may be in listening mode. The very first
 			// response received from the publisher should be the succeeded or failed response command
 			// for the DefineOperationalModes command sent by the subscriber. The packet payload size
-			// for this response will typically be zero for successes and a short message for failures.
-			// Longer message sizes would be considered suspect data, likely from a non-STTP based
-			// client connection. In context of this initial response message, anything larger than 8KB
-			// of payload is considered suspect and will be evaluated as a non-STTP type response.
+			// for this response, succeed or fail, will be a short message. Longer message sizes would
+			// be considered suspect data, likely from a non-STTP based client connection. In context
+			// of this initial response message, anything larger than 8KB of payload is considered
+			// suspect and will be evaluated as a non-STTP type response.
 			const maxInitialPacketSize = responseHeaderSize + 8192
 
 			if packetSize > maxInitialPacketSize {
