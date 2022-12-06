@@ -1501,14 +1501,22 @@ func (ds *DataSubscriber) SendServerCommandWithPayload(commandCode ServerCommand
 }
 
 func (ds *DataSubscriber) sendOperationalModes() {
-	var operationalModes OperationalModesEnum = OperationalModesEnum(CompressionModes.GZip)
+	var operationalModes OperationalModesEnum = OperationalModes.NoFlags
 
 	operationalModes |= OperationalModes.VersionMask & OperationalModesEnum(ds.Version)
 	operationalModes |= OperationalModesEnum(ds.encoding)
 
+	if ds.Version < 10 {
+		operationalModes |= OperationalModesEnum(CompressionModes.GZip)
+	}
+
 	// TSSC compression only works with stateful connections
 	if ds.CompressPayloadData && !ds.subscription.UdpDataChannel {
-		operationalModes |= OperationalModes.CompressPayloadData | OperationalModesEnum(CompressionModes.TSSC)
+		operationalModes |= OperationalModes.CompressPayloadData
+
+		if ds.Version < 10 {
+			operationalModes |= OperationalModesEnum(CompressionModes.TSSC)
+		}
 	}
 
 	if ds.CompressMetadata {
