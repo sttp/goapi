@@ -31,6 +31,8 @@ import (
 	"github.com/sttp/goapi/sttp"
 )
 
+const TargetVersion byte = 2
+
 func main() {
 	address := parseCmdLineArgs()
 	subscriber := sttp.NewSubscriber()
@@ -79,7 +81,11 @@ func main() {
 
 	count := 1
 	subscriber.Subscribe(getFilterExpression(count), nil)
-	subscriber.Dial(address, nil)
+
+	config := sttp.NewConfig()
+	config.Version = TargetVersion
+
+	subscriber.Dial(address, config)
 
 	// Press enter to resubscribe with a new filter expression,
 	// space + enter will exit
