@@ -961,7 +961,7 @@ func (ds *DataSubscriber) handleSucceeded(commandCode ServerCommandEnum, data []
 func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byte) {
 	var message strings.Builder
 
-	if commandCode == ServerCommand.Connect {
+	if commandCode == ServerCommand.Connect || commandCode == ServerCommand.DefineOperationalModes {
 		ds.connector.connectionRefused.Set()
 	} else {
 		message.WriteString("Received failure code in response to server command: ")
