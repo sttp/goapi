@@ -137,7 +137,7 @@ func (sc *SubscriberConnector) waitForRetry() {
 	if sc.connectAttempt > 13 {
 		exponent = 12
 	} else {
-		exponent = float64(sc.connectAttempt - 1)
+		exponent = float64(sc.connectAttempt)
 	}
 
 	var retryInterval int32
@@ -171,6 +171,7 @@ func (sc *SubscriberConnector) waitForRetry() {
 		message.WriteString(fmt.Sprintf("%.2f", float64(retryInterval)/1000.0))
 		message.WriteString(" seconds...")
 	} else {
+		retryInterval = sc.RetryInterval
 		message.WriteString("Attempting to reconnect...")
 	}
 
