@@ -157,7 +157,7 @@ func (sc *SubscriberConnector) waitForRetry() {
 
 	if sc.connectAttempt > 0 {
 		message.WriteString(" attempt ")
-		message.WriteString(strconv.Itoa(int(sc.connectAttempt + 1)))
+		message.WriteString(strconv.Itoa(int(sc.connectAttempt)))
 	}
 
 	message.WriteString(" to \"")
