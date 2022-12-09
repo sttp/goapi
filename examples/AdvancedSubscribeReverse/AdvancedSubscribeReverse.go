@@ -67,7 +67,15 @@ func main() {
 	subscriber.Settings.UseMillisecondResolution = true
 
 	subscriber.Subscribe("FILTER TOP 20 ActiveMeasurements WHERE True", subscriber.Settings)
-	subscriber.Listen(address, subscriber.Config)
+
+	err := subscriber.Listen(address, subscriber.Config)
+
+	if err == nil {
+		subscriber.StatusMessage("Listening for STTP server connection on " + address)
+	} else {
+		subscriber.ErrorMessage("Failed to listen for STTP server connection on " + address + ": " + err.Error())
+	}
+
 	defer subscriber.Close()
 
 	readKey()

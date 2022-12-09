@@ -69,7 +69,14 @@ func main() {
 	})
 
 	subscriber.Subscribe("FILTER TOP 20 ActiveMeasurements WHERE True", nil)
-	subscriber.Listen(address, nil)
+
+	err := subscriber.Listen(address, nil)
+
+	if err == nil {
+		subscriber.StatusMessage("Listening for STTP server connection on " + address)
+	} else {
+		subscriber.ErrorMessage("Failed to listen for STTP server connection on " + address + ": " + err.Error())
+	}
 
 	readKey()
 }
