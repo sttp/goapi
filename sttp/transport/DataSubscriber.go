@@ -169,7 +169,13 @@ type DataSubscriber struct {
 // NewDataSubscriber creates a new DataSubscriber.
 func NewDataSubscriber() *DataSubscriber {
 	ds := &DataSubscriber{
-		subscription:             SubscriptionInfo{IncludeTime: true},
+		subscription: SubscriptionInfo{
+			PublishInterval:              1.0,
+			IncludeTime:                  true,
+			ProcessingInterval:           -1,
+			EnableTimeReasonabilityCheck: true,
+			LagTime:                      5.0,
+			LeadTime:                     5.0},
 		encoding:                 OperationalEncoding.UTF8,
 		connector:                &SubscriberConnector{},
 		readBuffer:               make([]byte, maxPacketSize),
@@ -469,6 +475,14 @@ func (ds *DataSubscriber) Subscribe() error {
 	parameterBuilder.WriteString(strconv.FormatFloat(ds.subscription.PublishInterval, 'f', 6, 64))
 	parameterBuilder.WriteString(";includeTime=")
 	parameterBuilder.WriteString(strconv.FormatBool(ds.subscription.IncludeTime))
+	parameterBuilder.WriteString(";enableTimeReasonabilityCheck=")
+	parameterBuilder.WriteString(strconv.FormatBool(ds.subscription.EnableTimeReasonabilityCheck))
+	parameterBuilder.WriteString(";lagTime=")
+	parameterBuilder.WriteString(strconv.FormatFloat(ds.subscription.LagTime, 'f', 6, 64))
+	parameterBuilder.WriteString(";leadTime=")
+	parameterBuilder.WriteString(strconv.FormatFloat(ds.subscription.LeadTime, 'f', 6, 64))
+	parameterBuilder.WriteString(";useLocalClockAsRealTime=")
+	parameterBuilder.WriteString(strconv.FormatBool(ds.subscription.UseLocalClockAsRealTime))
 	parameterBuilder.WriteString(";processingInterval=")
 	parameterBuilder.WriteString(strconv.FormatInt(int64(ds.subscription.ProcessingInterval), 10))
 	parameterBuilder.WriteString(";useMillisecondResolution=")

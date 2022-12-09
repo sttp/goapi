@@ -407,6 +407,10 @@ func (sb *Subscriber) Subscribe(filterExpression string, settings *Settings) {
 	}
 
 	sub.IncludeTime = settings.IncludeTime
+	sub.EnableTimeReasonabilityCheck = settings.EnableTimeReasonabilityCheck
+	sub.LagTime = settings.LagTime
+	sub.LeadTime = settings.LeadTime
+	sub.UseLocalClockAsRealTime = settings.UseLocalClockAsRealTime
 	sub.UseMillisecondResolution = settings.UseMillisecondResolution
 	sub.RequestNaNValueFilter = settings.RequestNaNValueFilter
 	sub.StartTime = settings.StartTime

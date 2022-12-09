@@ -52,6 +52,21 @@ type SubscriptionInfo struct {
 
 	// IncludeTime determines if time should be included in non-compressed, compact measurements.
 	IncludeTime bool
+	// EnableTimeReasonabilityCheck determines if publisher should perform time reasonability checks.
+	// When enabled LagTime and LeadTime will be used to determine if a measurement is reasonable.
+	EnableTimeReasonabilityCheck bool
+	// LagTime defines the allowed past time deviation tolerance in seconds (can be sub-second).
+	// Value is used to determine if a measurement timestamp is reasonable.
+	// Only applicable when EnableTimeReasonabilityCheck is true.
+	LagTime float64
+	// LeadTime defines the allowed future time deviation tolerance in seconds (can be sub-second).
+	// Value is used to determine if a measurement timestamp is reasonable.
+	// Only applicable when EnableTimeReasonabilityCheck is true.
+	LeadTime float64
+	// UseLocalClockAsRealTime determines if publisher should use local clock as real time. If false,
+	// the timestamp of the latest measurement will be used as real-time.
+	// Only applicable when EnableTimeReasonabilityCheck is true.
+	UseLocalClockAsRealTime bool
 	// UseMillisecondResolution determines if time should be restricted to milliseconds in non-compressed, compact measurements.
 	UseMillisecondResolution bool
 	// RequestNaNValueFilter requests that the publisher filter, i.e., does not send, any NaN values.
