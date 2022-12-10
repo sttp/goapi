@@ -170,12 +170,11 @@ type DataSubscriber struct {
 func NewDataSubscriber() *DataSubscriber {
 	ds := &DataSubscriber{
 		subscription: SubscriptionInfo{
-			PublishInterval:              1.0,
-			IncludeTime:                  true,
-			ProcessingInterval:           -1,
-			EnableTimeReasonabilityCheck: true,
-			LagTime:                      5.0,
-			LeadTime:                     5.0},
+			PublishInterval:    1.0,
+			IncludeTime:        true,
+			ProcessingInterval: -1,
+			LagTime:            10.0,
+			LeadTime:           5.0},
 		encoding:                 OperationalEncoding.UTF8,
 		connector:                &SubscriberConnector{},
 		readBuffer:               make([]byte, maxPacketSize),

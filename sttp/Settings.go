@@ -83,12 +83,11 @@ type Settings struct {
 
 // settingsDefaults define the default values for STTP subscription Settings.
 var settingsDefaults = Settings{
-	PublishInterval:              1.0,
-	IncludeTime:                  true,
-	ProcessingInterval:           -1,
-	EnableTimeReasonabilityCheck: true,
-	LagTime:                      5.0,
-	LeadTime:                     5.0,
+	PublishInterval:    1.0,
+	IncludeTime:        true,
+	ProcessingInterval: -1,
+	LagTime:            10.0,
+	LeadTime:           5.0,
 }
 
 // NewSettings creates a new Settings instance initialized with default values.
