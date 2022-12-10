@@ -41,7 +41,7 @@ type Settings struct {
 	// IncludeTime determines if time should be included in non-compressed, compact measurements.
 	IncludeTime bool
 	// EnableTimeReasonabilityCheck determines if publisher should perform time reasonability checks.
-	// When enabled LagTime and LeadTime will be used to determine if a measurement is reasonable.
+	// When enabled LagTime and LeadTime will be used to determine if a measurement timestamp is reasonable.
 	EnableTimeReasonabilityCheck bool
 	// LagTime defines the allowed past time deviation tolerance in seconds (can be sub-second).
 	// Value is used to determine if a measurement timestamp is reasonable.
