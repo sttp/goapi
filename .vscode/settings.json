@@ -64,5 +64,7 @@
         "UTCNOW",
         "VPHA",
         "VPHM"
-    ]
+    ],
+    "go.diagnostic.vulncheck": "Imports",
+    "gopls": {}
 }
