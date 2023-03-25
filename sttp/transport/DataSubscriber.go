@@ -594,8 +594,8 @@ func (ds *DataSubscriber) Disconnect() {
 
 	// Disconnect method executes shutdown on a separate thread without stopping to prevent
 	// issues where user may call disconnect method from a dispatched event thread. Also,
-	// user requests to disconnect are not an auto-reconnect attempt and should should
-	// initiate shutdown of listening socket as well.
+	// user requests to disconnect are not an auto-reconnect attempt and should initiate
+	// shutdown of listening socket as well.
 	ds.disconnect(false, false, true)
 }
 
@@ -897,7 +897,7 @@ func (ds *DataSubscriber) processServerResponse(buffer []byte) {
 	commandCode := ServerCommandEnum(buffer[1])
 
 	if ds.validated.IsNotSet() {
-		if commandCode != ServerCommand.DefineOperationalModes || (responseCode != ServerResponse.Succeeded && responseCode != ServerResponse.Failed) {
+		if responseCode != ServerResponse.NoOP && (commandCode != ServerCommand.DefineOperationalModes || (responseCode != ServerResponse.Succeeded && responseCode != ServerResponse.Failed)) {
 			ds.dispatchErrorMessage("Possible invalid protocol detected from \"" + ds.connectionID + "\": encountered unexpected initial command / response code: " + commandCode.String() + " / " + responseCode.String() + " -- connection likely from non-STTP client, disconnecting.")
 			ds.dispatchConnectionTerminated()
 			return
@@ -1340,7 +1340,7 @@ func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndex
 		if ds.lastMissingCacheWarning+missingCacheWarningInterval < ticks.UtcNow() {
 			// Warning message for missing signal index cache
 			if ds.lastMissingCacheWarning != 0 {
-				ds.dispatchStatusMessage("Signal index cache has not arrived. No compact measurements can be parsed.")
+				ds.dispatchStatusMessage("WARNING: Signal index cache has not arrived. No compact measurements can be parsed.")
 			}
 
 			ds.lastMissingCacheWarning = ticks.UtcNow()
