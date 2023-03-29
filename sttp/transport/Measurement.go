@@ -47,13 +47,13 @@ type Measurement struct {
 	Flags StateFlagsEnum
 }
 
-// TimestampValue gets the integer-based time from a Measurement Ticks based timestamp, i.e.,
-// the 62-bit time value excluding any reserved flags.
+// TimestampValue gets the integer-based time from a `Measurement` ticks-based timestamp, i.e.,
+// the 62-bit time value excluding any leap-second flags.
 func (m *Measurement) TimestampValue() int64 {
-	return int64(m.Timestamp & ticks.ValueMask)
+	return m.Timestamp.TimestampValue()
 }
 
-// DateTime gets a Measurement Ticks based timestamp as a standard Go Time value.
+// DateTime gets Measurement ticks-based timestamp as a standard Go Time value.
 func (m *Measurement) DateTime() time.Time {
 	return m.Timestamp.ToTime()
 }

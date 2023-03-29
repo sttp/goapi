@@ -77,6 +77,12 @@ const TimeFormat string = "2006-01-02 15:04:05.999999999"
 // ShortTimeFormat is the standard time.Time format used for showing just the timestamp portion of a Ticks value.
 const ShortTimeFormat string = "15:04:05.999"
 
+// TimestampValue gets the timestamp portion of the Ticks value, i.e.,
+// the 62-bit time value excluding any leap second flags.
+func (ticks Ticks) TimestampValue() int64 {
+	return int64(ticks & ValueMask)
+}
+
 // ToTime converts a Ticks value to standard Go Time value.
 func ToTime(ticks Ticks) time.Time {
 	return time.Unix(0, int64((ticks-UnixBaseOffset)&ValueMask)*100).UTC()
