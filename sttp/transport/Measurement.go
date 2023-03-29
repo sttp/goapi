@@ -47,9 +47,9 @@ type Measurement struct {
 	Flags StateFlagsEnum
 }
 
-// TicksValue gets the integer-based time from a Measurement Ticks based timestamp, i.e.,
+// TimestampValue gets the integer-based time from a Measurement Ticks based timestamp, i.e.,
 // the 62-bit time value excluding any reserved flags.
-func (m *Measurement) TicksValue() int64 {
+func (m *Measurement) TimestampValue() int64 {
 	return int64(m.Timestamp & ticks.ValueMask)
 }
 

@@ -163,7 +163,7 @@ func (cm *CompactMeasurement) GetBinaryLength() uint32 {
 	if baseTimeOffset > 0 {
 		// See if timestamp will fit within space allowed for active base offset. We cache result so that post call
 		// to GetBinaryLength, result will speed other subsequent parsing operations by not having to reevaluate.
-		difference := cm.TicksValue() - baseTimeOffset
+		difference := cm.TimestampValue() - baseTimeOffset
 
 		if difference > 0 {
 			if cm.useMillisecondResolution {
@@ -194,12 +194,12 @@ func (cm *CompactMeasurement) GetBinaryLength() uint32 {
 
 // GetTimestampC2 gets offset compressed millisecond-resolution 2-byte timestamp.
 func (cm *CompactMeasurement) GetTimestampC2() uint16 {
-	return uint16((cm.TicksValue() - cm.baseTimeOffsets[cm.timeIndex]) / int64(ticks.PerMillisecond))
+	return uint16((cm.TimestampValue() - cm.baseTimeOffsets[cm.timeIndex]) / int64(ticks.PerMillisecond))
 }
 
 // GetTimestampC4 gets offset compressed tick-resolution 4-byte timestamp.
 func (cm *CompactMeasurement) GetTimestampC4() uint32 {
-	return uint32(cm.TicksValue() - cm.baseTimeOffsets[cm.timeIndex])
+	return uint32(cm.TimestampValue() - cm.baseTimeOffsets[cm.timeIndex])
 }
 
 // GetCompactStateFlags gets byte level compact state flags with encoded time index and base time offset bits.
