@@ -98,9 +98,14 @@ func IsLeapSecond(ticks Ticks) bool {
 	return (ticks & LeapSecondFlag) > 0
 }
 
-// SetLeapSecond flags a Ticks value to represent a leap second, i.e., second 60, before wire serialization.
+// SetLeapSecond returns a copy of this Ticks value flagged to represent a leap second, i.e., second 60, before wire serialization.
 func SetLeapSecond(ticks Ticks) Ticks {
 	return ticks | LeapSecondFlag
+}
+
+// ApplyLeapSecond updates this Ticks value to represent a leap second, i.e., second 60, before wire serialization.
+func (t *Ticks) ApplyLeapSecond() {
+	*t |= LeapSecondFlag
 }
 
 // IsNegativeLeapSecond determines if the deserialized Ticks value represents a negative leap second, i.e., checks flag on second 58 to see if second 59 will be missing.
@@ -108,9 +113,14 @@ func IsNegativeLeapSecond(ticks Ticks) bool {
 	return IsLeapSecond(ticks) && (ticks&LeapSecondDirection) > 0
 }
 
-// SetNegativeLeapSecond flags a Ticks value to represent a negative leap second, i.e., sets flag on second 58 to mark that second 59 will be missing, before wire serialization.
+// SetNegativeLeapSecond returns a copy of this Ticks value flagged to represent a negative leap second, i.e., sets flag on second 58 to mark that second 59 will be missing, before wire serialization.
 func SetNegativeLeapSecond(ticks Ticks) Ticks {
 	return ticks | LeapSecondFlag | LeapSecondDirection
+}
+
+// ApplyNegativeLeapSecond updates this Ticks value to represent a negative leap second, i.e., sets flag on second 58 to mark that second 59 will be missing, before wire serialization.
+func (t *Ticks) ApplyNegativeLeapSecond() {
+	*t |= LeapSecondFlag | LeapSecondDirection
 }
 
 // Now gets the current local time as a Ticks value.
