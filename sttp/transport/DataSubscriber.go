@@ -150,7 +150,7 @@ type DataSubscriber struct {
 
 	// Measurement parsing
 	metadataRequested       time.Time
-	measurementRegistry     map[guid.Guid]*MeasurementMetadata
+	measurementRegistry     sync.Map
 	signalIndexCache        [2]*SignalIndexCache
 	signalIndexCacheMutex   sync.Mutex
 	cacheIndex              int32
@@ -187,7 +187,6 @@ func NewDataSubscriber() *DataSubscriber {
 		STTPSourceInfo:           version.STTPSource,
 		STTPVersionInfo:          version.STTPVersion,
 		STTPUpdatedOnInfo:        version.STTPUpdatedOn,
-		measurementRegistry:      make(map[guid.Guid]*MeasurementMetadata),
 		signalIndexCache:         [2]*SignalIndexCache{NewSignalIndexCache(), NewSignalIndexCache()},
 	}
 
@@ -279,18 +278,11 @@ func (ds *DataSubscriber) DecodeString(data []byte) string {
 // LookupMetadata gets the MeasurementMetadata for the specified signalID from the local
 // registry. If the metadata does not exist, a new record is created and returned.
 func (ds *DataSubscriber) LookupMetadata(signalID guid.Guid) *MeasurementMetadata {
-	metadata, ok := ds.measurementRegistry[signalID]
-
-	if !ok {
-		metadata = &MeasurementMetadata{
-			SignalID:   signalID,
-			Multiplier: 1.0,
-		}
-
-		ds.measurementRegistry[metadata.SignalID] = metadata
-	}
-
-	return metadata
+	metadata, _ := ds.measurementRegistry.LoadOrStore(signalID, &MeasurementMetadata{
+		SignalID:   signalID,
+		Multiplier: 1.0,
+	})
+	return metadata.(*MeasurementMetadata)
 }
 
 // Metadata gets the MeasurementMetadata associated with a measurement from the local
@@ -302,9 +294,10 @@ func (ds *DataSubscriber) Metadata(measurement *Measurement) *MeasurementMetadat
 // AdjustedValue gets the Value of a Measurement with any linear adjustments applied from the
 // measurement's Adder and Multiplier metadata, if found.
 func (ds *DataSubscriber) AdjustedValue(measurement *Measurement) float64 {
-	metadata, ok := ds.measurementRegistry[measurement.SignalID]
+	metadata, ok := ds.measurementRegistry.Load(measurement.SignalID)
 
 	if ok {
+		metadata := metadata.(*MeasurementMetadata)
 		return measurement.Value*metadata.Multiplier + metadata.Adder
 	}
 
@@ -371,7 +364,7 @@ func (ds *DataSubscriber) setupConnection() {
 
 	ds.keyIVs = nil
 	ds.bufferBlockExpectedSequenceNumber = 0
-	ds.measurementRegistry = make(map[guid.Guid]*MeasurementMetadata)
+	ds.measurementRegistry = sync.Map{}
 }
 
 func (ds *DataSubscriber) establishConnection(connection net.Conn, listening bool) {
