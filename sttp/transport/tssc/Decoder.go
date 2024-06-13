@@ -26,10 +26,8 @@
 package tssc
 
 import (
-	"errors"
+	"fmt"
 	"math"
-	"strconv"
-	"strings"
 )
 
 // Decoder is the decoder for the Time-Series Special Compression (TSSC) algorithm of STTP.
@@ -148,16 +146,7 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 		}
 
 		if code < int32(codeWords.TimeDelta1Forward) {
-			var message strings.Builder
-
-			message.WriteString("expecting code >= ")
-			message.WriteString(strconv.Itoa(int(codeWords.TimeDelta1Forward)))
-			message.WriteString(" at position ")
-			message.WriteString(strconv.Itoa(td.position))
-			message.WriteString(" with last position ")
-			message.WriteString(strconv.Itoa(td.lastPosition))
-
-			return false, errors.New(message.String())
+			return false, fmt.Errorf("expecting code >= %d at position %d with last position %d", codeWords.TimeDelta1Forward, td.position, td.lastPosition)
 		}
 	}
 
@@ -183,16 +172,7 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 		}
 
 		if code < int32(codeWords.StateFlags2) {
-			var message strings.Builder
-
-			message.WriteString("expecting code >= ")
-			message.WriteString(strconv.Itoa(int(codeWords.StateFlags2)))
-			message.WriteString(" at position ")
-			message.WriteString(strconv.Itoa(td.position))
-			message.WriteString(" with last position ")
-			message.WriteString(strconv.Itoa(td.lastPosition))
-
-			return false, errors.New(message.String())
+			return false, fmt.Errorf("expecting code >= %d at position %d with last position %d", codeWords.StateFlags2, td.position, td.lastPosition)
 		}
 	} else {
 		*timestamp = td.prevTimestamp1
@@ -208,16 +188,7 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 		}
 
 		if code < int32(codeWords.Value1) {
-			var message strings.Builder
-
-			message.WriteString("expecting code >= ")
-			message.WriteString(strconv.Itoa(int(codeWords.Value1)))
-			message.WriteString(" at position ")
-			message.WriteString(strconv.Itoa(td.position))
-			message.WriteString(" with last position ")
-			message.WriteString(strconv.Itoa(td.lastPosition))
-
-			return false, errors.New(message.String())
+			return false, fmt.Errorf("expecting code >= %d at position %d with last position %d", codeWords.Value1, td.position, td.lastPosition)
 		}
 	} else {
 		*stateFlags = nextPoint.PrevStateFlags1
@@ -269,16 +240,7 @@ func (td *Decoder) TryGetMeasurement(id *int32, timestamp *int64, stateFlags *ui
 			valueRaw = uint32(td.data[td.position]) ^ uint32(td.data[td.position+1])<<8 ^ uint32(td.data[td.position+2])<<16 ^ uint32(td.data[td.position+3])<<24 ^ nextPoint.PrevValue1
 			td.position += 4
 		default:
-			var message strings.Builder
-
-			message.WriteString("invalid code received ")
-			message.WriteString(strconv.Itoa(int(code)))
-			message.WriteString(" at position ")
-			message.WriteString(strconv.Itoa(td.position))
-			message.WriteString(" with last position ")
-			message.WriteString(strconv.Itoa(td.lastPosition))
-
-			return false, errors.New(message.String())
+			return false, fmt.Errorf("invalid code received %d at position %d with last position %d", code, td.position, td.lastPosition)
 		}
 
 		nextPoint.PrevValue3 = nextPoint.PrevValue2
@@ -316,16 +278,7 @@ func (td *Decoder) decodePointID(code byte) error {
 		td.lastPoint.PrevNextPointID1 = int32(td.data[td.position]) ^ int32(td.data[td.position+1])<<8 ^ int32(td.data[td.position+2])<<16 ^ int32(td.data[td.position+3])<<24 ^ td.lastPoint.PrevNextPointID1
 		td.position += 4
 	default:
-		var message strings.Builder
-
-		message.WriteString("invalid code received ")
-		message.WriteString(strconv.Itoa(int(code)))
-		message.WriteString(" at position ")
-		message.WriteString(strconv.Itoa(td.position))
-		message.WriteString(" with last position ")
-		message.WriteString(strconv.Itoa(td.lastPosition))
-
-		return errors.New(message.String())
+		return fmt.Errorf("invalid code received %d at position %d with last position %d", code, td.position, td.lastPosition)
 	}
 
 	return nil
