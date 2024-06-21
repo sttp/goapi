@@ -29,6 +29,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"strconv"
 	"strings"
@@ -147,6 +148,9 @@ type DataSubscriber struct {
 
 	// STTPUpdatedOnInfo defines when the STTP library API was last updated as identification information of DataSubscriber to a DataPublisher.
 	STTPUpdatedOnInfo string
+
+	// Log logs debug level information for developers using the STTP API. It is not intended for user level diagnostics.
+	Log *slog.Logger
 
 	// Measurement parsing
 	metadataRequested       time.Time
@@ -400,7 +404,7 @@ func (ds *DataSubscriber) establishConnection(connection net.Conn, listening boo
 	ds.BeginCallbackSync()
 
 	if ds.ConnectionEstablishedCallback != nil {
-		ds.ConnectionEstablishedCallback()
+		ds.traceCallback(ds.ConnectionEstablishedCallback, "dataSubscriber.ConnectionEstablishedCallback")
 	}
 
 	ds.EndCallbackSync()
@@ -538,6 +542,8 @@ func (ds *DataSubscriber) Subscribe() error {
 	}
 
 	parameterString := parameterBuilder.String()
+	ds.Log.Info("DataSubscriber.subscribe", "subscription_params", parameterString)
+
 	length := uint32(len(parameterString)) // In Go, this is number of bytes in string, not number of characters
 	buffer := make([]byte, 5+length)
 
@@ -682,7 +688,7 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool, includeList
 	ds.BeginCallbackSync()
 
 	if ds.ConnectionTerminatedCallback != nil {
-		ds.ConnectionTerminatedCallback()
+		ds.traceCallback(ds.ConnectionTerminatedCallback, "dataSubscriber.ConnectionTerminatedCallback`")
 	}
 
 	ds.EndCallbackSync()
@@ -698,7 +704,7 @@ func (ds *DataSubscriber) runDisconnectThread(autoReconnecting bool, includeList
 		ds.BeginCallbackSync()
 
 		if ds.AutoReconnectCallback != nil && ds.disposing.IsNotSet() {
-			ds.AutoReconnectCallback()
+			ds.traceCallback(ds.AutoReconnectCallback, "dataSubscriber.AutoReconnectCallback")
 		}
 
 		ds.EndCallbackSync()
@@ -988,28 +994,39 @@ func (ds *DataSubscriber) handleFailed(commandCode ServerCommandEnum, data []byt
 }
 
 func (ds *DataSubscriber) handleMetadataRefresh(data []byte) {
+	ds.Log.Debug("metadata refresh", "metadata_payload", data, "metadata_bytes", len(data))
+
 	ds.BeginCallbackSync()
 	metadataReceivedCallback := ds.MetadataReceivedCallback
 	ds.EndCallbackSync()
 
 	if metadataReceivedCallback != nil {
 		if ds.CompressMetadata {
-			ds.dispatchStatusMessage(fmt.Sprintf("Received %s bytes of metadata in %s seconds. Decompressing...", format.Int(len(data)), format.Float(time.Since(ds.metadataRequested).Seconds(), 3)))
+			m := fmt.Sprintf("Received %s bytes of metadata in %s seconds. Decompressing...", format.Int(len(data)), format.Float(time.Since(ds.metadataRequested).Seconds(), 3))
+			ds.debug(m)
+			ds.dispatchStatusMessage(m)
 
 			decompressStarted := time.Now()
 			var err error
 
 			if data, err = decompressGZip(data); err != nil {
 				ds.dispatchErrorMessage("Failed to decompress received metadata: " + err.Error())
+				ds.debug("Failed to decompress received metadata: " + err.Error())
 				return
 			}
 
-			ds.dispatchStatusMessage(fmt.Sprintf("Decompressed %s bytes of metadata in %s seconds. Parsing...", format.Int(len(data)), format.Float(time.Since(decompressStarted).Seconds(), 3)))
+			m = fmt.Sprintf("Decompressed %s bytes of metadata in %s seconds. Parsing...", format.Int(len(data)), format.Float(time.Since(decompressStarted).Seconds(), 3))
+			ds.debug(m)
+			ds.dispatchStatusMessage(m)
 		} else {
-			ds.dispatchStatusMessage(fmt.Sprintf("Received %s bytes of metadata in %s seconds. Parsing...", format.Int(len(data)), format.Float(time.Since(ds.metadataRequested).Seconds(), 3)))
+			m := fmt.Sprintf("Received %s bytes of metadata in %s seconds. Parsing...", format.Int(len(data)), format.Float(time.Since(ds.metadataRequested).Seconds(), 3))
+			ds.debug(m)
+			ds.dispatchStatusMessage(m)
 		}
 
-		go metadataReceivedCallback(data)
+		go func() {
+			ds.traceCallback(func() { metadataReceivedCallback(data) }, "dataSubscriber.MetadataReceivedCallback")
+		}()
 	}
 }
 
@@ -1029,7 +1046,9 @@ func (ds *DataSubscriber) handleProcessingComplete(data []byte) {
 	ds.BeginCallbackSync()
 
 	if ds.ProcessingCompleteCallback != nil {
-		go ds.ProcessingCompleteCallback(ds.DecodeString(data))
+		go func() {
+			ds.traceCallback(func() { ds.ProcessingCompleteCallback(ds.DecodeString(data)) }, "dataSubscriber.ProcessingCompleteCallback")
+		}()
 	}
 
 	ds.EndCallbackSync()
@@ -1081,7 +1100,9 @@ func (ds *DataSubscriber) handleUpdateSignalIndexCache(data []byte) {
 	ds.BeginCallbackSync()
 
 	if ds.SubscriptionUpdatedCallback != nil {
-		go ds.SubscriptionUpdatedCallback(signalIndexCache)
+		go func() {
+			ds.traceCallback(func() { ds.SubscriptionUpdatedCallback(signalIndexCache) }, "dataSubscriber.SubscriptionUpdatedCallback")
+		}()
 	}
 
 	ds.EndCallbackSync()
@@ -1168,9 +1189,10 @@ func (ds *DataSubscriber) handleConfigurationChanged() {
 	ds.BeginCallbackSync()
 
 	if ds.ConfigurationChangedCallback != nil {
-		go ds.ConfigurationChangedCallback()
+		go func() {
+			ds.traceCallback(ds.ConfigurationChangedCallback, "dataSubscriber.ConfigurationChangedCallback")
+		}()
 	}
-
 	ds.EndCallbackSync()
 }
 
@@ -1450,7 +1472,9 @@ func (ds *DataSubscriber) handleNotification(data []byte) {
 	ds.BeginCallbackSync()
 
 	if ds.NotificationReceivedCallback != nil {
-		go ds.NotificationReceivedCallback(message)
+		go func() {
+			ds.traceCallback(func() { ds.NotificationReceivedCallback(message) }, "dataSubscriber.NotificationReceivedCallback")
+		}()
 	}
 
 	ds.EndCallbackSync()
@@ -1580,4 +1604,19 @@ func (ds *DataSubscriber) TotalDataChannelBytesReceived() uint64 {
 // TotalMeasurementsReceived gets the total number of measurements received since last subscription.
 func (ds *DataSubscriber) TotalMeasurementsReceived() uint64 {
 	return atomic.LoadUint64(&ds.totalMeasurementsReceived)
+}
+
+func (ds *DataSubscriber) traceCallback(callback func(), s string) {
+	then := time.Now()
+	callback()
+	d := time.Since(then)
+	ds.debug(fmt.Sprintf("callback %s called at %d, took %d ns", s, then.UnixNano(), d))
+}
+
+func (ds *DataSubscriber) debug(s string) {
+	if ds.Log == nil {
+		return
+	}
+
+	ds.Log.Debug(s)
 }

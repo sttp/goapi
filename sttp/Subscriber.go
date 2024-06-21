@@ -27,6 +27,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net"
 	"os"
@@ -68,6 +69,8 @@ type Subscriber struct {
 	consoleLock sync.Mutex
 
 	assigningHandlerMutex sync.RWMutex
+
+	log *slog.Logger
 }
 
 // NewSubscriber creates a new Subscriber.
@@ -86,6 +89,7 @@ func NewSubscriber() *Subscriber {
 // Close cleanly shuts down a Subscriber that is no longer being used, e.g.,
 // during a normal application exit.
 func (sb *Subscriber) Close() {
+	sb.debug("closing subscriber")
 	if sb.ds != nil {
 		sb.ds.Dispose()
 	}
@@ -180,6 +184,7 @@ func (sb *Subscriber) AdjustedValue(measurement *transport.Measurement) float64 
 // subscription will occur after reception of metadata. When the config defines AutoRequestMetadata
 // as false and AutoSubscribe as true, subscription will occur at successful connection.
 func (sb *Subscriber) Dial(address string, config *Config) error {
+	sb.debug("dialing publisher")
 	if sb.IsConnected() {
 		return errors.New("subscriber is already connected; cannot dial at this time")
 	}
@@ -277,6 +282,7 @@ func (sb *Subscriber) connect(hostname string, port uint16) error {
 // occur after reception of metadata. When the config defines AutoRequestMetadata as false and
 // AutoSubscribe as true, subscription will occur at successful connection.
 func (sb *Subscriber) Listen(address string, config *Config) error {
+	sb.debug("listening for reverse connections")
 	if sb.IsListening() {
 		return errors.New("subscriber is already listening for connections; cannot listen at this time")
 	}
@@ -350,9 +356,11 @@ func (sb *Subscriber) Disconnect() {
 // RequestMetadata sends a request to the data publisher indicating that the Subscriber would
 // like new metadata. Any defined MetadataFilters will be included in request.
 func (sb *Subscriber) RequestMetadata() {
+	sb.debug("requesting metadata")
 	ds := sb.dataSubscriber()
 
 	if len(sb.config.MetadataFilters) == 0 {
+		sb.debug("no metadata filters enabled")
 		ds.SendServerCommand(transport.ServerCommand.MetadataRefresh)
 		return
 	}
@@ -363,6 +371,7 @@ func (sb *Subscriber) RequestMetadata() {
 	binary.BigEndian.PutUint32(buffer, uint32(len(filters)))
 	copy(buffer[4:], filters)
 
+	sb.debug("metadata filters enabled")
 	ds.SendServerCommandWithPayload(transport.ServerCommand.MetadataRefresh, buffer)
 }
 
@@ -387,6 +396,7 @@ func (sb *Subscriber) RequestMetadata() {
 //
 // Settings parameter controls subscription related settings, set value to nil for default values.
 func (sb *Subscriber) Subscribe(filterExpression string, settings *Settings) {
+	sb.debug("subscribe request received")
 	ds := sb.dataSubscriber()
 	sub := ds.Subscription()
 
@@ -485,7 +495,7 @@ func (sb *Subscriber) handleConnect() {
 	sb.beginCallbackSync()
 
 	if sb.connectionEstablishedReceiver != nil {
-		sb.connectionEstablishedReceiver()
+		sb.traceCallback(sb.connectionEstablishedReceiver, "calling connectionEstablishedReceiver")
 	}
 
 	sb.endCallbackSync()
@@ -510,6 +520,12 @@ func (sb *Subscriber) handleReconnect(ds *transport.DataSubscriber) {
 }
 
 func (sb *Subscriber) handleMetadataReceived(metadata []byte) {
+	sb.debug("new metadata received")
+	sb.debug(string(metadata))
+
+	pmMetadataRefreshes.Inc()
+	pmMetadataRefreshPayloadSizes.Observe(float64(len(metadata)))
+
 	parseStarted := time.Now()
 	dataSet := data.NewDataSet()
 	err := dataSet.ParseXml(metadata)
@@ -517,6 +533,7 @@ func (sb *Subscriber) handleMetadataReceived(metadata []byte) {
 	if err == nil {
 		sb.loadMeasurementMetadata(dataSet)
 	} else {
+		pmMetadataRefreshErrors.Inc()
 		sb.ErrorMessage("Failed to parse received XML metadata: " + err.Error())
 	}
 
@@ -525,7 +542,7 @@ func (sb *Subscriber) handleMetadataReceived(metadata []byte) {
 	sb.beginCallbackSync()
 
 	if sb.metadataReceiver != nil {
-		sb.metadataReceiver(dataSet)
+		sb.traceCallback(func() { sb.metadataReceiver(dataSet) }, "calling metadataReceiver")
 	}
 
 	sb.endCallbackSync()
@@ -533,6 +550,8 @@ func (sb *Subscriber) handleMetadataReceived(metadata []byte) {
 	if sb.config.AutoRequestMetadata && sb.config.AutoSubscribe {
 		sb.dataSubscriber().Subscribe()
 	}
+
+	pmMetadataRefreshDurations.Observe(float64(time.Since(parseStarted).Milliseconds()))
 }
 
 func (sb *Subscriber) loadMeasurementMetadata(dataSet *data.DataSet) {
@@ -650,7 +669,7 @@ func (sb *Subscriber) handleDataStartTime(startTime ticks.Ticks) {
 	sb.beginCallbackSync()
 
 	if sb.dataStartTimeReceiver != nil {
-		sb.dataStartTimeReceiver(ticks.ToTime(startTime))
+		sb.traceCallback(func() { sb.dataStartTimeReceiver(ticks.ToTime(startTime)) }, "calling dataStartTimeReceiver")
 	}
 
 	sb.endCallbackSync()
@@ -660,7 +679,7 @@ func (sb *Subscriber) handleConfigurationChanged() {
 	sb.beginCallbackSync()
 
 	if sb.configurationChangedReceiver != nil {
-		sb.configurationChangedReceiver()
+		sb.traceCallback(sb.configurationChangedReceiver, "calling configurationChangedReceiver")
 	}
 
 	sb.endCallbackSync()
@@ -676,7 +695,7 @@ func (sb *Subscriber) handleProcessingComplete(message string) {
 	sb.beginCallbackSync()
 
 	if sb.historicalReadCompleteReceiver != nil {
-		sb.historicalReadCompleteReceiver()
+		sb.traceCallback(sb.historicalReadCompleteReceiver, "calling historicalReadCompleteReceiver")
 	}
 
 	sb.endCallbackSync()
@@ -734,6 +753,15 @@ func (sb *Subscriber) SetErrorMessageLogger(callback func(message string)) {
 	defer sb.endCallbackAssignment()
 
 	sb.errorMessageLogger = callback
+}
+
+// SetDeveloperLogger enables low level logging for developers using this library.
+// It is not intended for user-level diagnostics.
+func (sb *Subscriber) SetDeveloperLogger(l *slog.Logger) {
+	sb.log = l
+	if sb.ds != nil {
+		sb.ds.Log = l
+	}
 }
 
 // SetMetadataReceiver defines the callback that handles reception of the metadata response.
@@ -833,4 +861,19 @@ func (sb *Subscriber) SetConnectionTerminatedReceiver(callback func()) {
 	defer ds.EndCallbackAssignment()
 
 	ds.ConnectionTerminatedCallback = callback
+}
+
+func (sb *Subscriber) traceCallback(callback func(), s string) {
+	then := time.Now()
+	callback()
+	d := time.Since(then)
+	sb.debug(fmt.Sprintf("callback %s called at %d, took %d ns", s, then.UnixNano(), d))
+}
+
+func (sb *Subscriber) debug(s string) {
+	if sb.log == nil {
+		return
+	}
+
+	sb.log.Debug(s)
 }
