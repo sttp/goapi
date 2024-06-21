@@ -542,7 +542,8 @@ func (ds *DataSubscriber) Subscribe() error {
 	}
 
 	parameterString := parameterBuilder.String()
-	ds.Log.Info("DataSubscriber.subscribe", "subscription_params", parameterString)
+	ds.debug("DataSubscriber.subscribe")
+	ds.debug(parameterString)
 
 	length := uint32(len(parameterString)) // In Go, this is number of bytes in string, not number of characters
 	buffer := make([]byte, 5+length)
