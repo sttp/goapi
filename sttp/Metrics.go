@@ -30,7 +30,7 @@ func init() {
 		Subsystem: "goapi",
 		Name:      "metadata_refresh_payload_sizes_bytes",
 		Help:      "The sizes of observed metadata payloads in bytes",
-		Buckets:   prometheus.ExponentialBuckets(float64(2<<14), 4.0, 8), // 16kb, 64kb, 256kb, 1MB, 4MB, 16MB, 64MB, 256MB, godzilla
+		Buckets:   prometheus.ExponentialBuckets(float64(2>>14), 4.0, 8), // 16kb, 64kb, 256kb, 1MB, 4MB, 16MB, 64MB, 256MB, godzilla
 	})
 
 	pmMetadataRefreshDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
