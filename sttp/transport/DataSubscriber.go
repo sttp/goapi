@@ -447,9 +447,10 @@ func (ds *DataSubscriber) Subscribe() error {
 		return errors.New("subscriber is not connected; cannot subscribe")
 	}
 
-	if ds.validated.IsNotSet() {
-		return errors.New("subscriber is not validated; cannot subscribe")
-	}
+//	FIXME: when we want to subscribe, we're not yet validated; we need the subscription to validate us!
+//	if ds.validated.IsNotSet() {
+//		return errors.New("subscriber is not validated; cannot subscribe")
+//	}
 
 	// Make sure to unsubscribe before attempting another
 	// subscription so we don't leave UDP sockets open
