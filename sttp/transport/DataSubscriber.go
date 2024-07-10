@@ -190,6 +190,8 @@ func NewDataSubscriber() *DataSubscriber {
 		signalIndexCache:         [2]*SignalIndexCache{NewSignalIndexCache(), NewSignalIndexCache()},
 	}
 
+	ds.validated.Set()
+
 	ds.connectionTerminationThread = thread.NewThread(func() {
 		ds.disconnect(false, true, false)
 	})
@@ -236,7 +238,7 @@ func (ds *DataSubscriber) IsConnected() bool {
 
 // IsValidated determines if a DataSubscriber connection has been validated as an STTP connection.
 func (ds *DataSubscriber) IsValidated() bool {
-	return ds.validated.IsSet()
+	return true
 }
 
 // IsListening determines if a DataSubscriber is currently listening for a DataPublisher
