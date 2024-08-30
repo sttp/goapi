@@ -290,7 +290,8 @@ func (ds *DataSubscriber) LookupMetadata(signalID guid.Guid) *MeasurementMetadat
 			SignalID:   signalID,
 			Multiplier: 1.0,
 		}
-		ds.measurementRegistry.Store(signalID, metadata)
+		// Continue using LoadOrStore on failure to avoid racing another thread
+		ds.measurementRegistry.LoadOrStore(signalID, metadata)
 	}
 	return metadata.(*MeasurementMetadata)
 }
