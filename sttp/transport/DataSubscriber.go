@@ -278,10 +278,19 @@ func (ds *DataSubscriber) DecodeString(data []byte) string {
 // LookupMetadata gets the MeasurementMetadata for the specified signalID from the local
 // registry. If the metadata does not exist, a new record is created and returned.
 func (ds *DataSubscriber) LookupMetadata(signalID guid.Guid) *MeasurementMetadata {
-	metadata, _ := ds.measurementRegistry.LoadOrStore(signalID, &MeasurementMetadata{
-		SignalID:   signalID,
-		Multiplier: 1.0,
-	})
+	// Intentionally avoids LoadOrStore, so as to avoid constructing the
+	// measurementmetadata during a lookup.
+	// Otherwise, the heap allocation an unused object ends up applying GC pressure
+	// and burning CPU.
+	metadata, ok := ds.measurementRegistry.Load(signalID)
+	if !ok {
+		metadata = &MeasurementMetadata{
+			SignalID:   signalID,
+			Multiplier: 1.0,
+		}
+		// Continue using LoadOrStore on failure to avoid racing another thread
+		ds.measurementRegistry.LoadOrStore(signalID, metadata)
+	}
 	return metadata.(*MeasurementMetadata)
 }
 
