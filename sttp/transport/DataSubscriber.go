@@ -447,7 +447,7 @@ func (ds *DataSubscriber) Subscribe() error {
 		return errors.New("subscriber is not connected; cannot subscribe")
 	}
 
-	if ds.validated.IsNotSet() {
+	if ds.Version >= 2 && ds.validated.IsNotSet() {
 		return errors.New("subscriber is not validated; cannot subscribe")
 	}
 
@@ -890,10 +890,12 @@ func (ds *DataSubscriber) processServerResponse(buffer []byte) {
 	commandCode := ServerCommandEnum(buffer[1])
 
 	if ds.validated.IsNotSet() {
-		if responseCode != ServerResponse.NoOP && (commandCode != ServerCommand.DefineOperationalModes || (responseCode != ServerResponse.Succeeded && responseCode != ServerResponse.Failed)) {
-			ds.dispatchErrorMessage("Possible invalid protocol detected from \"" + ds.connectionID + "\": encountered unexpected initial command / response code: " + commandCode.String() + " / " + responseCode.String() + " -- connection likely from non-STTP client, disconnecting.")
-			ds.dispatchConnectionTerminated()
-			return
+		if ds.Version >= 2 {
+			if responseCode != ServerResponse.NoOP && (commandCode != ServerCommand.DefineOperationalModes || (responseCode != ServerResponse.Succeeded && responseCode != ServerResponse.Failed)) {
+				ds.dispatchErrorMessage("Possible invalid protocol detected from \"" + ds.connectionID + "\": encountered unexpected initial command / response code: " + commandCode.String() + " / " + responseCode.String() + " -- connection likely from non-STTP client, disconnecting.")
+				ds.dispatchConnectionTerminated()
+				return
+			}
 		}
 
 		ds.validated.Set()
