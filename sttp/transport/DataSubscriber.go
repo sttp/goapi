@@ -810,7 +810,7 @@ func (ds *DataSubscriber) readPayloadHeader(bytesTransferred int, err error) {
 	packetSize := binary.BigEndian.Uint32(ds.readBuffer)
 
 	if ds.validated.IsNotSet() {
-		if ds.Version > 2 {
+		if ds.Version >= 2 {
 			// We need to check for a valid initial payload header size before attempting to resize
 			// the payload buffer, especially when subscriber may be in listening mode. The very first
 			// response received from the publisher should be the succeeded or failed response command
