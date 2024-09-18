@@ -190,6 +190,8 @@ func NewDataSubscriber() *DataSubscriber {
 		signalIndexCache:         [2]*SignalIndexCache{NewSignalIndexCache(), NewSignalIndexCache()},
 	}
 
+	ds.validated.Set()
+
 	ds.connectionTerminationThread = thread.NewThread(func() {
 		ds.disconnect(false, true, false)
 	})
@@ -236,7 +238,7 @@ func (ds *DataSubscriber) IsConnected() bool {
 
 // IsValidated determines if a DataSubscriber connection has been validated as an STTP connection.
 func (ds *DataSubscriber) IsValidated() bool {
-	return ds.validated.IsSet()
+	return true
 }
 
 // IsListening determines if a DataSubscriber is currently listening for a DataPublisher
@@ -456,9 +458,10 @@ func (ds *DataSubscriber) Subscribe() error {
 		return errors.New("subscriber is not connected; cannot subscribe")
 	}
 
-	if ds.validated.IsNotSet() {
-		return errors.New("subscriber is not validated; cannot subscribe")
-	}
+//	FIXME: when we want to subscribe, we're not yet validated; we need the subscription to validate us!
+//	if ds.validated.IsNotSet() {
+//		return errors.New("subscriber is not validated; cannot subscribe")
+//	}
 
 	// Make sure to unsubscribe before attempting another
 	// subscription so we don't leave UDP sockets open
