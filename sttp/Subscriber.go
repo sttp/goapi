@@ -100,6 +100,10 @@ func (sb *Subscriber) dataSubscriber() *transport.DataSubscriber {
 	return sb.ds
 }
 
+func (sb *Subscriber) PutMeasurementSlice(m []transport.Measurement) {
+	sb.ds.MeasurementPool.Put(m[:0])
+}
+
 // IsConnected determines if Subscriber is currently connected to a data publisher.
 // When Subscriber is listening for connections, this method will only return true
 // once a data publisher successfully connects to the listening socket.
