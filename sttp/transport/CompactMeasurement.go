@@ -98,8 +98,8 @@ func (compactFlags compactStateFlagsEnum) mapToFullFlags() StateFlagsEnum {
 type CompactMeasurement struct {
 	Value                    float32
 	Timestamp                ticks.Ticks
-	signalIndex              uint32
-	flags                    compactStateFlagsEnum
+	SignalIndex              uint32
+	Flags                    compactStateFlagsEnum
 }
 
 // Constructs a CompactMeasurement from the specified byte buffer; returns the measurement and the number of bytes occupied by this measurement.
@@ -118,16 +118,16 @@ func NewCompactMeasurement(includeTime, useMillisecondResolution bool, baseTimeO
 	//		 Value        4
 	//		 [Time]    0/2/4/8
 
-	cm.flags = compactStateFlagsEnum(buffer[0])
-	cm.signalIndex = binary.BigEndian.Uint32(buffer[1:5])
+	cm.Flags = compactStateFlagsEnum(buffer[0])
+	cm.SignalIndex = binary.BigEndian.Uint32(buffer[1:5])
 	cm.Value = math.Float32frombits(binary.BigEndian.Uint32(buffer[5:9]))
 
 	if !includeTime {
 		return cm, 9, nil
 	}
 
-	if (cm.flags & compactStateFlags.BaseTimeOffset) != 0 {
-		timeIndex := (cm.flags & compactStateFlags.TimeIndex) >> 7
+	if (cm.Flags & compactStateFlags.BaseTimeOffset) != 0 {
+		timeIndex := (cm.Flags & compactStateFlags.TimeIndex) >> 7
 		baseTimeOffset := baseTimeOffsets[timeIndex]
 		if useMillisecondResolution {
 			// Decode 2-byte millisecond offset timestamp
@@ -153,17 +153,17 @@ func NewCompactMeasurement(includeTime, useMillisecondResolution bool, baseTimeO
 // Compute the full measurement from the compact representation
 func (cm *CompactMeasurement) Expand(signalIndexCache *SignalIndexCache) Measurement {
 	return Measurement{
-		SignalID: signalIndexCache.SignalID(int32(cm.signalIndex)),
+		SignalID: signalIndexCache.SignalID(int32(cm.SignalIndex)),
 		Timestamp: cm.Timestamp,
 		Value: float64(cm.Value),
-		Flags: cm.flags.mapToFullFlags(),
+		Flags: cm.Flags.mapToFullFlags(),
 	}
 }
 
 //// Serializes a CompactMeasurement to a byte buffer for publication to a DataSubscriber.
 func (cm *CompactMeasurement) Marshal(b []byte) {
-	b[0] = byte(cm.flags)
-	binary.BigEndian.PutUint32(b[1:], cm.signalIndex)
+	b[0] = byte(cm.Flags)
+	binary.BigEndian.PutUint32(b[1:], cm.SignalIndex)
 	binary.BigEndian.PutUint32(b[5:], math.Float32bits(float32(cm.Value)))
 	binary.BigEndian.PutUint64(b[9:], uint64(cm.Timestamp))
 }
