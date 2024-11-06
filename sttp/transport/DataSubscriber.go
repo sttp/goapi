@@ -193,7 +193,8 @@ func NewDataSubscriber() *DataSubscriber {
 	}
 
 	ds.MeasurementPool.New = func() any {
-		return make([]Measurement, 64)
+		m := make([]Measurement, 64)
+		return &m
 	}
 
 	ds.validated.Set()
@@ -1224,11 +1225,11 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 	}
 
 	count := binary.BigEndian.Uint32(data)
-	measurements := ds.MeasurementPool.Get().([]Measurement)
-	if uint32(cap(measurements)) < count {
-		measurements = make([]Measurement, count)
+	measurements := ds.MeasurementPool.Get().(*[]Measurement)
+	if uint32(cap(*measurements)) < count {
+		*measurements = make([]Measurement, count)
 	} else {
-		measurements = measurements[:count]
+		*measurements = (*measurements)[:count]
 	}
 	var cacheIndex int
 
@@ -1241,9 +1242,9 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 	ds.signalIndexCacheMutex.Unlock()
 
 	if compressed {
-		ds.parseTSSCMeasurements(signalIndexCache, data[4:], measurements)
+		ds.parseTSSCMeasurements(signalIndexCache, data[4:], *measurements)
 	} else {
-		ds.parseCompactMeasurements(signalIndexCache, data[4:], measurements)
+		ds.parseCompactMeasurements(signalIndexCache, data[4:], *measurements)
 	}
 
 	ds.BeginCallbackSync()
@@ -1251,7 +1252,7 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 	if ds.NewMeasurementsCallback != nil {
 		// Do not use Go routine here, processing sequence may be important.
 		// Execute callback directly from socket processing thread:
-		ds.NewMeasurementsCallback(measurements)
+		ds.NewMeasurementsCallback(*measurements)
 	}
 
 	ds.EndCallbackSync()
