@@ -192,11 +192,6 @@ func NewDataSubscriber() *DataSubscriber {
 		signalIndexCache:         [2]*SignalIndexCache{NewSignalIndexCache(), NewSignalIndexCache()},
 	}
 
-	ds.MeasurementPool.New = func() any {
-		m := make([]Measurement, 64)
-		return &m
-	}
-
 	ds.validated.Set()
 
 	ds.connectionTerminationThread = thread.NewThread(func() {
@@ -1225,11 +1220,17 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 	}
 
 	count := binary.BigEndian.Uint32(data)
-	measurements := ds.MeasurementPool.Get().(*[]Measurement)
-	if uint32(cap(*measurements)) < count {
-		*measurements = make([]Measurement, count)
+	var measurements *[]Measurement
+	if mptr := ds.MeasurementPool.Get(); mptr == nil {
+		m := make([]Measurement, count)
+		measurements = &m
 	} else {
-		*measurements = (*measurements)[:count]
+		measurements = mptr.(*[]Measurement)
+		if uint32(cap(*measurements)) < count {
+			*measurements = make([]Measurement, count)
+		} else {
+			*measurements = (*measurements)[:count]
+		}
 	}
 	var cacheIndex int
 
