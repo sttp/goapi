@@ -472,6 +472,14 @@ func convertFromDateTime(value time.Time, targetType DataTypeEnum) (interface{},
 	}
 }
 
+// Equivalent to Value, but asserts that the value is not computed, and
+// that the column index is valid. May crash if these assumptions are violated.
+// If the column comes from getColumnIndex, and is known to not be
+// computed, this should be safe.
+func (dr *DataRow) ValueFast(columnIndex int) (interface{}, error) {
+	return dr.values[columnIndex], nil
+}
+
 // Value reads the record value at the specified columnIndex.
 func (dr *DataRow) Value(columnIndex int) (interface{}, error) {
 	column, err := dr.validateColumnType(columnIndex, -1, true)
