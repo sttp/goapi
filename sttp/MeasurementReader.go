@@ -39,9 +39,9 @@ func newMeasurementReader(parent *Subscriber) *MeasurementReader {
 		current: make(chan *transport.Measurement),
 	}
 
-	parent.SetNewMeasurementsReceiver(func(measurements []transport.Measurement) {
-		for i := range measurements {
-			reader.current <- &measurements[i]
+	parent.SetNewMeasurementsReceiver(func(measurements *[]transport.Measurement) {
+		for _, m := range *measurements {
+			reader.current <- &m
 		}
 	})
 
