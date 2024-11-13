@@ -130,6 +130,10 @@ func (dt *DataTable) InitRows(length int) {
 	dt.rows = make([]*DataRow, 0, length)
 }
 
+func (dt *DataTable) Rows() []*DataRow {
+	return dt.rows
+}
+
 // AddRow adds the specified row to the DataTable.
 func (dt *DataTable) AddRow(row *DataRow) {
 	dt.rows = append(dt.rows, row)
