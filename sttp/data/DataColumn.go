@@ -68,12 +68,6 @@ func (dc *DataColumn) Expression() string {
 	return dc.expression
 }
 
-// Computed gets a flag that determines if the DataColumn is a computed value,
-// i.e., has a defined expression.
-func (dc *DataColumn) Computed() bool {
-	return dc.computed
-}
-
 // Index gets the index of the DataColumn within its parent DataTable columns collection.
 func (dc *DataColumn) Index() int {
 	return dc.index
