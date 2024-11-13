@@ -29,7 +29,7 @@ const (
 
 	// STTPVersion defines the STTP library API version used for data subscriber identification.
 	// Note: This is not the STTP protocol version, but the version of the STTP library API.
-	STTPVersion = "0.8.1"
+	STTPVersion = "0.9.0"
 
 	// STTPUpdatedOn defines when the STTP library API was last updated used for data subscriber identification.
 	STTPUpdatedOn = "2022-12-09"

@@ -111,7 +111,7 @@ type DataSubscriber struct {
 	ConfigurationChangedCallback func()
 
 	// NewMeasurementsCallback is called when DataSubscriber receives a set of new measurements from the DataPublisher.
-	NewMeasurementsCallback func([]Measurement)
+	NewMeasurementsCallback func(*[]Measurement)
 
 	// NewBufferBlocksCallback is called when DataSubscriber receives a set of new buffer block measurements from the DataPublisher.
 	NewBufferBlocksCallback func([]BufferBlock)
@@ -1253,7 +1253,7 @@ func (ds *DataSubscriber) handleDataPacket(data []byte) {
 	if ds.NewMeasurementsCallback != nil {
 		// Do not use Go routine here, processing sequence may be important.
 		// Execute callback directly from socket processing thread:
-		ds.NewMeasurementsCallback(*measurements)
+		ds.NewMeasurementsCallback(measurements)
 	}
 
 	ds.EndCallbackSync()
