@@ -36,13 +36,13 @@ import (
 // SignalIndexCache maps 32-bit runtime IDs to 128-bit globally unique Measurement IDs. The structure
 // additionally provides reverse lookup and an extra mapping to human-readable measurement keys.
 type SignalIndexCache struct {
-	reference      map[int32]uint32
-	signalIDList   []guid.Guid
-	sourceList     []string
-	idList         []uint64
-	signalIDCache  map[guid.Guid]int32
-	binaryLength   uint32
-	tsscDecoder    *tssc.Decoder
+	reference     map[int32]uint32
+	signalIDList  []guid.Guid
+	sourceList    []string
+	idList        []uint64
+	signalIDCache map[guid.Guid]int32
+	binaryLength  uint32
+	tsscDecoder   *tssc.Decoder
 }
 
 // NewSignalIndexCache makes a new SignalIndexCache

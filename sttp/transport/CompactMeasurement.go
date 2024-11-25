@@ -126,10 +126,10 @@ func (fullFlags StateFlagsEnum) mapToCompactFlags() compactStateFlagsEnum {
 
 // CompactMeasurement defines a measured value, in simple compact format, for transmission or reception in STTP.
 type CompactMeasurement struct {
-	Value                    float32
-	Timestamp                ticks.Ticks
-	SignalIndex              uint32
-	Flags                    compactStateFlagsEnum
+	Value       float32
+	Timestamp   ticks.Ticks
+	SignalIndex uint32
+	Flags       compactStateFlagsEnum
 }
 
 // Constructs a CompactMeasurement from the specified byte buffer; returns the measurement and the number of bytes occupied by this measurement.
@@ -183,18 +183,17 @@ func NewCompactMeasurement(includeTime, useMillisecondResolution bool, baseTimeO
 // Compute the full measurement from the compact representation
 func (cm *CompactMeasurement) Expand(signalIndexCache *SignalIndexCache) Measurement {
 	return Measurement{
-		SignalID: signalIndexCache.SignalID(int32(cm.SignalIndex)),
+		SignalID:  signalIndexCache.SignalID(int32(cm.SignalIndex)),
 		Timestamp: cm.Timestamp,
-		Value: float64(cm.Value),
-		Flags: cm.Flags.mapToFullFlags(),
+		Value:     float64(cm.Value),
+		Flags:     cm.Flags.mapToFullFlags(),
 	}
 }
 
-//// Serializes a CompactMeasurement to a byte buffer for publication to a DataSubscriber.
+// // Serializes a CompactMeasurement to a byte buffer for publication to a DataSubscriber.
 func (cm *CompactMeasurement) Marshal(b []byte) {
 	b[0] = byte(cm.Flags)
 	binary.BigEndian.PutUint32(b[1:], cm.SignalIndex)
 	binary.BigEndian.PutUint32(b[5:], math.Float32bits(float32(cm.Value)))
 	binary.BigEndian.PutUint64(b[9:], uint64(cm.Timestamp))
 }
-
