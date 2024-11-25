@@ -94,6 +94,36 @@ func (compactFlags compactStateFlagsEnum) mapToFullFlags() StateFlagsEnum {
 	return fullFlags
 }
 
+func (fullFlags StateFlagsEnum) mapToCompactFlags() compactStateFlagsEnum {
+	var compactFlags compactStateFlagsEnum
+
+	if (fullFlags & dataRangeMask) > 0 {
+		compactFlags |= compactStateFlags.DataRange
+	}
+
+	if (fullFlags & dataQualityMask) > 0 {
+		compactFlags |= compactStateFlags.DataQuality
+	}
+
+	if (fullFlags & timeQualityMask) > 0 {
+		compactFlags |= compactStateFlags.TimeQuality
+	}
+
+	if (fullFlags & systemIssueMask) > 0 {
+		compactFlags |= compactStateFlags.SystemIssue
+	}
+
+	if (fullFlags & calculatedValueMask) > 0 {
+		compactFlags |= compactStateFlags.CalculatedValue
+	}
+
+	if (fullFlags & discardedValueMask) > 0 {
+		compactFlags |= compactStateFlags.DiscardedValue
+	}
+
+	return compactFlags
+}
+
 // CompactMeasurement defines a measured value, in simple compact format, for transmission or reception in STTP.
 type CompactMeasurement struct {
 	Value                    float32
