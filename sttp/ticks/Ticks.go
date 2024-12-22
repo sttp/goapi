@@ -28,8 +28,7 @@ import (
 )
 
 // Ticks is a 64-bit integer used to designate time in STTP. The value represents the number of 100-nanosecond intervals
-// that have elapsed since 12:00:00 midnight, January 1, 0001 UTC, Gregorian calendar. A single tick represents one hundred
-// nanoseconds, or one ten-millionth of a second. There are 10,000 ticks in a millisecond and 10 million ticks in a second.
+// that have elapsed since 12:00:00 midnight, January 1, 0001 UTC, in the Gregorian calendar. A single tick represents 100ns.
 // Only bits 01 to 62 (0x3FFFFFFFFFFFFFFF) are used to represent the timestamp value. Bit 64 (0x8000000000000000) is used
 // to denote leap second, i.e., second 60, where actual second value would remain at 59. Bit 63 (0x4000000000000000) is
 // used to denote leap second direction, 0 for add, 1 for delete.
