@@ -39,6 +39,9 @@ func TestValidateTicksConstants(t *testing.T) {
 	if LeapSecondDirection != 0x4000000000000000 {
 		t.Fatalf("ValidateTicksConstants: unexpected ticks leap second direction flag value")
 	}
+	if UnixBaseOffset.ToUnixNs() != 0 {
+		t.Fatalf("unix base offset is incorrect")
+	}
 }
 
 func TestTicksTimeConversions(t *testing.T) {
