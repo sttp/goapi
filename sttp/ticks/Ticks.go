@@ -88,13 +88,13 @@ func ToTime(ticks Ticks) time.Time {
 }
 
 // Converts a unix nanoseconds timestamp into a Ticks value.
-func FromUnixNs(ns uint64) Ticks {
+func FromUnixNano(ns uint64) Ticks {
 	return Ticks(ns / 100) + UnixBaseOffset
 }
 
 // FromTime converts a standard Go Time value to a Ticks value.
 func FromTime(time time.Time) Ticks {
-	return FromUnixNs(uint64(time.UnixNano()))
+	return FromUnixNano(uint64(time.UnixNano()))
 }
 
 // IsLeapSecond determines if the deserialized Ticks value represents a leap second, i.e., second 60.
@@ -143,7 +143,7 @@ func (t Ticks) ToTime() time.Time {
 }
 
 // Converts the ticks value into a Unix nanoseconds timestamp
-func (t Ticks) ToUnixNs() uint64 {
+func (t Ticks) ToUnixNano() uint64 {
 	return uint64(((t & ValueMask) - UnixBaseOffset) * 100)
 }
 
