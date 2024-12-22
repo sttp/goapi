@@ -178,4 +178,3 @@ func (t *Ticks) SetLeapSecondDirection(negative bool) {
 func (t Ticks) IsNegativeLeapSecond() bool {
 	return t.IsLeapSecond() && (t&LeapSecondDirection) != 0
 }
-
