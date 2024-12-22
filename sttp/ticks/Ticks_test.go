@@ -53,7 +53,7 @@ func TestTicksTimeConversions(t *testing.T) {
 	}
 
 	ticks = 637669698432643641
-	timestamp = ToTime(ticks)
+	timestamp = ticks.ToTime()
 
 	if timestamp != time.Date(2021, 9, 11, 15, 10, 43, 264364100, time.UTC) {
 		t.Fatalf("TicksToTimeConversions: unexpected ToTime value conversion")
