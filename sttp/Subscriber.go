@@ -650,7 +650,7 @@ func (sb *Subscriber) handleDataStartTime(startTime ticks.Ticks) {
 	sb.beginCallbackSync()
 
 	if sb.dataStartTimeReceiver != nil {
-		sb.dataStartTimeReceiver(ticks.ToTime(startTime))
+		sb.dataStartTimeReceiver(startTime.ToTime())
 	}
 
 	sb.endCallbackSync()
