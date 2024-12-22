@@ -16,6 +16,8 @@
 //
 //  Code Modification History:
 //  ----------------------------------------------------------------------------------------------------
+//  12.01.2024 - Noam Preil
+//       Add functions for working with Unix nanoseconds directly.
 //  09/09/2021 - J. Ritchie Carroll
 //       Generated original version of source code.
 //
