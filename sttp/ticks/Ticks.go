@@ -142,16 +142,6 @@ func (t Ticks) ToTime() time.Time {
 	return time.Unix(0, int64((t-UnixBaseOffset)&ValueMask)*100).UTC()
 }
 
-// IsLeapSecond determines if the deserialized Ticks value represents a leap second, i.e., second 60.
-func (t Ticks) IsLeapSecond() bool {
-	return IsLeapSecond(t)
-}
-
-// SetLeapSecond flags a Ticks value to represent a leap second, i.e., second 60, before wire serialization.
-func (t Ticks) SetLeapSecond() Ticks {
-	return SetLeapSecond(t)
-}
-
 // Converts the ticks value into a Unix nanoseconds timestamp
 func (t Ticks) ToUnixNs() uint64 {
 	return uint64(((t & ValueMask) - UnixBaseOffset) * 100)
@@ -166,3 +156,24 @@ func (t Ticks) String() string {
 func (t Ticks) ShortTime() string {
 	return t.ToTime().Format(ShortTimeFormat)
 }
+
+func (t Ticks) IsLeapSecond() bool {
+	return (t&LeapSecondFlag) != 0
+}
+
+func (t *Ticks) SetLeapSecond(){
+	*t |= LeapSecondFlag
+}
+
+func (t *Ticks) SetLeapSecondDirection(negative bool) {
+	if negative {
+		*t |= LeapSecondDirection
+	} else {
+		*t &= ^LeapSecondDirection
+	}
+}
+
+func (t Ticks) IsNegativeLeapSecond() bool {
+	return t.IsLeapSecond() && (t&LeapSecondDirection) != 0
+}
+
