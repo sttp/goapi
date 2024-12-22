@@ -152,6 +152,11 @@ func (t Ticks) SetLeapSecond() Ticks {
 	return SetLeapSecond(t)
 }
 
+// Converts the ticks value into a Unix nanoseconds timestamp
+func (t Ticks) ToUnixNs() uint64 {
+	return uint64(((t & ValueMask) - UnixBaseOffset) * 100)
+}
+
 // String returns the string form of a Ticks value, i.e., a standard date/time value. See TimeFormat.
 func (t Ticks) String() string {
 	return t.ToTime().Format(TimeFormat)
