@@ -1116,7 +1116,7 @@ func (ds *DataSubscriber) handleUpdateBaseTimes(data []byte) {
 
 	ds.baseTimeOffsets = baseTimeOffsets
 
-	timestamp, _ := ticks.ToTime(ticks.Ticks(ds.baseTimeOffsets[ds.timeIndex^1])).MarshalText()
+	timestamp, _ := ticks.Ticks(ds.baseTimeOffsets[ds.timeIndex^1]).ToTime().MarshalText()
 	ds.dispatchStatusMessage("Received new base time offset from publisher: " + string(timestamp))
 }
 
