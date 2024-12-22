@@ -94,7 +94,7 @@ func FromUnixNs(ns uint64) Ticks {
 
 // FromTime converts a standard Go Time value to a Ticks value.
 func FromTime(time time.Time) Ticks {
-	return (Ticks(time.UnixNano()/100) + UnixBaseOffset) & ValueMask
+	return FromUnixNs(uint64(time.UnixNano()))
 }
 
 // IsLeapSecond determines if the deserialized Ticks value represents a leap second, i.e., second 60.
