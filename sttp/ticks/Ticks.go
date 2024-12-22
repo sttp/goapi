@@ -139,7 +139,7 @@ func UtcNow() Ticks {
 
 // ToTime converts a Ticks value to standard Go Time value.
 func (t Ticks) ToTime() time.Time {
-	return ToTime(t)
+	return time.Unix(0, int64((t-UnixBaseOffset)&ValueMask)*100).UTC()
 }
 
 // IsLeapSecond determines if the deserialized Ticks value represents a leap second, i.e., second 60.
