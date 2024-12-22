@@ -87,6 +87,11 @@ func ToTime(ticks Ticks) time.Time {
 	return time.Unix(0, int64((ticks-UnixBaseOffset)&ValueMask)*100).UTC()
 }
 
+// Converts a unix nanoseconds timestamp into a Ticks value.
+func FromUnixNs(ns uint64) Ticks {
+	return Ticks(ns / 100) + UnixBaseOffset
+}
+
 // FromTime converts a standard Go Time value to a Ticks value.
 func FromTime(time time.Time) Ticks {
 	return (Ticks(time.UnixNano()/100) + UnixBaseOffset) & ValueMask
