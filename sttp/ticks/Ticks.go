@@ -30,8 +30,8 @@ import (
 // Ticks is a 64-bit integer used to designate time in STTP. The value represents the number of 100-nanosecond intervals
 // that have elapsed since 12:00:00 midnight, January 1, 0001 UTC, in the Gregorian calendar. A single tick represents 100ns.
 // Only bits 01 to 62 (0x3FFFFFFFFFFFFFFF) are used to represent the timestamp value. Bit 64 (0x8000000000000000) is used
-// to denote leap second, i.e., second 60, where actual second value would remain at 59. Bit 63 (0x4000000000000000) is
-// used to denote leap second direction, 0 for add, 1 for delete.
+// to denote a leap second, and bit 63 (0x4000000000000000) is used to denote the leap second's direction, 0 for add, 1 for delete.
+// Leap seconds are exposed, but are silently discarded upon conversion to Go or Unix timestamps.
 type Ticks uint64
 
 // Min is the minimum value for Ticks. It represents UTC time 01/01/0001 00:00:00.000.
