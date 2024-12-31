@@ -24,6 +24,7 @@
 package guid
 
 import (
+	"bytes"
 	"errors"
 	"strconv"
 
@@ -53,13 +54,7 @@ func (g Guid) Equal(other Guid) bool {
 
 // Equal returns true if the a and b Guid values are equal.
 func Equal(a, b Guid) bool {
-	for i := 0; i < 16; i++ {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
+	return bytes.Equal(a[:], b[:])
 }
 
 // Compare returns an integer comparing this Guid (g) to other Guid. The result will be 0 if g==other, -1 if this g < other, and +1 if g > other.
