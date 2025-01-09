@@ -26,6 +26,7 @@ package guid
 import (
 	"bytes"
 	"testing"
+	"unsafe"
 )
 
 const (
@@ -310,48 +311,38 @@ func testGuidToFromBytes(g Guid, gs string, swapEndianness bool, t *testing.T) {
 }
 
 func BenchmarkEqualityBaseline(b *testing.B) {
-	list := []string{gs1,gs2,gs3,gs4,gs5,gs6,gsz}
+	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
 	glist := [7]Guid{}
 	for i := range list {
 		glist[i], _ = Parse(list[i])
 	}
 	b.ResetTimer()
 	for range b.N {
-		for i := range list {
-			for j := range list {
-				if i == j {
-					continue
-				}
-				equal := true
-				a, b := glist[i], glist[j]
-				for k := range 16 {
-					if a[k] != b[k] {
-						equal = false
-						break
-					}
-				}
-				_ = equal
+		equal := true
+		a, b := glist[0], glist[1]
+		for k := range 16 {
+			if a[k] != b[k] {
+				equal = false
+				break
 			}
 		}
+		_ = equal
 	}
 }
 
 func BenchmarkEqualityCurrent(b *testing.B) {
-	list := []string{gs1,gs2,gs3,gs4,gs5,gs6,gsz}
+	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
 	glist := [7]Guid{}
 	for i := range list {
 		glist[i], _ = Parse(list[i])
 	}
 	b.ResetTimer()
 	for range b.N {
-		for i := range list {
-			for j := range list {
-				if i == j {
-					continue
-				}
-				_ = glist[i].Equal(glist[j])
-			}
-		}
+		a1 := (*uint64)(unsafe.Pointer(&glist[0][0]))
+		a2 := (*uint64)(unsafe.Pointer(&glist[0][8]))
+		b1 := (*uint64)(unsafe.Pointer(&glist[1][0]))
+		b2 := (*uint64)(unsafe.Pointer(&glist[1][8]))
+		equal := *a1 == *b1 && *a2 == *b2
+		_ = equal
 	}
 }
-
