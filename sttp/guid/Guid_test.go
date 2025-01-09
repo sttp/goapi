@@ -308,3 +308,50 @@ func testGuidToFromBytes(g Guid, gs string, swapEndianness bool, t *testing.T) {
 		t.Fatal("TestGuidToFromBytes: FromBytes test compare failed for guid " + gs)
 	}
 }
+
+func BenchmarkEqualityBaseline(b *testing.B) {
+	list := []string{gs1,gs2,gs3,gs4,gs5,gs6,gsz}
+	glist := [7]Guid{}
+	for i := range list {
+		glist[i], _ = Parse(list[i])
+	}
+	b.ResetTimer()
+	for range b.N {
+		for i := range list {
+			for j := range list {
+				if i == j {
+					continue
+				}
+				equal := true
+				a, b := glist[i], glist[j]
+				for k := range 16 {
+					if a[k] != b[k] {
+						equal = false
+						break
+					}
+				}
+				_ = equal
+			}
+		}
+	}
+}
+
+func BenchmarkEqualityCurrent(b *testing.B) {
+	list := []string{gs1,gs2,gs3,gs4,gs5,gs6,gsz}
+	glist := [7]Guid{}
+	for i := range list {
+		glist[i], _ = Parse(list[i])
+	}
+	b.ResetTimer()
+	for range b.N {
+		for i := range list {
+			for j := range list {
+				if i == j {
+					continue
+				}
+				_ = glist[i].Equal(glist[j])
+			}
+		}
+	}
+}
+
