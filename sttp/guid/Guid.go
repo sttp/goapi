@@ -50,7 +50,11 @@ func (g Guid) IsZero() bool {
 
 // Equal returns true if this Guid and other Guid values are equal.
 func (g Guid) Equal(other Guid) bool {
-	return Equal(g, other)
+	a1 := (*uint64)(unsafe.Pointer(&g[0]))
+	a2 := (*uint64)(unsafe.Pointer(&g[8]))
+	b1 := (*uint64)(unsafe.Pointer(&other[0]))
+	b2 := (*uint64)(unsafe.Pointer(&other[8]))
+	return *a1 == *b1 && *a2 == *b2
 }
 
 // Equal returns true if the a and b Guid values are equal.
