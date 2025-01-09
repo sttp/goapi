@@ -310,6 +310,53 @@ func testGuidToFromBytes(g Guid, gs string, swapEndianness bool, t *testing.T) {
 	}
 }
 
+func (g Guid) EqualIndirectBaseline(other Guid) bool {
+	return EqualBaseline(g, other)
+}
+
+func (g Guid) EqualIndirect(other Guid) bool {
+	return Equal(g, other)
+}
+
+func EqualBaseline(a, b Guid) bool {
+	for k := range 16 {
+		if a[k] != b[k] {
+			return false
+			break
+		}
+	}
+	return true
+
+}
+
+func BenchmarkEqualityIndirect(b *testing.B) {
+	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
+	glist := [7]Guid{}
+	for i := range list {
+		glist[i], _ = Parse(list[i])
+	}
+	b.ResetTimer()
+	for range b.N {
+		a, b := glist[0], glist[1]
+		equal := a.EqualIndirect(b)
+		_ = equal
+	}
+}
+
+func BenchmarkEqualityIndirectBaseline(b *testing.B) {
+	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
+	glist := [7]Guid{}
+	for i := range list {
+		glist[i], _ = Parse(list[i])
+	}
+	b.ResetTimer()
+	for range b.N {
+		a, b := glist[0], glist[1]
+		equal := a.EqualIndirectBaseline(b)
+		_ = equal
+	}
+}
+
 func BenchmarkEqualityBaseline(b *testing.B) {
 	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
 	glist := [7]Guid{}

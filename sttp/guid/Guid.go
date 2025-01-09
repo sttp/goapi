@@ -27,7 +27,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"strconv"
-	"unsafe"
 
 	"github.com/google/uuid"
 )
@@ -45,25 +44,17 @@ func New() Guid {
 
 // IsZero determines if the Guid value is its zero value, i.e., empty.
 func (g Guid) IsZero() bool {
-	return Equal(g, Empty)
+	return g == Empty
 }
 
 // Equal returns true if this Guid and other Guid values are equal.
 func (g Guid) Equal(other Guid) bool {
-	a1 := (*uint64)(unsafe.Pointer(&g[0]))
-	a2 := (*uint64)(unsafe.Pointer(&g[8]))
-	b1 := (*uint64)(unsafe.Pointer(&other[0]))
-	b2 := (*uint64)(unsafe.Pointer(&other[8]))
-	return *a1 == *b1 && *a2 == *b2
+	return g == other
 }
 
 // Equal returns true if the a and b Guid values are equal.
 func Equal(a, b Guid) bool {
-	a1 := (*uint64)(unsafe.Pointer(&a[0]))
-	a2 := (*uint64)(unsafe.Pointer(&a[8]))
-	b1 := (*uint64)(unsafe.Pointer(&b[0]))
-	b2 := (*uint64)(unsafe.Pointer(&b[8]))
-	return *a1 == *b1 && *a2 == *b2
+	return a == b
 }
 
 // Compare returns an integer comparing this Guid (g) to other Guid. The result will be 0 if g==other, -1 if this g < other, and +1 if g > other.
