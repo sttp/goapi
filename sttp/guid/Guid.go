@@ -25,6 +25,7 @@ package guid
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"strconv"
 
@@ -98,18 +99,10 @@ func result(left, right uint32) int {
 
 // Components gets the Guid value as its constituent components.
 func (g Guid) Components() (a uint32, b, c uint16, d [8]byte) {
-	a = (uint32(g[0]) << 24) | (uint32(g[1]) << 16) | (uint32(g[2]) << 8) | uint32(g[3])
-	b = uint16((uint32(g[4]) << 8) | uint32(g[5]))
-	c = uint16((uint32(g[6]) << 8) | uint32(g[7]))
-	d[0] = g[8]
-	d[1] = g[9]
-	d[2] = g[10]
-	d[3] = g[11]
-	d[4] = g[12]
-	d[5] = g[13]
-	d[6] = g[14]
-	d[7] = g[15]
-
+	a = binary.BigEndian.Uint32(g[:4])
+	b = binary.BigEndian.Uint16(g[4:6])
+	c = binary.BigEndian.Uint16(g[6:8])
+	copy(d[:], g[8:16])
 	return
 }
 
