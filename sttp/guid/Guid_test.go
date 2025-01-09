@@ -25,7 +25,6 @@ package guid
 
 import (
 	"bytes"
-	"strconv"
 	"testing"
 )
 
@@ -39,7 +38,7 @@ const (
 	gsz string = "{00000000-0000-0000-0000-000000000000}"
 )
 
-//gocyclo: ignore
+// gocyclo: ignore
 func TestGuidParsing(t *testing.T) {
 	var g1, g2, g3, g4 Guid
 	var err error
@@ -113,12 +112,12 @@ func TestGuidParsing(t *testing.T) {
 func TestNewGuidRandomness(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		if New().Equal(New()) || Equal(New(), New()) {
-			t.Fatalf("TestNewGuidRandomness: encountered non-unique Guid after " + strconv.Itoa(i*4) + "generations")
+			t.Fatalf("TestNewGuidRandomness: encountered non-unique Guid after %d generations", i*4)
 		}
 	}
 }
 
-//gocyclo: ignore
+// gocyclo: ignore
 func TestZeroGuid(t *testing.T) {
 	var gz, zero Guid
 	var err error
@@ -166,7 +165,7 @@ func TestZeroGuid(t *testing.T) {
 	}
 }
 
-//gocyclo: ignore
+// gocyclo: ignore
 func TestGuidCompare(t *testing.T) {
 	var g1, g2, g3, g4, g5, g6 Guid
 	var err error
@@ -296,16 +295,16 @@ func testGuidToFromBytes(g Guid, gs string, swapEndianness bool, t *testing.T) {
 	}
 
 	if !bytes.Equal(gbf, gbs) {
-		t.Fatalf("TestGuidToFromBytes: ToBytes test compare failed for guid " + gs)
+		t.Fatal("TestGuidToFromBytes: ToBytes test compare failed for guid " + gs)
 	}
 
 	g1fb, err := FromBytes(gbf, swapEndianness)
 
 	if err != nil {
-		t.Fatalf("TestGuidToFromBytes: FromBytes failed for guid " + gs)
+		t.Fatal("TestGuidToFromBytes: FromBytes failed for guid " + gs)
 	}
 
 	if !g1fb.Equal(g) {
-		t.Fatalf("TestGuidToFromBytes: FromBytes test compare failed for guid " + gs)
+		t.Fatal("TestGuidToFromBytes: FromBytes test compare failed for guid " + gs)
 	}
 }
