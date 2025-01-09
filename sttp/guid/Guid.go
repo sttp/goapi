@@ -131,9 +131,7 @@ func FromBytes(data []byte, swapEndianness bool) (Guid, error) {
 		swapGuidEndianness(&data)
 	}
 
-	var g Guid
-	copy(g[:], data[:16])
-	return g, nil
+	return Guid(data), nil
 }
 
 // ToBytes creates a byte slice from a Guid.
