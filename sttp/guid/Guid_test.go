@@ -346,3 +346,16 @@ func BenchmarkEqualityCurrent(b *testing.B) {
 		_ = equal
 	}
 }
+
+func BenchmarkEqualityDirect(b *testing.B) {
+	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
+	glist := [7]Guid{}
+	for i := range list {
+		glist[i], _ = Parse(list[i])
+	}
+	b.ResetTimer()
+	for range b.N {
+		equal := glist[0] == glist[1]
+		_ = equal
+	}
+}
