@@ -24,10 +24,10 @@
 package guid
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"strconv"
+	"unsafe"
 
 	"github.com/google/uuid"
 )
@@ -55,7 +55,11 @@ func (g Guid) Equal(other Guid) bool {
 
 // Equal returns true if the a and b Guid values are equal.
 func Equal(a, b Guid) bool {
-	return bytes.Equal(a[:], b[:])
+	a1 := (*uint64)(unsafe.Pointer(&a[0]))
+	a2 := (*uint64)(unsafe.Pointer(&a[8]))
+	b1 := (*uint64)(unsafe.Pointer(&b[0]))
+	b2 := (*uint64)(unsafe.Pointer(&b[8]))
+	return *a1 == *b1 && *a2 == *b2
 }
 
 // Compare returns an integer comparing this Guid (g) to other Guid. The result will be 0 if g==other, -1 if this g < other, and +1 if g > other.
