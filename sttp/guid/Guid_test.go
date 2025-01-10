@@ -25,8 +25,8 @@ package guid
 
 import (
 	"bytes"
-	"strconv"
 	"testing"
+	"unsafe"
 )
 
 const (
@@ -39,7 +39,7 @@ const (
 	gsz string = "{00000000-0000-0000-0000-000000000000}"
 )
 
-//gocyclo: ignore
+// gocyclo: ignore
 func TestGuidParsing(t *testing.T) {
 	var g1, g2, g3, g4 Guid
 	var err error
@@ -113,12 +113,12 @@ func TestGuidParsing(t *testing.T) {
 func TestNewGuidRandomness(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		if New().Equal(New()) || Equal(New(), New()) {
-			t.Fatalf("TestNewGuidRandomness: encountered non-unique Guid after " + strconv.Itoa(i*4) + "generations")
+			t.Fatalf("TestNewGuidRandomness: encountered non-unique Guid after %d generations", i*4)
 		}
 	}
 }
 
-//gocyclo: ignore
+// gocyclo: ignore
 func TestZeroGuid(t *testing.T) {
 	var gz, zero Guid
 	var err error
@@ -166,7 +166,7 @@ func TestZeroGuid(t *testing.T) {
 	}
 }
 
-//gocyclo: ignore
+// gocyclo: ignore
 func TestGuidCompare(t *testing.T) {
 	var g1, g2, g3, g4, g5, g6 Guid
 	var err error
@@ -296,16 +296,113 @@ func testGuidToFromBytes(g Guid, gs string, swapEndianness bool, t *testing.T) {
 	}
 
 	if !bytes.Equal(gbf, gbs) {
-		t.Fatalf("TestGuidToFromBytes: ToBytes test compare failed for guid " + gs)
+		t.Fatal("TestGuidToFromBytes: ToBytes test compare failed for guid " + gs)
 	}
 
 	g1fb, err := FromBytes(gbf, swapEndianness)
 
 	if err != nil {
-		t.Fatalf("TestGuidToFromBytes: FromBytes failed for guid " + gs)
+		t.Fatal("TestGuidToFromBytes: FromBytes failed for guid " + gs)
 	}
 
 	if !g1fb.Equal(g) {
-		t.Fatalf("TestGuidToFromBytes: FromBytes test compare failed for guid " + gs)
+		t.Fatal("TestGuidToFromBytes: FromBytes test compare failed for guid " + gs)
+	}
+}
+
+func (g Guid) EqualIndirectBaseline(other Guid) bool {
+	return EqualBaseline(g, other)
+}
+
+func (g Guid) EqualIndirect(other Guid) bool {
+	return Equal(g, other)
+}
+
+func EqualBaseline(a, b Guid) bool {
+	for k := range 16 {
+		if a[k] != b[k] {
+			return false
+			break
+		}
+	}
+	return true
+
+}
+
+func BenchmarkEqualityIndirect(b *testing.B) {
+	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
+	glist := [7]Guid{}
+	for i := range list {
+		glist[i], _ = Parse(list[i])
+	}
+	b.ResetTimer()
+	for range b.N {
+		a, b := glist[0], glist[1]
+		equal := a.EqualIndirect(b)
+		_ = equal
+	}
+}
+
+func BenchmarkEqualityIndirectBaseline(b *testing.B) {
+	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
+	glist := [7]Guid{}
+	for i := range list {
+		glist[i], _ = Parse(list[i])
+	}
+	b.ResetTimer()
+	for range b.N {
+		a, b := glist[0], glist[1]
+		equal := a.EqualIndirectBaseline(b)
+		_ = equal
+	}
+}
+
+func BenchmarkEqualityBaseline(b *testing.B) {
+	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
+	glist := [7]Guid{}
+	for i := range list {
+		glist[i], _ = Parse(list[i])
+	}
+	b.ResetTimer()
+	for range b.N {
+		equal := true
+		a, b := glist[0], glist[1]
+		for k := range 16 {
+			if a[k] != b[k] {
+				equal = false
+				break
+			}
+		}
+		_ = equal
+	}
+}
+
+func BenchmarkEqualityCurrent(b *testing.B) {
+	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
+	glist := [7]Guid{}
+	for i := range list {
+		glist[i], _ = Parse(list[i])
+	}
+	b.ResetTimer()
+	for range b.N {
+		a1 := (*uint64)(unsafe.Pointer(&glist[0][0]))
+		a2 := (*uint64)(unsafe.Pointer(&glist[0][8]))
+		b1 := (*uint64)(unsafe.Pointer(&glist[1][0]))
+		b2 := (*uint64)(unsafe.Pointer(&glist[1][8]))
+		equal := *a1 == *b1 && *a2 == *b2
+		_ = equal
+	}
+}
+
+func BenchmarkEqualityDirect(b *testing.B) {
+	list := []string{gs1, gs2, gs3, gs4, gs5, gs6, gsz}
+	glist := [7]Guid{}
+	for i := range list {
+		glist[i], _ = Parse(list[i])
+	}
+	b.ResetTimer()
+	for range b.N {
+		equal := glist[0] == glist[1]
+		_ = equal
 	}
 }
