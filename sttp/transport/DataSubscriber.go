@@ -1370,12 +1370,10 @@ func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndex
 
 	useMillisecondResolution := ds.subscription.UseMillisecondResolution
 	includeTime := ds.subscription.IncludeTime
-	index := 0
 
 	for i := 0; i < len(measurements); i++ {
 		// Deserialize compact measurement format
-		compactMeasurement := NewCompactMeasurement(signalIndexCache, includeTime, useMillisecondResolution, &ds.baseTimeOffsets)
-		bytesDecoded, err := compactMeasurement.Decode(data[index:])
+		cm, n, err := NewCompactMeasurement(includeTime, useMillisecondResolution, &ds.baseTimeOffsets, data)
 
 		if err != nil {
 			ds.dispatchErrorMessage("Failed to parse compact measurements - disconnecting: " + err.Error())
@@ -1383,8 +1381,8 @@ func (ds *DataSubscriber) parseCompactMeasurements(signalIndexCache *SignalIndex
 			return
 		}
 
-		index += bytesDecoded
-		measurements[i] = compactMeasurement.Measurement
+		data = data[n:]
+		measurements[i] = cm.Expand(signalIndexCache)
 	}
 }
 
