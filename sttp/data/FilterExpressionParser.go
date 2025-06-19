@@ -32,6 +32,7 @@ import (
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/araddon/dateparse"
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/sttp/goapi/sttp/data/parser"
 	"github.com/sttp/goapi/sttp/guid"
@@ -198,7 +199,7 @@ func (fep *FilterExpressionParser) Table(tableName string) (*DataTable, error) {
 // The applyLimit and applySort flags determine if any encountered "TOP" limit and "ORDER BY" sorting clauses will be respected.
 // Access matching results via FilteredRows and/or FilteredSignalIDs, or related set functions.
 // An error will be returned if expression fails to parse or any row expression evaluation fails.
-//gocyclo: ignore
+// gocyclo: ignore
 func (fep *FilterExpressionParser) Evaluate(applyLimit bool, applySort bool) error {
 	if fep.DataSet == nil {
 		return errors.New("no DataSet has been defined")
@@ -487,7 +488,7 @@ func (fep *FilterExpressionParser) EnterFilterStatement(context *parser.FilterSt
 */
 
 // ExitIdentifierStatement is called when production identifierStatement is exited.
-//gocyclo: ignore
+// gocyclo: ignore
 func (fep *FilterExpressionParser) ExitIdentifierStatement(context *parser.IdentifierStatementContext) {
 	signalID := guid.Empty
 
@@ -571,7 +572,7 @@ func (fep *FilterExpressionParser) ExitIdentifierStatement(context *parser.Ident
 	}
 
 	if context.MEASUREMENT_KEY_LITERAL() != nil {
-		fep.mapMatchedFieldRow(primaryTable, primaryTableIDFields.MeasurementKeyFieldName, context.MEASUREMENT_KEY_LITERAL().GetText(), signalIDColumnIndex)
+		fep.mapMatchedFieldRow(primaryTable, primaryTableIDFields.MeasurementKeyFieldName, uuid.UUID(parseGuidLiteral(context.MEASUREMENT_KEY_LITERAL().GetText())).String(), signalIDColumnIndex)
 		return
 	}
 
@@ -690,7 +691,7 @@ func (fep *FilterExpressionParser) ExitExpression(context *parser.ExpressionCont
 */
 
 // ExitPredicateExpression is called when production predicateExpression is exited.
-//gocyclo: ignore
+// gocyclo: ignore
 func (fep *FilterExpressionParser) ExitPredicateExpression(context *parser.PredicateExpressionContext) {
 	var value Expression
 
@@ -859,7 +860,7 @@ func (fep *FilterExpressionParser) ExitPredicateExpression(context *parser.Predi
 */
 
 // ExitValueExpression is called when production valueExpression is exited.
-//gocyclo: ignore
+// gocyclo: ignore
 func (fep *FilterExpressionParser) ExitValueExpression(context *parser.ValueExpressionContext) {
 	var value Expression
 
@@ -1042,7 +1043,7 @@ func (fep *FilterExpressionParser) ExitValueExpression(context *parser.ValueExpr
 */
 
 // ExitLiteralValue is called when production literalValue is exited.
-//gocyclo: ignore
+// gocyclo: ignore
 func (fep *FilterExpressionParser) ExitLiteralValue(context *parser.LiteralValueContext) {
 	var result *ValueExpression
 
@@ -1156,7 +1157,7 @@ func (fep *FilterExpressionParser) ExitColumnName(context *parser.ColumnNameCont
 */
 
 // ExitFunctionExpression is called when production functionExpression is exited.
-//gocyclo: ignore
+// gocyclo: ignore
 func (fep *FilterExpressionParser) ExitFunctionExpression(context *parser.FunctionExpressionContext) {
 	functionNameContext := context.FunctionName().(*parser.FunctionNameContext)
 	var functionType ExpressionFunctionTypeEnum
